@@ -57,7 +57,7 @@
 
   E.start = function () {
     const w = G.world, W = w.W;
-    G.animals = []; G.animalCd = 1e9; G.order = null; G.orderCd = 1e9;
+    G.animals = []; LJ.combat.clearShots(); G.animalCd = 1e9; G.order = null; G.orderCd = 1e9;
     G.sel.clear(); G.place = null; G.drag = null;
     LJ.cmd.stop(G.units);
     LJ.revealAll();

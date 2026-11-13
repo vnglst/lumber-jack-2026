@@ -12,7 +12,7 @@
     const set = S.jack[G.up.chainsaw ? 'saw' : 'axe'];
     const cargo = u.carry > 0 || u.load;
     let f;
-    if (u.fighting) f = set.chop[u.atkCd > 0.45 ? 1 : 0];
+    if (u.fighting) f = G.up.rifles ? S.jack.pistol[u.flash > 0 ? 1 : 0] : set.chop[u.atkCd > 0.45 ? 1 : 0];
     else if (((u.state === 'chop' || (u.state === 'saw' && G.wood >= 2)) && !u.path.length)) f = set.chop[u.swing < 0.25 ? 0 : 1];
     else if (u.path.length) {
       const k = Math.floor(u.walkT * 8) % 2;
@@ -47,7 +47,8 @@
     return [X + (img.width >> 1), Y];
   }
   function drawAnimal(ctx, a, cx, cy) {
-    const [mx, top] = drawCreature(ctx, S[a.kind], Math.floor(a.walkT * 9) % 2, a.dir, a.x, a.y, 1, cx, cy);
+    const aiming = a.kind === 'native' && a.aim > 0;
+    const [mx, top] = drawCreature(ctx, aiming ? [S.nativeAim] : S[a.kind], aiming ? 0 : Math.floor(a.walkT * 9) % 2, a.dir, a.x, a.y, 1, cx, cy);
     if (a.hp < a.max) bar(ctx, mx - 7, top - 4, 12, a.hp / a.max, '#ff4a3a');
   }
   const decoShown = (w, i, dc) => !w.bld[i] && !w.obj[i] && LJ.DECO[dc].show(w, i);
@@ -73,6 +74,14 @@
       }
     }
 
+    // Palisade preview while dragging
+    if (G.wallDrag) {
+      for (const i of G.wallDrag) {
+        ctx.fillStyle = LJ.canWall(i) ? 'rgba(120,255,110,0.4)' : 'rgba(255,70,60,0.35)';
+        ctx.fillRect((i % W) * TS - cx, ((i / W) | 0) * TS - cy, TS, TS);
+      }
+    }
+
     // Building placement preview
     if (G.place && G.hover) {
       const p = G.place, tx = Math.floor(G.hover[0] / TS) - (p.w >> 1), ty = Math.floor(G.hover[1] / TS) - (p.h >> 1), ok = LJ.canPlace(tx, ty);
@@ -87,11 +96,12 @@
       if (o >= 1 && o <= 3) list.push({ k: 0, i, bx: LJ.treeX(w, i), y: LJ.treeY(w, i) });
       else if (o === LJ.STUMP) list.push({ k: 11, i, bx: LJ.treeX(w, i), y: LJ.treeY(w, i) - 1 });
       else if (w.type[i] === T.ROCK) { const oy = ((hash(i, 7, s) * 9) | 0) - 4; list.push({ k: 1, i, tx, ty, oy, y: ty * TS + 14 + oy }); }
+      if (w.wall[i]) list.push({ k: 14, i, tx, ty, y: ty * TS + 14 });
       const dc = w.deco[i];
       if (dc && decoShown(w, i, dc)) list.push({ k: 12, i, tx, ty, dc, y: ty * TS + LJ.DECO[dc].y + ((hash(i, 5, s) * 5) | 0) - 2 });
     }
     for (const c of G.critters) list.push({ k: 13, c, y: c.y });
-    for (const b of G.buildings) list.push({ k: 2, b, y: (b.ty + b.h) * TS });
+    for (const b of G.buildings) if (!b.dead) list.push({ k: 2, b, y: (b.ty + b.h) * TS });
     list.push({ k: 5, y: w.roadY * TS + 1 });
     for (const u of G.units) list.push({ k: 3, u, y: u.y });
     for (const f of G.falls) list.push({ k: 4, f, y: f.y });
@@ -135,6 +145,13 @@
           const o = LJ.bldOrigin(b), bx = o[0] - cx, by = o[1] - cy;
           ctx.drawImage(spr, bx, by);
           if (b.queue.length) bar(ctx, bx + 14, by - 5, 28, 1 - b.queue[0].t / b.queue[0].total, '#58c8ff');
+          if (b.hp < b.max) bar(ctx, bx + (spr.width >> 1) - 14, by + 4, 28, b.hp / b.max, b.hp > b.max * 0.4 ? '#5fdc3c' : '#ff4a3a');
+          if (b.flash > 0) { ctx.globalCompositeOperation = 'lighter'; glow(ctx, bx + spr.muzzle.x, by + spr.muzzle.y, '#4ae8ff', 3); ctx.globalCompositeOperation = 'source-over'; }
+          break;
+        }
+        case 14: {
+          const spr = w.wall[d.i] < 30 ? S.wallBroken : S.wall;
+          ctx.drawImage(spr, d.tx * TS - 1 - cx, d.ty * TS + 18 - spr.height - cy);
           break;
         }
         case 3: drawAny(ctx, d.u, cx, cy, G, false); break;
@@ -175,11 +192,7 @@
     for (const a of G.animals) drawAnimal(ctx, a, cx, cy);
     ctx.globalAlpha = 1;
 
-    // Rifle tracers
-    ctx.strokeStyle = '#fff3b0'; ctx.lineWidth = 1;
-    for (const sh of G.shots) {
-      ctx.beginPath(); ctx.moveTo(sh.x0 - cx + 0.5, sh.y0 - cy + 0.5); ctx.lineTo(sh.x1 - cx + 0.5, sh.y1 - cy + 0.5); ctx.stroke();
-    }
+    drawProjectiles(ctx, G, cx, cy);
 
     // Target brackets on trees the selected jacks are heading for
     ctx.fillStyle = '#fff';
@@ -225,6 +238,7 @@
     }
 
     for (const p of G.parts) {
+      if (p.glow) continue; // drawn below, in one additive batch
       if (p.smoke) { ctx.globalAlpha = 0.6 * (1 - p.t / p.life); ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x) - cx, Math.round(p.y) - cy, 2, 2); ctx.globalAlpha = 1; }
       else { ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x) - cx, Math.round(p.y) - cy, 1, 1); }
     }
@@ -240,6 +254,47 @@
     if (G.dc) drawDataCenter(ctx, G, cx, cy, vw, vh);
     drawFog(ctx, G, w, cx, cy);
   };
+
+  // A small glow: a bright core with a soft coloured halo. The caller sets the additive ('lighter') blend mode,
+  // so a whole batch of glows shares one switch.
+  function glow(ctx, x, y, col, r) {
+    ctx.globalAlpha = 0.35; ctx.fillStyle = col; ctx.fillRect(x - r, y - r, r * 2 + 1, r * 2 + 1);
+    ctx.globalAlpha = 0.9; ctx.fillRect(x - (r >> 1), y - (r >> 1), (r >> 1) * 2 + 1, (r >> 1) * 2 + 1);
+    ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, 1, 1);
+  }
+
+  // Laser bolts (glowing streaks with a white core and a muzzle flash) and arrows (a gentle arc, feathered).
+  function drawProjectiles(ctx, G, cx, cy) {
+    ctx.lineCap = 'round';
+    ctx.globalCompositeOperation = 'lighter'; // everything glowing in one additive batch
+    for (const b of G.bolts) {
+      const k = Math.min(1, b.t / b.dur), dx = b.x1 - b.x0, dy = b.y1 - b.y0, len = Math.hypot(dx, dy) || 1;
+      const hx = b.x0 + dx * k - cx, hy = b.y0 + dy * k - cy, tl = Math.min(9, len * k);
+      const tx = hx - (dx / len) * tl, ty = hy - (dy / len) * tl;
+      if (b.t < 0.05) glow(ctx, Math.round(b.x0 - cx), Math.round(b.y0 - cy), b.col, 3);
+      if (b.done) continue;
+      ctx.strokeStyle = b.col; ctx.globalAlpha = 0.45; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(tx + (dx / len) * 3, ty + (dy / len) * 3); ctx.lineTo(hx, hy); ctx.stroke();
+    }
+    for (const p of G.parts) if (p.glow) glow(ctx, Math.round(p.x) - cx, Math.round(p.y) - cy, p.col, 1);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    for (const a of G.arrows) {
+      const k = Math.min(1, a.t / a.dur), dx = a.x1 - a.x0, dy = a.y1 - a.y0, len = Math.hypot(dx, dy) || 1;
+      const arc = Math.sin(k * Math.PI) * Math.min(14, len * 0.12);
+      const x = a.x0 + dx * k - cx, y = a.y0 + dy * k - arc - cy;
+      // Direction includes the arc's slope, so the arrow tips up then down.
+      const vx = dx / len, vy = (dy - Math.cos(k * Math.PI) * Math.PI * Math.min(14, len * 0.12)) / len, vl = Math.hypot(vx, vy) || 1;
+      const ux = vx / vl, uy = vy / vl;
+      ctx.globalAlpha = a.done ? Math.max(0, 1 - (a.t - a.dur) / 0.4) : 1;
+      ctx.strokeStyle = '#7a4d26'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x - ux * 6, y - uy * 6); ctx.lineTo(x, y); ctx.stroke();
+      ctx.fillStyle = '#d5dbe2'; ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+      ctx.fillStyle = '#f4f4f4'; ctx.fillRect(Math.round(x - ux * 6), Math.round(y - uy * 6), 1, 1);
+      ctx.globalAlpha = 1;
+    }
+  }
 
   // The data center at the end: 3x3-tile modules that go up one after another until they cover the map.
   function drawDataCenter(ctx, G, cx, cy, vw, vh) {

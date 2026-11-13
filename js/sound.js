@@ -46,9 +46,12 @@
       case 'no': tone(160, 0.15, 'sawtooth', 0.06); break;
       case 'build': noise(0.2, 0.25, 900); tone(200, 0.2, 'square', 0.06, 120); break;
       case 'rock': noise(0.18, 0.25, 700); break;
-      case 'shot': noise(0.12, 0.3, 2600); tone(180, 0.08, 'square', 0.06, 60); break;
       case 'hurt': tone(260, 0.12, 'sawtooth', 0.07, 120); break;
       case 'howl': tone(330, 0.9, 'sine', 0.09, 520); setTimeout(() => tone(520, 0.8, 'sine', 0.08, 300), 500); break;
+      case 'laser': tone(1600, 0.09, 'square', 0.03, 320); tone(2400, 0.05, 'sine', 0.02, 900); break;
+      case 'arrow': noise(0.06, 0.07, 6000); break;
+      case 'thud': noise(0.07, 0.16, 450); break;
+      case 'drum': [0, 260, 520, 700].forEach((d, i) => setTimeout(() => { tone(i % 2 ? 72 : 96, 0.22, 'sine', 0.22, 50); noise(0.08, 0.12, 300); }, d)); break;
       case 'level': [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.18, 'square', 0.07), i * 110)); break;
     }
   };

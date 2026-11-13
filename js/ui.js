@@ -175,6 +175,22 @@
     G.sel = new Set(G.units.filter(u => u.x >= x0 && u.x <= x1 && u.y - 6 >= y0 && u.y - 6 <= y1));
   }
 
+  // Tiles on a straight line between two tiles (for dragging out a palisade). Diagonal steps get an
+  // extra tile so the wall has no corner gaps to slip through.
+  function tileLine(a, b) {
+    const W = G.world.W, x0 = a % W, y0 = (a / W) | 0, x1 = b % W, y1 = (b / W) | 0, out = [];
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+    let px = x0, py = y0;
+    out.push(y0 * W + x0);
+    for (let k = 1; k <= n; k++) {
+      const x = Math.round(x0 + ((x1 - x0) * k) / n), y = Math.round(y0 + ((y1 - y0) * k) / n);
+      if (x !== px && y !== py) out.push(py * W + x);
+      out.push(y * W + x);
+      px = x; py = y;
+    }
+    return out;
+  }
+
   // ---------- Pointer input ----------
   function bindPointer() {
     const ptrs = new Map();
@@ -187,8 +203,9 @@
       try { cv.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
       const [wx, wy] = world(e), touch = e.pointerType !== 'mouse';
       let mode;
-      if (!touch) mode = e.button === 1 ? 'pan' : e.button === 2 ? 'cmd' : G.place || G.cine ? 'pan' : 'box';
-      else mode = 'pan';
+      if (!touch) mode = e.button === 1 ? 'pan' : e.button === 2 ? 'cmd' : G.wallMode ? 'wall' : G.place || G.cine ? 'pan' : 'box';
+      else mode = G.wallMode ? 'wall' : 'pan';
+      if (mode === 'wall') G.wallDrag = tileLine(tileAt(wx, wy), tileAt(wx, wy));
       ptrs.set(e.pointerId, { sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, wx, wy, mode, moved: false, touch, shift: e.shiftKey });
       if (ptrs.size === 2) {
         for (const p of ptrs.values()) { p.mode = 'pinch'; p.moved = true; }
@@ -200,6 +217,7 @@
       if (e.pointerType === 'mouse') G.hover = world(e);
       const p = ptrs.get(e.pointerId);
       if (!p) return;
+      if (p.mode === 'wall') { const [wx, wy] = world(e); G.wallDrag = tileLine(tileAt(p.wx, p.wy), tileAt(wx, wy)); return; }
       const dx = e.clientX - p.lx, dy = e.clientY - p.ly;
       p.lx = e.clientX; p.ly = e.clientY;
       if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > (p.touch ? 10 : 5)) p.moved = true;
@@ -223,6 +241,8 @@
       const p = ptrs.get(e.pointerId);
       ptrs.delete(e.pointerId);
       if (!p || p.mode === 'pinch') return;
+      if (p.mode === 'wall') { if (G.wallDrag && !G.paused) LJ.buildWalls(G.wallDrag); G.wallDrag = null; return; }
+      if (p.mode === 'cmd' && G.wallMode && !p.moved) { G.wallMode = false; return; }
       if (!p.moved) click(p.wx, p.wy, p.mode === 'cmd', p.touch, p.shift);
       else if (G.drag) {
         if (!G.paused && !G.cine) boxSelect(G.drag);
@@ -251,7 +271,7 @@
       keys[e.key.toLowerCase()] = true;
       if (G.cine) { if ((e.key === ' ' || e.key === 'Enter') && G.cine.phase === 'talk') LJ.ending.next(); return; }
       if (e.key === 'f' || e.key === 'F' || e.key === ' ') { e.preventDefault(); ui.centerOnSelection(); }
-      if (e.key === 'Escape') { G.sel.clear(); G.place = null; $('shop').classList.remove('open'); }
+      if (e.key === 'Escape') { G.sel.clear(); G.place = null; G.wallMode = false; G.wallDrag = null; $('shop').classList.remove('open'); }
     });
     addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
     addEventListener('blur', () => { keys = {}; });
@@ -271,7 +291,8 @@
       const b = e.target.closest('button'); if (!b) return;
       LJ.audioInit();
       const r = LJ.buy(b.dataset.id);
-      if (r === 'place') {
+      if (r === 'wall') { $('shop').classList.remove('open'); ui.toast('Drag to build a palisade. Right-click or Done when finished.'); }
+      else if (r === 'place') {
         $('shop').classList.remove('open');
         if (!G.hover) G.hover = [G.cam.x + vwW() / 2, G.cam.y + vwH() / 2];
         ui.toast('Pick a clear spot for the ' + b.dataset.name.toLowerCase());
@@ -286,6 +307,7 @@
       else if (a === 'stop') LJ.cmd.stop(sel);
       else if (a === 'desel') G.sel.clear();
       else if (a === 'cancel') G.place = null;
+      else if (a === 'walldone') { G.wallMode = false; G.wallDrag = null; }
     });
     $('order').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
@@ -349,7 +371,7 @@
   ui.endScreen = function () {
     const m = $('modal');
     m.innerHTML = '<div class="dialog"><h1>Game over.</h1>' +
-      '<p>' + G.cleared.toLocaleString('en-US') + ' trees cleared · ' + G.kills + ' animals killed · $' + G.earned.toLocaleString('en-US') + ' earned</p>' +
+      '<p>' + G.cleared.toLocaleString('en-US') + ' trees cleared · ' + G.kills + ' animals killed · ' + G.folkKilled + ' forest folk killed · $' + G.earned.toLocaleString('en-US') + ' earned</p>' +
       '<p>You received a $1,000,000 bonus and shares in the new AI data center.</p>' +
       '<p class="ask">Do you want to clear another piece of land?</p>' +
       '<div class="row"><button data-a="yes">Yes</button><button data-a="no" class="ghost">No</button></div></div>';
@@ -376,7 +398,12 @@
   // ---------- Per-frame UI ----------
   function hint() {
     if (G.levelDone || G.cine) return '';
+    if (G.wallMode) return 'Drag to build a line of palisade. Enemies walk around open ends, so close the ring around what you want to protect.';
     if (G.place) return 'Pick a clear, explored spot the road can reach.';
+    const nw = LJ.combat.nextWaveIn();
+    if (G.wave.active && !G.wave.active.retreating) return 'The forest folk are attacking! Guard towers and jacks with laser pistols can hold them off.';
+    if (nw !== null && nw < 30) return 'War drums in the forest… the next war party arrives in ' + mmss(nw) + '.';
+    if (G.wave.hostile && !G.count.tower && G.level >= 3) return 'The forest folk will be back. Build Guard Towers and a palisade around the village.';
     if (G.money < 0) return "You're in debt: hired jacks and machines slack off until you're back in the black.";
     const tasks = t => G.units.some(u => u.task && u.task.type === t), sel = [...G.sel];
     if (G.cleared >= G.thr[G.level - 1]) return 'Trees done! Now earn the rest of the quota: sell wood and lumber at the market.';
@@ -403,10 +430,11 @@
 
   function refreshPanel() {
     const sel = [...G.sel];
-    const sig = G.place ? 'place' : sel.map(u => u.id + ':' + LJ.statusOf(u) + ':' + LJ.cargoOf(u) + ':' + (u.hp | 0)).join('|') + (G.village ? 'v' : '') + (G.up.dispatch ? 'd' : '');
+    const sig = G.wallMode ? 'wall' : G.place ? 'place' : sel.map(u => u.id + ':' + LJ.statusOf(u) + ':' + LJ.cargoOf(u) + ':' + (u.hp | 0)).join('|') + (G.village ? 'v' : '') + (G.up.dispatch ? 'd' : '');
     if (sig === panelSig) return;
     panelSig = sig;
     const p = $('panel');
+    if (G.wallMode) { p.innerHTML = '<div>Palisade<div class="st">Drag to build · $' + LJ.WALL_COST.m + ' + ' + LJ.WALL_COST.w + ' wood per section</div></div><button data-act="walldone">Done</button>'; return; }
     if (G.place) { p.innerHTML = '<div>Place the ' + LJ.BLD[G.place.kind].name.toLowerCase() + '</div><button data-act="cancel">Cancel</button>'; return; }
     if (!sel.length) { p.innerHTML = ''; return; }
     const u = sel[0], cargo = sel.reduce((a, b) => a + LJ.cargoOf(b), 0), has = k => sel.some(s => s.kind === k);

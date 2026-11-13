@@ -88,6 +88,17 @@
       else deco[i] = h < 0.08 ? 1 : h < 0.1 ? 3 : 0;
     }
 
+    // The forest folk's huts: small clearings deep in the forest, well away from the start and from each other.
+    const huts = [], hr = LJ.rng(seed + 333);
+    for (let tries = 0; tries < 4000 && huts.length < 7; tries++) {
+      const x = 3 + ((hr() * (W - 6)) | 0), y = 3 + ((hr() * (H - 6)) | 0), i = y * W + x;
+      if (x < 28 || !(obj[i] >= 1 && obj[i] <= 3) || huts.some(h => Math.hypot((h % W) - x, ((h / W) | 0) - y) < 14)) continue;
+      let dense = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const o = obj[(y + dy) * W + x + dx]; if (o >= 1 && o <= 3) dense++; }
+      if (dense < 18) continue;
+      obj[i] = 0; total--; deco[i] = 8; flower[i] = 0; huts.push(i);
+    }
+
     // Trees and stumps are nudged off the tile grid so the forest doesn't look planted.
     const tbx = new Int8Array(N), tby = new Int8Array(N);
     for (let i = 0; i < N; i++) { tbx[i] = ((hash(i, 1, seed) * 11) | 0) - 5; tby[i] = ((hash(i, 2, seed) * 7) | 0) - 3; }
@@ -110,7 +121,7 @@
     const frac = reach / total;
     if (!force && (frac < 0.28 || frac > 0.6)) return null;
 
-    return { W, H, N, seed, type, obj, variant, lush, wear, bld, flower, hp, claim, deco, decoV, tbx, tby, roadY, totalTrees: total, start: { x: 6, y: roadY } };
+    return { W, H, N, seed, type, obj, variant, lush, wear, bld, flower, hp, claim, deco, decoV, tbx, tby, huts, wall: new Uint8Array(N), roadY, totalTrees: total, start: { x: 6, y: roadY } };
   }
 
   // ---------- Ground renderer ----------
@@ -226,7 +237,8 @@
     { name: 'fern', show: (w, i) => w.type[i] === T.GRASS && w.lush[i] > 0.45, y: 12 },
     { name: 'reeds', show: (w, i) => w.type[i] === T.GRASS && w.lush[i] > 0.3, y: 12 },
     { name: 'lily', show: (w, i) => w.type[i] === T.WATER, y: 6 },
-    { name: 'pebbles', show: (w, i) => w.type[i] !== T.WATER, y: 12 }];
+    { name: 'pebbles', show: (w, i) => w.type[i] !== T.WATER, y: 12 },
+    { name: 'hut', show: () => true, y: 13 }];
 
   GP.renderAll = function () { for (let i = 0; i < this.w.N; i++) this.renderTile(i); this.dirty.clear(); };
   GP.mark = function (i) { this.dirty.add(i); };

@@ -276,6 +276,12 @@
     return { idle: j(0, idleO), walk: [j(1, idleO), j(2, idleO)], chop: [j(0, upO), j(0, downO)], carry: [j(0, logOn), j(1, logOn), j(2, logOn)] };
   }
   S.jack = { axe: jackSet(axeIdle, axeUp, axeDown), saw: jackSet(sawA, sawA, sawB) };
+  // Arm out, laser pistol raised: one frame aiming, one with the muzzle glowing.
+  const pistol = glow => x => {
+    R(x, 15, 12, 5, 2, '#55596a'); R(x, 15, 12, 5, 1, '#9aa0b0'); R(x, 15, 14, 2, 2, '#3a3d46');
+    R(x, 19, 12, 1, 2, glow ? '#ffffff' : '#ff5a4a'); if (glow) { R(x, 19, 11, 1, 1, '#ffb0a0'); R(x, 19, 14, 1, 1, '#ffb0a0'); }
+  };
+  S.jack.pistol = [person(JBODY, JP, 0, pistol(false)), person(JBODY, JP, 0, pistol(true))];
 
   const SUIT = [
     '.....hhhh....', '....hhhhhh...', '....hhhhhhh..', '....hSSSSSh..', '....SSSSSSS..', '....SSKSSKS..',
@@ -298,6 +304,48 @@
   const SQ = { O: '#cc672c', o: '#8f4218', L: '#f2cc92', K: '#1a1218' };
   const SQ_TOP = ['.OO......', 'OOOO.....', 'OOoO..O..', '.OOo.OOO.', '..OoOOKOO', '..oOOLOO.', '...OOLL..'];
   S.squirrel = [both(map(SQ_TOP.concat(['...o.o...']), SQ)), both(map(SQ_TOP.concat(['..o...o..']), SQ))];
+
+  // ---------- The forest folk: small, round, bear-like, leaf-hooded, armed with bows ----------
+  const FP = { h: '#2f6a2a', H: '#4f8a3a', L: '#6aa84a', F: '#8a5a34', f: '#6b4526', M: '#e0b88a', K: '#1a1218', W: '#ffffff', B: '#d0a070', D: '#4a2f1a' };
+  const FOLK = [
+    '..h......h..', '.hHh....hHh.', '.hHHHHHHHHh.', 'hHLHHHHHHLHh', 'hHFFFFFFFFHh', 'hFMKKMMKKMFh', 'hFMKWMMKWMFh',
+    '.FMMMffMMMF.', '.fFMMMMMMFf.', '.fFFFFFFFFf.', 'fFFBBBBBBFFf', 'fFFBBBBBBFFf', '.fFFFFFFFFf.'];
+  const FOLK_FEET = [['..DD....DD..'], ['.DD......DD.'], ['...DD..DD...']];
+  // The bow, held out front; drawn back (with an arrow) when aiming.
+  const bow = drawn => x => {
+    pts(x, [[12, 3], [13, 4], [14, 5], [14, 6], [14, 7], [14, 8], [14, 9], [13, 10], [12, 11]], '#a8743a');
+    pts(x, drawn ? [[12, 4], [11, 5], [10, 6], [10, 7], [11, 8], [12, 9], [12, 10]] : [[12, 4], [12, 5], [12, 6], [12, 7], [12, 8], [12, 9], [12, 10]], '#e8e0d0');
+    if (drawn) { R(x, 10, 7, 6, 1, '#8a5a34'); R(x, 15, 7, 1, 1, '#c8ccd4'); R(x, 9, 6, 1, 1, '#ffffff'); R(x, 9, 8, 1, 1, '#ffffff'); }
+    R(x, 11, 7, 1, 1, '#8a5a34'); // paw on the bow
+  };
+  const folk = (feet, drawn) => {
+    const c = art(FOLK.concat(FOLK_FEET[feet]), FP, 0, 16, 14);
+    bow(drawn)(c.getContext('2d'));
+    return both(outline(c));
+  };
+  S.native = [folk(1, false), folk(2, false)];
+  S.nativeAim = folk(0, true);
+
+  // Their huts: domes of woven branches and leaves, deep in the forest.
+  S.hut = (function () {
+    const b = new Buf(26, 22), P = ['#3a2614', '#5a3a20', '#7a5230', '#94683e', '#b08452'].map(rgb), G2 = ['#2f6a2a', '#4f8a3a', '#6aa84a'].map(rgb);
+    shadow(b, 14, 19, 12, 2.5, 0.35);
+    const own = new Int8Array(26 * 22).fill(-1);
+    for (let y = 3; y < 20; y++) for (let x = 2; x < 24; x++) {
+      const dx = (x + 0.5 - 13) / 11, dy = (y + 0.5 - 19) / 16;
+      if (dx * dx + dy * dy > 1) continue;
+      own[y * 26 + x] = 0;
+      const lam = Math.max(0, -dx * 0.6 - dy * 0.5 + 0.3), weave = ((x + y * 2) % 5 === 0 || (x * 2 - y + 40) % 6 === 0) ? -0.2 : 0;
+      let col = P[1 + Math.max(0, Math.min(3, Math.floor((lam + weave) * 3.2 + hash(x, y, 4) * 0.6)))];
+      if (dy < -0.55 && hash(x >> 1, y >> 1, 9) < 0.7) col = G2[Math.min(2, Math.floor(lam * 3))]; // leafy thatch on top
+      b.set(x, y, col);
+    }
+    for (let y = 12; y < 20; y++) for (let x = 10; x < 17; x++) { const dx = (x + 0.5 - 13.5) / 3.5, dy = (y + 0.5 - 19) / 7; if (dx * dx + dy * dy <= 1) b.set(x, y, P[0]); } // round door
+    maskOutline(b, own, P[0]);
+    b.set(13, 2, G2[2]); b.set(12, 1, G2[1]); b.set(14, 2, G2[1]);
+    return b.canvas();
+  })();
+  S.decor.hut = [S.hut];
 
   // ---------- Icons that depend on the art above ----------
   I.jack = icon(x => x.drawImage(S.jack.axe.idle.r, 4, 0, 14, 14, -1, 0, 14, 14));

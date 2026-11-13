@@ -41,4 +41,14 @@ LJ.fbm = function (x, y, s, oct) {
 };
 
 LJ.clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+// The closest item (with x, y) within `max` pixels that passes `ok`, or null.
+LJ.nearest = function (list, x, y, max, ok) {
+  let best = null, bd = max;
+  for (const e of list) {
+    if (ok && !ok(e)) continue;
+    const d = Math.hypot(e.x - x, e.y - y);
+    if (d < bd) { bd = d; best = e; }
+  }
+  return best;
+};
 LJ.pick = arr => arr[(Math.random() * arr.length) | 0];

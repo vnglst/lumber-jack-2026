@@ -26,11 +26,11 @@
   // Buildings: the base (the tent and its upgrades) and the ones the player places around it.
   // sight: how far it lifts the fog; heals: jacks nearby heal quickly; mask: which list of standing spots its ring joins.
   const BLD = (LJ.BLD = {
-    base: { name: 'Village', sight: 5, heals: true },
+    base: { name: 'Village', sight: 5, heals: true, hp: 500, raid: true }, // raid: raided at 0 HP instead of destroyed
     bunk: { name: 'Bunkhouse', size: [2, 2], max: 4, sight: 5 },
     sawmill: { name: 'Sawmill', size: [3, 2], max: 3, sight: 5, mask: 'sawMask' },
     depot: { name: 'Log Depot', size: [2, 2], max: 4, sight: 5, mask: 'storeMask' },
-    tower: { name: 'Watchtower', size: [2, 2], max: 4, sight: 13, heals: true }
+    tower: { name: 'Guard Tower', size: [2, 2], max: 6, sight: 13, heals: true, hp: 320 }
   });
   let w, W, H, vis, par, q, stamp = 0;
 
@@ -65,17 +65,18 @@
       cost: () => ({ m: 80 + 40 * (jackCount() - 1) }), can: () => jackCount() < popCap(), full: 'No room: build a bunkhouse' },
     bldItem('bunk', 2, () => ({ m: 150 + 100 * G.count.bunk, w: 20 }), 'A house with room for 3 more jacks.', 'bunk'),
     bldItem('sawmill', 2, () => ({ m: 150 + 150 * G.count.sawmill, w: 20 }), 'Jacks turn 2 wood into 1 lumber here. Lumber sells for $' + PRICE.lumber + '.', 'blade'),
-    { id: 'rifles', name: 'Hunting Rifles', desc: 'Jacks shoot wild animals from a distance.', icon: 'rifle', level: 2, cost: () => ({ m: 150 }) },
+    { id: 'rifles', name: 'Laser Pistols', desc: 'Jacks fire bursts of laser bolts at anything that attacks them.', icon: 'rifle', level: 2, cost: () => ({ m: 150 }) },
     { id: 'barrow', name: 'Wheelbarrows', desc: 'Jacks carry 24.', icon: 'barrow', level: 2, need: 'sling', cost: () => ({ m: 160, w: 20 }) },
     { id: 'chainsaw', name: 'Chainsaws', desc: 'Chop twice as fast. Loud.', icon: 'chainsaw', level: 3, need: 'sharpaxe', cost: () => ({ m: 300 }) },
     vehItem('truck', 3, 350, 'Hauls 60 goods per trip from storage to market.', 'truck'),
     bldItem('depot', 3, () => ({ m: 150, l: 10 }), 'Extra drop-off point for wood. Place it out by the forest.', 'depot'),
-    bldItem('tower', 3, () => ({ m: 200, l: 20 }), 'Lifts the fog far around it, and jacks nearby heal quickly.', 'tower'),
+    bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Fires laser bursts at forest folk and wild animals. Sees far, and jacks nearby heal quickly.', 'tower'),
+    { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Forest folk and wolves must break through them; your own people use the gates. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
     vehItem('dozer', 4, 600, 'Clears rocks (for stone) and fills in rivers so you can reach new forest.', 'dozer'),
     { id: 'foreman', name: 'Keen-eyed Foreman', desc: 'Jacks spot trees from 50% further away.', icon: 'hat', level: 5, cost: () => ({ m: 500 }) },
     { id: 'dispatch', name: 'Dispatcher', desc: 'Trucks keep hauling on their own whenever there are goods.', icon: 'clip', level: 5, need: 'truck', cost: () => ({ m: 450 }) },
     vehItem('harv', 6, 900, 'A machine that fells and carries trees by itself. Wolves ignore it.', 'harv'),
-    { id: 'scope', name: 'Scoped Rifles', desc: 'Longer range, harder hits.', icon: 'rifle', level: 6, need: 'rifles', cost: () => ({ m: 400 }) },
+    { id: 'scope', name: 'Overcharged Lasers', desc: 'Longer range and 4-bolt bursts that hit harder.', icon: 'rifle', level: 6, need: 'rifles', cost: () => ({ m: 400 }) },
     { id: 'steam', name: 'Steam Sawmills', desc: 'Every sawmill saws lumber by itself.', icon: 'blade', level: 7, need: 'sawmill', cost: () => ({ m: 1200, l: 40 }) },
     { id: 'turbo', name: 'Turbo Harvesters', desc: 'Harvesters fell trees 40% faster and drive faster.', icon: 'harv', level: 8, need: 'harv', cost: () => ({ m: 1500 }) },
     { id: 'mega', name: 'Mega Haulers', desc: 'Trucks carry 120, harvesters 60.', icon: 'truck', level: 9, need: 'truck', cost: () => ({ m: 1500 }) }
@@ -102,7 +103,15 @@
   const wildPass = i => !blocked(i) && w.bld[i] === 0;
   // A bulldozer plans its route straight through rock and water.
   const dozePass = i => w.bld[i] === 0 && !isTree(i);
-  LJ.isTree = isTree; LJ.pass = pass; LJ.blocked = blocked;
+  LJ.isTree = isTree; LJ.pass = pass; LJ.blocked = blocked; LJ.wildPass = wildPass;
+  // Everything that attacks the operation. wild: roams as wildlife (the forest folk come in waves instead).
+  const FOE = (LJ.FOE = {
+    wolf: { pelt: 15, wild: true, wallDmg: 6, hit: ['WOLF!', 'Ow!', 'Bad dog!', 'Get off me!'], death: n => n + ' was eaten by a wolf.' },
+    bear: { pelt: 40, wild: true, wallDmg: 6, hit: ['BEAR!', 'Nice bear. NICE BEAR.'], death: n => n + ' was eaten by a bear.' },
+    native: { pelt: 0, wild: false, wallDmg: 9, hit: ['Arrows!', 'Ouch!', 'We come in peace! Mostly.', 'Tiny archers!'], death: n => n + ' was shot by the forest folk.' }
+  });
+  // Enemies go round palisades when they can, and through them (hacking) when they must.
+  LJ.enemyPath = (from, goal) => bfs(from, goal, i => wildPass(i) && !w.wall[i]) || bfs(from, goal, wildPass);
 
   // How dangerous the forest is at each level: animals get tougher, faster and hunt in bigger packs.
   function wild(level) {
@@ -113,7 +122,7 @@
     };
   }
   LJ.danger = level => [
-    '', '', 'Wolves now hunt in packs.', 'The packs are getting bolder.', 'Bears have woken up. They are not happy.',
+    '', '', 'Wolves now hunt in packs. And the forest folk are taking up their bows.', 'The packs are getting bolder.', 'Bears have woken up. They are not happy.',
     'The animals are getting desperate.', 'Something in the forest is angry.', 'The packs are bigger than ever.',
     'Whatever is left of the forest is fighting back.', 'Every last tree has to go.'][level - 1] || '';
 
@@ -130,9 +139,10 @@
       place: null, hover: null, order: null, orderCd: 25, payT: PAY_EVERY,
       villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), sawMask: new Uint8Array(w.N), smokeT: 0,
       fog: new Uint8Array(w.N), fogDirty: true, fogT: 0, fogLeft: w.N, worldVer: 0,
-      animals: [], graves: [], shots: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
-      cine: null, suit: null, props: [], critters: [], dc: null
+      animals: [], graves: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
+      cine: null, suit: null, props: [], critters: [], dc: null, folkKilled: 0, wallMode: false, wallDrag: null
     });
+    LJ.combat.reset();
     G.thr = FR.map(f => Math.max(1, Math.round(f * G.total)));
     // Money that must have been earned (in total) before a level counts as complete. The last level only needs the trees gone.
     G.quota = G.thr.map((t, i) => (i && i < MAX_LEVEL - 1 ? Math.round((t * 14) / 100) * 100 : 0));
@@ -160,7 +170,8 @@
   };
 
   function addBuilding(kind, tx, ty, bw, bh) {
-    const b = { kind, tx, ty, w: bw, h: bh, queue: [] };
+    const hp = BLD[kind].hp || 160;
+    const b = { kind, tx, ty, w: bw, h: bh, queue: [], hp, max: hp };
     G.buildings.push(b);
     for (let y = ty; y < ty + bh; y++) for (let x = tx; x < tx + bw; x++) {
       const i = y * W + x;
@@ -459,8 +470,10 @@
   function hurtAnimal(a, dmg) {
     a.hp -= dmg; blood(a.x, a.y);
     if (a.hp <= 0 && a.alive) {
-      a.alive = false; G.kills++;
-      const pelt = a.kind === 'bear' ? 40 : 15;
+      a.alive = false;
+      const pelt = FOE[a.kind].pelt;
+      if (!pelt) { G.folkKilled++; return; }
+      G.kills++;
       G.money += pelt; G.earned += pelt;
       LJ.float(a.x, a.y - 12, '+$' + pelt + ' pelt', 'money');
       LJ.sfx('coin');
@@ -469,41 +482,81 @@
 
   function hurtJack(u, dmg, a) {
     if (u.dead) return;
-    if (u.hp >= 100 || Math.random() < 0.25) say(u, LJ.pick(a.kind === 'bear' ? ['BEAR!', 'Nice bear. NICE BEAR.'] : ['WOLF!', 'Ow!', 'Bad dog!', 'Get off me!']));
+    if (u.hp >= 100 || Math.random() < 0.25) say(u, LJ.pick(FOE[a.kind].hit));
     u.hp -= dmg; blood(u.x, u.y); LJ.sfx('hurt');
     // Jacks nearby drop what they're doing and come to help, then go back to work.
     for (const v of G.units) {
-      if (v === u || v.kind !== 'jack' || v.dead || v.fighting || Math.hypot(v.x - u.x, v.y - u.y) > 140) continue;
+      if (!a.alive || v === u || v.kind !== 'jack' || v.dead || v.fighting || Math.hypot(v.x - u.x, v.y - u.y) > 140) continue;
       const vt = v.task && v.task.type;
       if (vt === 'hunt' || vt === 'move') continue;
       setTask(v, { type: 'hunt', a, resume: v.task });
     }
+    // Shot from out of reach: go after the attacker, then back to work.
+    if (u.hp > 0 && a.alive && u.kind === 'jack' && !u.fighting && !(u.task && u.task.type === 'hunt')) setTask(u, { type: 'hunt', a, resume: u.task });
     if (u.hp > 0) return;
     u.dead = true; release(u);
     G.sel.delete(u);
     G.graves.push({ x: u.x, y: u.y });
-    LJ.ui.toast(u.name + ' was eaten by a ' + a.kind + '.');
+    LJ.ui.toast(FOE[a.kind].death(u.name));
+  }
+  LJ.hurtJack = hurtJack; LJ.hurtAnimal = hurtAnimal;
+
+  // ---------- Buildings and walls under attack ----------
+  LJ.damageBuilding = function (b, dmg) {
+    if (b.dead) return;
+    b.hp -= dmg;
+    chip((b.tx + b.w / 2) * TS, (b.ty + b.h / 2) * TS, '#8a5a30');
+    if (b.hp > 0) return;
+    if (BLD[b.kind].raid) { b.hp = b.max * 0.4; LJ.combat.raid(); return; }
+    b.dead = true; G.count[b.kind]--;
+    for (let y = b.ty; y < b.ty + b.h; y++) for (let x = b.tx; x < b.tx + b.w; x++) w.bld[y * W + x] = 0;
+    rebuildMasks(); markAround((b.ty + 1) * W + b.tx + 1, 3); G.worldVer++;
+    for (let i = 0; i < 30; i++) dust((b.tx + Math.random() * b.w) * TS, (b.ty + b.h) * TS - Math.random() * 30);
+    LJ.sfx('rock'); LJ.ui.toast('The forest folk wrecked your ' + BLD[b.kind].name.toLowerCase() + '!');
+  };
+  // Standing spots for storage and sawmills, recomputed after a building is lost.
+  function rebuildMasks() {
+    G.storeMask.fill(0); G.sawMask.fill(0);
+    if (G.tier >= 1) ring(G.base, G.storeMask);
+    for (const b of G.buildings) if (!b.dead && BLD[b.kind].mask) ring(b, G[BLD[b.kind].mask]);
+  }
+
+  const WALL_HP = 60, WALL_COST = (LJ.WALL_COST = { m: 4, w: 2 });
+  LJ.canWall = i => {
+    if (i < 0 || i >= w.N || w.wall[i] || w.bld[i] || isTree(i) || !G.fog[i]) return false;
+    const t = w.type[i], x = i % W, y = (i / W) | 0;
+    return (t === T.GRASS || t === T.DIRT || t === T.GRAVEL) && !(x < 4 && Math.abs(y - w.roadY) < 2);
+  };
+  LJ.buildWalls = function (tiles) {
+    let n = 0;
+    for (const i of tiles) {
+      if (!LJ.canWall(i)) continue;
+      if (G.money < WALL_COST.m || G.wood < WALL_COST.w) { LJ.ui.toast('Not enough money or wood for more palisade.'); break; }
+      G.money -= WALL_COST.m; G.wood -= WALL_COST.w; w.wall[i] = WALL_HP; n++;
+    }
+    if (n) { LJ.sfx('build'); G.worldVer++; }
+    return n;
+  };
+  LJ.damageWall = function (i, dmg) {
+    if (!w.wall[i]) return;
+    w.wall[i] = Math.max(0, w.wall[i] - dmg);
+    chip((i % W) * TS + 8, ((i / W) | 0) * TS + 6, '#b07a44'); LJ.sfx('thud');
+    if (!w.wall[i]) { G.worldVer++; for (let k = 0; k < 6; k++) dust((i % W) * TS + 8, ((i / W) | 0) * TS + 14); }
   }
 
   // Jacks defend themselves against anything in reach. Returns true while they are busy fighting.
   function defend(u, dt) {
     u.atkCd -= dt;
     if (u.task && u.task.type === 'move') { u.fighting = false; return false; } // an explicit move order means: run!
-    const range = G.up.scope ? 120 : G.up.rifles ? 84 : 26;
-    let best = null, bd = range;
-    for (const a of G.animals) {
-      if (!a.alive) continue;
-      const d = Math.hypot(a.x - u.x, a.y - u.y);
-      if (d < bd) { bd = d; best = a; }
-    }
+    const range = G.up.scope ? 130 : G.up.rifles ? 100 : 26;
+    const best = LJ.nearest(G.animals, u.x, u.y, range, a => a.alive);
     u.fighting = !!best;
     if (!best) return false;
     face(u, best.x);
     if (u.atkCd <= 0) {
       if (G.up.rifles) {
-        u.atkCd = G.up.scope ? 1 : 1.2;
-        G.shots.push({ x0: u.x + u.dir * 6, y0: u.y - 8, x1: best.x, y1: best.y - 5, t: 0 });
-        LJ.sfx('shot'); hurtAnimal(best, G.up.scope ? 40 : 26);
+        u.atkCd = G.up.scope ? 1 : 1.3;
+        LJ.combat.burst(u, best, { n: G.up.scope ? 4 : 3, dmg: G.up.scope ? 13 : 9, col: '#ff4a3a' });
       } else {
         u.atkCd = 0.9; u.swing = 0.3;
         LJ.sfx('chop'); hurtAnimal(best, G.up.chainsaw ? 18 : G.up.sharpaxe ? 14 : 10);
@@ -541,12 +594,7 @@
     a.atkCd -= dt; a.repath -= dt;
     if (!a.flee) {
       if (!a.target || a.target.dead) {
-        let bd = 1e9; a.target = null;
-        for (const u of G.units) {
-          if (u.kind !== 'jack' || u.dead) continue;
-          const d = Math.hypot(u.x - a.x, u.y - a.y);
-          if (d < bd) { bd = d; a.target = u; }
-        }
+        a.target = LJ.nearest(G.units, a.x, a.y, Infinity, u => u.kind === 'jack' && !u.dead);
         if (!a.target) a.flee = true;
       }
     }
@@ -564,24 +612,15 @@
       goal = t.tile;
       a.stalk = d > 100; // creeps closer first, then charges
     }
-    if (a.repath <= 0 || !a.path.length) { a.repath = 0.6; a.path = bfs(a.tile, c => c === goal, wildPass) || []; }
-    let dist = a.speed * (a.flee ? 1.2 : a.stalk ? 0.55 : 1) * dt;
-    while (dist > 0 && a.path.length) {
-      const n = a.path[a.path.length - 1];
-      const px = (n % W) * TS + 8, py = ((n / W) | 0) * TS + 10, dx = px - a.x, dy = py - a.y, d = Math.hypot(dx, dy);
-      if (Math.abs(dx) > 0.01) a.dir = dx > 0 ? 1 : -1;
-      if (d <= dist) { a.x = px; a.y = py; dist -= d; a.path.pop(); a.tile = n; }
-      else { a.x += (dx / d) * dist; a.y += (dy / d) * dist; dist = 0; }
-    }
-    a.walkT += dt;
+    if (a.repath <= 0) { a.repath = 0.6; a.path = LJ.enemyPath(a.tile, c => c === goal) || []; } // on the timer only, even after a failed search
+    const wall = LJ.march(a, dt, a.speed * (a.flee ? 1.2 : a.stalk ? 0.55 : 1));
+    if (wall >= 0 && a.atkCd <= 0) { a.atkCd = 0.8; LJ.damageWall(wall, FOE[a.kind].wallDmg); } // gnawing at the palisade
   }
 
   function updWild(dt) {
-    for (const a of G.animals) if (a.alive) updAnimal(a, dt);
+    for (const a of G.animals) if (a.alive && FOE[a.kind].wild) updAnimal(a, dt); // the forest folk are run by LJ.combat
     if (G.animals.some(a => !a.alive)) G.animals = G.animals.filter(a => a.alive);
-    for (const s of G.shots) s.t += dt;
-    if (G.shots.length) G.shots = G.shots.filter(s => s.t < 0.12);
-    if (!G.animals.length && (G.animalCd -= dt) <= 0) {
+    if (!G.animals.some(a => FOE[a.kind].wild) && (G.animalCd -= dt) <= 0) {
       const e = wild(G.level).every;
       G.animalCd = e[0] + Math.random() * (e[1] - e[0]);
       spawnPack();
@@ -592,10 +631,10 @@
     }
   }
 
-  // Jacks heal quickly near the settlement's main building or a watchtower.
+  // Jacks heal quickly near buildings that heal (the village, guard towers).
   function nearHome(u) {
     const x = u.tile % W, y = (u.tile / W) | 0;
-    return G.buildings.some(b => BLD[b.kind].heals && Math.abs(x - b.tx - b.w / 2) <= 4 && Math.abs(y - b.ty - b.h / 2) <= 4);
+    return G.buildings.some(b => !b.dead && BLD[b.kind].heals && Math.abs(x - b.tx - b.w / 2) <= 4 && Math.abs(y - b.ty - b.h / 2) <= 4);
   }
 
   function dust(x, y) {
@@ -632,7 +671,7 @@
       case 'toSaw': {
         if (u.carry) { G.wood += u.carry; u.carry = 0; }
         u.state = 'saw'; u.sawT = 0;
-        const mill = G.buildings.find(b => b.kind === 'sawmill' && Math.abs(u.tile % W - b.tx - 1) <= 2 && Math.abs(((u.tile / W) | 0) - b.ty) <= 2);
+        const mill = G.buildings.find(b => b.kind === 'sawmill' && !b.dead && Math.abs(u.tile % W - b.tx - 1) <= 2 && Math.abs(((u.tile / W) | 0) - b.ty) <= 2);
         if (mill) face(u, (mill.tx + 1.5) * TS);
         break;
       }
@@ -815,6 +854,7 @@
   LJ.buy = function (id) {
     const it = SHOP.find(s => s.id === id);
     if (!it || LJ.shopState(it).st !== 'ok') { LJ.sfx('no'); return false; }
+    if (it.wall) { G.wallMode = true; return 'wall'; }
     if (it.place) { G.place = { kind: id, w: it.place[0], h: it.place[1] }; return 'place'; }
     pay(it.cost());
     if (id === 'base') upgradeBase();
@@ -969,6 +1009,10 @@
   // ---------- Peaceful wildlife: deer and squirrels that flee from people and vanish with the forest ----------
   function spawnCritters() {
     const r = LJ.rng(w.seed + 9);
+    // The forest folk, going about their lives around their huts (until they have had enough).
+    for (const h of w.huts) for (let k = 0; k < 2; k++) {
+      G.critters.push({ kind: 'native', x: (h % W) * TS + 8 + (r() - 0.5) * 30, y: ((h / W) | 0) * TS + 14 + r() * 10, tx: 0, ty: 0, t: r() * 4, dir: r() < 0.5 ? 1 : -1, walkT: 0, moving: false, flee: false, alpha: 1 });
+    }
     for (let tries = 0; tries < 3000 && G.critters.length < 26; tries++) {
       const x = (r() * W) | 0, y = (r() * H) | 0, i = y * W + x;
       if (w.type[i] !== T.GRASS || isTree(i) || x < 14) continue;
@@ -990,7 +1034,7 @@
       if (c.gone) { c.alpha -= dt * 0.8; continue; }
       const tile = tileOfPx(c.x, c.y);
       if (w.lush[tile] < 0.4) { c.gone = true; continue; } // nothing left to live on
-      const deer = c.kind === 'deer';
+      const deer = c.kind !== 'squirrel';
       if (!c.flee) {
         for (const u of G.units) {
           if (Math.hypot(u.x - c.x, u.y - c.y) < (deer ? 70 : 44)) {
@@ -1026,6 +1070,7 @@
       updEconomy(dt);
       updAuto(dt);
       updWild(dt);
+      LJ.combat.update(dt);
       checkLevel();
     }
 

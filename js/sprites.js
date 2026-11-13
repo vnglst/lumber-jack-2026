@@ -371,8 +371,27 @@
     for (let y = 2; y < 13; y++) { const h = Math.round((y - 2) * 1.25) + 1; R(x, 15 - h, y, h, 1, '#d9553a'); R(x, 15, y, h, 1, '#bf432d'); }
     R(x, 1, 12, 28, 2, '#7f2318');
     R(x, 15, 0, 1, 3, '#5a3a20'); R(x, 16, 0, 4, 2, '#2f6fd8');
-    return outlined(c);
+    // Laser turret on the platform
+    box(x, 10, 14, 10, 5, '#5f636c', '#9a9ea8', '#3a3d46'); R(x, 20, 15, 6, 2, '#3a3d46'); R(x, 25, 15, 2, 2, '#7ff0ff'); R(x, 12, 15, 3, 1, '#7ff0ff');
+    const o = outlined(c);
+    o.muzzle = { x: 26, y: 17 }; // where the laser turret's bolts come out (sprite pixels, after the outline)
+    return o;
   })();
+
+  // Palisade: sharpened stakes lashed together. One per tile; neighbours line up into a wall.
+  function palisade(broken) {
+    const c = mk(16, 24), x = cx2(c);
+    shadow(x, 9, 22, 8, 1.5);
+    for (let i = 0; i < 4; i++) {
+      const sx = i * 4, top = broken && (i === 1 || i === 2) ? 12 + i * 2 : 3 + (i % 2);
+      R(x, sx, top + 2, 4, 22 - top - 2, i % 2 ? '#7a4d26' : '#8a5a30'); R(x, sx, top + 2, 1, 22 - top - 2, '#b07a44');
+      R(x, sx + 1, top, 2, 2, '#9a6838'); R(x, sx + 1, top - 1, 1, 1, '#c48a4e');
+    }
+    if (broken) { R(x, 5, 18, 3, 2, '#c48a4e'); R(x, 9, 20, 2, 1, '#c48a4e'); }
+    R(x, 0, 10, 16, 1, '#4a2f1a'); R(x, 0, 17, 16, 1, '#4a2f1a');
+    return outline(c);
+  }
+  S.wall = palisade(false); S.wallBroken = palisade(true);
 
   // The settlement's main building, by tier: tent, cabin, lodge, town hall.
   S.base = [S.camp, S.village, S.lodge, S.hall];
@@ -392,7 +411,11 @@
   I.hat = icon(x => { R(x, 3, 3, 6, 4, '#f0b820'); R(x, 4, 2, 4, 1, '#ffd95a'); R(x, 1, 7, 10, 2, '#d39a17'); R(x, 5, 2, 2, 5, '#ffd95a'); });
   I.clock = icon(x => { disc(x, 6, 6, 5.5, '#4a2f1a'); disc(x, 6, 6, 4.5, '#f4f4f4'); R(x, 6, 3, 1, 4, '#222'); R(x, 6, 6, 3, 1, '#222'); });
   I.bunk = icon(x => { R(x, 1, 5, 10, 6, '#b9854a'); for (let i = 0; i < 5; i++) R(x, 1 + i, 4 - i + 1, 10 - i * 2, 1, '#c9442e'); R(x, 5, 7, 2, 4, '#4a2f1a'); R(x, 2, 7, 2, 2, '#ffd76a'); R(x, 8, 7, 2, 2, '#ffd76a'); });
-  I.rifle = icon(x => { R(x, 0, 6, 5, 3, '#7a4520'); R(x, 4, 5, 8, 2, '#3a3a44'); R(x, 4, 5, 8, 1, '#8c949e'); R(x, 5, 7, 1, 2, '#3a3a44'); R(x, 0, 8, 2, 2, '#5c3a1f'); });
+  I.rifle = icon(x => { // laser pistol
+    R(x, 1, 3, 8, 4, '#55596a'); R(x, 1, 3, 8, 1, '#9aa0b0'); R(x, 9, 4, 2, 2, '#3a3d46'); R(x, 11, 4, 1, 2, '#ff5a4a');
+    R(x, 2, 7, 3, 4, '#3a3d46'); R(x, 2, 7, 1, 4, '#6a6e7c'); R(x, 4, 4, 3, 1, '#ff5a4a');
+  });
+  I.wall = icon(x => { for (let i = 0; i < 3; i++) { R(x, 1 + i * 4, 3, 3, 8, '#8a5a30'); R(x, 2 + i * 4, 1, 1, 2, '#8a5a30'); R(x, 1 + i * 4, 3, 1, 8, '#b07a44'); } R(x, 0, 5, 12, 1, '#4a2f1a'); R(x, 0, 9, 12, 1, '#4a2f1a'); });
   I.tower = S.tower;
   I.truck = S.truck.full.r; I.dozer = S.dozer.r; I.harv = S.harv.r; I.village = S.village; I.depot = S.depot;
 })();
