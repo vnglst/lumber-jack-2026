@@ -7,7 +7,7 @@
   const ZOOMS = [1, 1.5, 2, 3, 4];
   const ICON_OF = { jack: 'jack', truck: 'truck', dozer: 'dozer', harv: 'harv' };
   let cv, zi = 3, zoom = 3, keys = {}, lastClickU = null, lastClickT = 0, toastT = 0, panelSig = '', shopSig = '', orderSig = '';
-  let mini, mctx, mimg, miniT = 0;
+  let mini, mctx, mimg, miniT = 0, mouse = null; // mouse: last pointer position in window pixels, null when outside
 
   function iconCanvas(src, size) {
     const c = document.createElement('canvas');
@@ -25,14 +25,18 @@
     cv = LJ.cv = $('view'); LJ.ctx = cv.getContext('2d');
     mini = $('mini'); mctx = mini.getContext('2d');
     document.querySelectorAll('[data-ic]').forEach(el => el.replaceWith(iconCanvas(S.icons[el.dataset.ic])));
-    zi = innerWidth < 700 ? 2 : 3; zoom = ZOOMS[zi];
-    resize();
+    resetZoom();
     addEventListener('resize', resize);
     bindPointer(); bindKeys(); bindButtons(); bindMini();
+    addEventListener('pointermove', e => { if (e.pointerType === 'mouse') mouse = [e.clientX, e.clientY]; });
+    document.addEventListener('mouseleave', () => { mouse = null; });
+    addEventListener('blur', () => { mouse = null; });
   };
 
+  function resetZoom() { zi = innerWidth < 700 ? 2 : 3; zoom = ZOOMS[zi]; resize(); }
   function resize() {
-    cv.width = Math.ceil(innerWidth / zoom); cv.height = Math.ceil(innerHeight / zoom);
+    const cw = Math.ceil(innerWidth / zoom), ch = Math.ceil(innerHeight / zoom);
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; } // reallocating clears the canvas: only when the size changes
     cv.style.width = cv.width * zoom + 'px'; cv.style.height = cv.height * zoom + 'px';
     LJ.ctx.imageSmoothingEnabled = false;
     // Until the game has started, keep the jack in view however the window changes.
@@ -64,6 +68,12 @@
     clampCam();
   };
 
+  ui.centerOnSelection = function () {
+    const sel = [...G.sel];
+    if (!sel.length || G.cine) return;
+    ui.centerOn(sel.reduce((a, u) => a + u.x, 0) / sel.length, sel.reduce((a, u) => a + u.y, 0) / sel.length);
+  };
+
   ui.toast = function (text) { const t = $('toast'); t.textContent = text; t.classList.add('show'); toastT = 2.6; };
 
   // ---------- Picking ----------
@@ -91,11 +101,21 @@
     const w = G.world;
     return LJ.clamp(Math.floor(wy / TS), 0, w.H - 1) * w.W + LJ.clamp(Math.floor(wx / TS), 0, w.W - 1);
   }
-  // Tree canopies reach up over the tile above, so also try the tile below the pointer.
+  // Tree canopies reach up over the tiles above, so also try the tiles below the pointer. Trees in the fog don't count.
   function treeAt(wx, wy) {
     const w = G.world, i = tileAt(wx, wy);
-    for (let k = 0; k < LJ.TREE_ROWS; k++) if (i + k * w.W < w.N && LJ.isTree(i + k * w.W)) return i + k * w.W;
+    for (let k = 0; k < LJ.TREE_ROWS; k++) { const n = i + k * w.W; if (n < w.N && LJ.isTree(n) && G.fog[n]) return n; }
     return -1;
+  }
+  // The nearest walkable tile to where the player tapped (they may tap on a rock, a building or into the fog).
+  function walkableNear(idx) {
+    const w = G.world, x0 = idx % w.W, y0 = (idx / w.W) | 0;
+    let best = -1, bd = 1e9;
+    for (let y = Math.max(0, y0 - 3); y <= Math.min(w.H - 1, y0 + 3); y++) for (let x = Math.max(0, x0 - 3); x <= Math.min(w.W - 1, x0 + 3); x++) {
+      const d = (x - x0) * (x - x0) + (y - y0) * (y - y0);
+      if (d < bd && LJ.pass(y * w.W + x)) { bd = d; best = y * w.W + x; }
+    }
+    return best;
   }
   const isExit = i => { const w = G.world, x = i % w.W, y = (i / w.W) | 0; return x <= 1 && Math.abs(y - w.roadY) <= 1; };
 
@@ -106,9 +126,8 @@
       if (right) { G.place = null; return; }
       G.hover = [wx, wy];
       const kind = G.place.kind;
-      if (LJ.tryPlace(Math.floor(wx / TS) - (G.place.w >> 1), Math.floor(wy / TS) - (G.place.h >> 1))) {
-        ui.toast(kind === 'village' ? 'The village stands! Wood is now stored here.' : 'Depot built. Wood can be dropped off here.');
-      } else if (G.place) ui.toast("Can't build there — it needs a clear spot the road can reach.");
+      if (LJ.tryPlace(Math.floor(wx / TS) - (G.place.w >> 1), Math.floor(wy / TS) - (G.place.h >> 1))) ui.toast(LJ.BLD[kind].name + ' built!');
+      else if (G.place) ui.toast("Can't build there — it needs a clear, explored spot the road can reach.");
       return;
     }
     const slack = touch ? 5 : 0;
@@ -125,17 +144,13 @@
     if (tr >= 0 && LJ.whack(tr)) return;
     let sel = [...G.sel];
     const beast = pickAnimal(wx, wy, slack);
-    if (beast) {
+    if (beast && LJ.seenPx(beast.x, beast.y)) {
       if (!sel.some(s => s.kind === 'jack')) sel = LJ.jacks();
       G.sel = new Set(sel);
       LJ.cmd.hunt(sel, beast); LJ.sfx('click');
       return;
     }
-    if (LJ.blocked(idx)) {
-      if (sel.some(s => s.kind === 'dozer')) { LJ.cmd.dozeTo(sel, idx); LJ.sfx('click'); }
-      else if (G.level >= 4) ui.toast('Rocks and rivers need a bulldozer.');
-      return;
-    }
+    if (LJ.blocked(idx) && G.fog[idx] && sel.some(s => s.kind === 'dozer')) { LJ.cmd.dozeTo(sel, idx); LJ.sfx('click'); return; }
     if (!sel.length) {
       if (tr < 0) return;
       // Nothing selected: grab the nearest jack so a single tap is enough to get going.
@@ -145,21 +160,14 @@
       G.sel.add(best); sel = [best];
     }
     const b = G.world.bld[idx] ? G.buildings[G.world.bld[idx] - 1] : null;
-    if (tr >= 0) { LJ.cmd.chop(sel, [tr]); LJ.sfx('click'); }
-    else if (b && b.kind === 'village' && sel.some(s => s.kind === 'jack')) { LJ.cmd.saw(sel); LJ.sfx('click'); }
+    if (tr >= 0) { LJ.cmd.chop(sel, tr); LJ.sfx('click'); }
+    else if (b && b.kind === 'sawmill' && sel.some(s => s.kind === 'jack')) { LJ.cmd.saw(sel); LJ.sfx('click'); }
     else if (isExit(idx)) { LJ.cmd.sell(sel); LJ.sfx('click'); }
-    else if (right || touch) { if (LJ.pass(idx)) LJ.cmd.move(sel, idx); LJ.sfx('click'); }
-    else G.sel.clear();
-  }
-
-  function areaCommand(d) {
-    let units = [...G.sel];
-    if (!units.length) units = G.units.filter(u => !u.task && (u.kind === 'jack' || u.kind === 'harv'));
-    if (!units.length) units = LJ.jacks();
-    const n = LJ.cmd.area(units, d.x0, d.y0, d.x1, d.y1);
-    if (!n) ui.toast(units.some(u => u.kind === 'dozer') ? 'Nothing to clear in that area' : 'No trees in that area');
-    else { G.sel = new Set(units); ui.toast('Clearing ' + n + ' tiles'); LJ.sfx('click'); }
-    setTool('pointer');
+    else {
+      // Anywhere else: walk there. Jacks and harvesters start on whatever trees they can see once they arrive.
+      const to = walkableNear(idx);
+      if (to >= 0) { LJ.cmd.move(sel, to); LJ.sfx('click'); }
+    }
   }
 
   function boxSelect(d) {
@@ -179,8 +187,8 @@
       try { cv.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
       const [wx, wy] = world(e), touch = e.pointerType !== 'mouse';
       let mode;
-      if (!touch) mode = e.button === 1 ? 'pan' : e.button === 2 ? 'cmd' : G.place || G.cine ? 'pan' : G.tool === 'area' ? 'area' : 'box';
-      else mode = G.tool === 'area' && !G.place && !G.cine ? 'area' : 'pan';
+      if (!touch) mode = e.button === 1 ? 'pan' : e.button === 2 ? 'cmd' : G.place || G.cine ? 'pan' : 'box';
+      else mode = 'pan';
       ptrs.set(e.pointerId, { sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, wx, wy, mode, moved: false, touch, shift: e.shiftKey });
       if (ptrs.size === 2) {
         for (const p of ptrs.values()) { p.mode = 'pinch'; p.moved = true; }
@@ -196,6 +204,7 @@
       p.lx = e.clientX; p.ly = e.clientY;
       if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > (p.touch ? 10 : 5)) p.moved = true;
       if (!p.moved) return;
+      if (p.mode === 'cmd') p.mode = 'pan'; // dragging with the right button pans the map
       if (p.mode === 'pan' || p.mode === 'pinch') {
         const k = p.mode === 'pinch' ? 2 : 1;
         G.cam.x -= dx / zoom / k; G.cam.y -= dy / zoom / k; clampCam();
@@ -206,7 +215,7 @@
         }
       } else {
         const [wx, wy] = world(e);
-        G.drag = { x0: p.wx, y0: p.wy, x1: wx, y1: wy, kind: p.mode === 'box' ? 'box' : 'area' };
+        G.drag = { x0: p.wx, y0: p.wy, x1: wx, y1: wy };
       }
     });
 
@@ -216,7 +225,7 @@
       if (!p || p.mode === 'pinch') return;
       if (!p.moved) click(p.wx, p.wy, p.mode === 'cmd', p.touch, p.shift);
       else if (G.drag) {
-        if (!G.paused && !G.cine) { if (G.drag.kind === 'box') boxSelect(G.drag); else areaCommand(G.drag); }
+        if (!G.paused && !G.cine) boxSelect(G.drag);
         G.drag = null;
       }
     };
@@ -241,26 +250,18 @@
     addEventListener('keydown', e => {
       keys[e.key.toLowerCase()] = true;
       if (G.cine) { if ((e.key === ' ' || e.key === 'Enter') && G.cine.phase === 'talk') LJ.ending.next(); return; }
-      if (e.key === 'Escape') { G.sel.clear(); G.place = null; setTool('pointer'); $('shop').classList.remove('open'); }
-      if (e.key === '1') setTool('pointer');
-      if (e.key === '2') setTool('area');
+      if (e.key === 'f' || e.key === 'F' || e.key === ' ') { e.preventDefault(); ui.centerOnSelection(); }
+      if (e.key === 'Escape') { G.sel.clear(); G.place = null; $('shop').classList.remove('open'); }
     });
     addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
     addEventListener('blur', () => { keys = {}; });
-  }
-
-  function setTool(t) {
-    G.tool = t;
-    document.querySelectorAll('#toolbar [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
-    cv.style.cursor = t === 'area' ? 'crosshair' : 'default';
   }
 
   function bindButtons() {
     $('toolbar').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       LJ.audioInit(); LJ.sfx('click');
-      if (b.dataset.tool) setTool(b.dataset.tool);
-      else if (b.dataset.act === 'stop') LJ.cmd.stop([...G.sel]);
+      if (b.dataset.act === 'stop') LJ.cmd.stop([...G.sel]);
       else if (b.dataset.act === 'zoomin') setZoom(zi + 1);
       else if (b.dataset.act === 'zoomout') setZoom(zi - 1);
       else if (b.dataset.act === 'shop') $('shop').classList.toggle('open');
@@ -282,7 +283,7 @@
       const sel = [...G.sel], a = b.dataset.act;
       if (a === 'sell') LJ.cmd.sell(sel);
       else if (a === 'saw') LJ.cmd.saw(sel);
-      else if (a === 'area') setTool('area');
+      else if (a === 'stop') LJ.cmd.stop(sel);
       else if (a === 'desel') G.sel.clear();
       else if (a === 'cancel') G.place = null;
     });
@@ -310,11 +311,11 @@
     modal(
       '<div class="logo"><span class="lumber">Lumber</span><span class="jack">Jack</span></div>' +
       '<p>One jack. One axe. An awful lot of trees.</p>' +
-      '<ul><li><b>Tap a tree</b> to chop it — keep tapping it to land extra whacks. Oaks take longer but give twice the wood.</li>' +
-      '<li>Drag with the <b>area tool</b> to clear a whole patch.</li>' +
-      '<li>Wood sells at the <b>market road</b> (west). Build a <b>village</b> to saw lumber, hire jacks and take orders.</li>' +
-      '<li>The forest bites back. Jacks heal near home; tap an animal to hunt it.</li>' +
-      '<li>Mouse: left-drag selects, right-click commands, wheel zooms, WASD scrolls. Touch: drag scrolls, pinch zooms.</li></ul>' +
+      '<ul><li><b>Tap a tree</b> to send your jack. Jacks keep cutting the nearest trees they can see; when none are left in sight, they wait.</li>' +
+      '<li>Select jacks and <b>tap anywhere</b> to send them there. Keep tapping a tree being chopped to land extra whacks.</li>' +
+      '<li>Wood sells at the <b>market road</b> (west). Upgrade your tent into a village and build houses, sawmills and depots around it.</li>' +
+      '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
+      '<li>Scroll by moving the mouse to a screen edge, dragging with the right mouse button, WASD/arrow keys or the minimap. F jumps to your selection. Wheel zooms. Touch: drag scrolls, pinch zooms.</li></ul>' +
       '<button>' + (help ? 'Back to work' : 'Start chopping') + '</button>');
   };
 
@@ -357,7 +358,13 @@
     m.querySelector('[data-a="no"]').onclick = () => { LJ.sfx('click'); m.classList.remove('open'); $('again').classList.add('open'); };
   };
 
+  // Free zoom for the ending's zoom-out over the whole map.
+  ui.zoom = () => zoom;
+  ui.fitZoom = () => Math.min(innerWidth / (G.world.W * TS), innerHeight / (G.world.H * TS));
+  ui.zoomTo = z => { if (Math.abs(z - zoom) > 0.001) { zoom = z; resize(); } };
+
   ui.restart = function () {
+    resetZoom();
     $('game').classList.remove('cine');
     $('again').classList.remove('open');
     ui.cineLine(null);
@@ -369,25 +376,28 @@
   // ---------- Per-frame UI ----------
   function hint() {
     if (G.levelDone || G.cine) return '';
-    if (G.place) return 'Pick a clear spot the road can reach. Wood will be dropped off here.';
+    if (G.place) return 'Pick a clear, explored spot the road can reach.';
     if (G.money < 0) return "You're in debt: hired jacks and machines slack off until you're back in the black.";
     const tasks = t => G.units.some(u => u.task && u.task.type === t), sel = [...G.sel];
     if (G.cleared >= G.thr[G.level - 1]) return 'Trees done! Now earn the rest of the quota: sell wood and lumber at the market.';
-    if (sel.length && sel.every(u => u.kind === 'dozer')) return 'Tap a rock or river tile to bulldoze a way to it, or drag the area tool over rocks.';
+    if (sel.length && sel.every(u => u.kind === 'dozer')) return 'Tap a rock or river tile to bulldoze a way to it.';
     if (sel.length && sel.every(u => u.kind === 'truck') && !G.up.dispatch) return 'Tap the market sign (or “Haul run”) to send the truck on a trip.';
-    if (G.cleared === 0 && !tasks('clear')) return 'Tap a tree to send your jack to work.';
+    if (G.cleared === 0 && !tasks('work')) return 'Tap a tree to send your jack to work.';
+    const idle = LJ.jacks().filter(u => !u.task && !u.path.length && !u.hold && !u.fighting).length;
+    if (idle && G.cleared < G.total) return idle + (idle > 1 ? ' jacks see' : ' jack sees') + ' no trees. Select them and tap near the forest to send them there.';
     if (!G.village) {
       if (G.sold === 0 && G.wood === 0) return 'A jack carries ' + LJ.capOf() + ' wood, then walks to the market road (west) to sell it. Tap his tree to help him chop.';
       if (!Object.keys(G.up).length && G.money >= 40) return 'You can afford an upgrade — open the Shop.';
-      if (G.cleared >= 8) return 'Next: a Village ($' + Math.max(0, G.money) + '/120, wood ' + G.wood + '/20). ' +
-        (G.stockpile ? 'Wood is being stockpiled at camp.' : 'Tap “Selling” to stockpile wood instead.');
+      if (G.cleared >= 8) return 'Next: upgrade the tent to a Cabin ($' + Math.max(0, G.money) + '/120, wood ' + G.wood + '/20). ' +
+        (G.stockpile ? 'Wood is being stockpiled at the tent.' : 'Tap “Selling” to stockpile wood instead.');
       return '';
     }
     if (G.level >= 2 && LJ.jackCount() < 2) return 'Hire more jacks in the Shop. Each one wants $' + LJ.WAGE + ' every payday.';
-    if (G.wood >= 6 && G.lumber === 0 && !G.up.steam && !tasks('saw')) return 'Select a jack and tap the village to saw lumber: $' + LJ.PRICE.lumber + ' each, instead of $' + LJ.PRICE.wood + ' per wood.';
+    if (G.level >= 2 && !G.count.sawmill && G.wood >= 20) return 'Build a Sawmill: jacks there turn wood into lumber worth $' + LJ.PRICE.lumber + ' each.';
+    if (G.count.sawmill && G.wood >= 6 && G.lumber === 0 && !G.up.steam && !tasks('saw')) return 'Select a jack and tap the sawmill to saw lumber: $' + LJ.PRICE.lumber + ' each, instead of $' + LJ.PRICE.wood + ' per wood.';
     if (G.wood + G.lumber >= 10 && !tasks('haul') && !G.units.some(u => u.kind === 'truck' && u.state !== 'idle')) return 'Nothing sells itself: select a jack or truck and tap the market sign.';
     if (G.level >= 4 && !LJ.countKind('dozer')) return 'Rivers and rocks wall off most of the forest. A bulldozer can open a way through.';
-    if (G.level === 10) { const left = G.total - G.cleared; return left + ' trees left standing. The minimap shows where they are.'; }
+    if (G.level === 10) { const left = G.total - G.cleared; return left + ' trees left standing. Every last one has to go — the minimap shows where.'; }
     return '';
   }
 
@@ -397,19 +407,20 @@
     if (sig === panelSig) return;
     panelSig = sig;
     const p = $('panel');
-    if (G.place) { p.innerHTML = '<div>Place the ' + (G.place.kind === 'village' ? 'village' : 'depot') + '</div><button data-act="cancel">Cancel</button>'; return; }
+    if (G.place) { p.innerHTML = '<div>Place the ' + LJ.BLD[G.place.kind].name.toLowerCase() + '</div><button data-act="cancel">Cancel</button>'; return; }
     if (!sel.length) { p.innerHTML = ''; return; }
     const u = sel[0], cargo = sel.reduce((a, b) => a + LJ.cargoOf(b), 0), has = k => sel.some(s => s.kind === k);
     const allJacks = sel.every(s => s.kind === 'jack');
     const title = sel.length > 1 ? sel.length + (allJacks ? ' Jacks' : ' units') : u.name + (u.kind === 'jack' && u.hp < 100 ? ' · ♥ ' + Math.ceil(u.hp) : '');
     const st = sel.length > 1 ? 'Carrying ' + cargo : LJ.statusOf(u) + (u.kind === 'dozer' ? '' : ' · ' + cargo + '/' + LJ.capOf(u));
     let btn = '';
-    if (has('jack') || has('harv') || has('dozer')) btn += '<button data-act="area">' + (has('dozer') && !has('jack') && !has('harv') ? 'Bulldoze area' : 'Clear area') + '</button>';
-    if (has('jack') && G.village) btn += '<button data-act="saw">Saw lumber</button>';
+    if (has('jack') && G.count.sawmill) btn += '<button data-act="saw">Saw lumber</button>';
     if ((has('jack') || has('truck')) && G.village) btn += '<button data-act="sell">' + (has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market') + '</button>';
     else if (has('jack') && cargo > 0) btn += '<button data-act="sell">Sell wood</button>';
-    p.innerHTML = '<div><div>' + title + '</div><div class="st">' + st + '</div></div>' + btn + '<button data-act="desel">✕</button>';
-    p.prepend(iconCanvas(S.icons[ICON_OF[u.kind]], 12));
+    p.innerHTML = '<div><div>' + title + '</div><div class="st">' + st + '</div></div>' + btn + '<button data-act="stop">Stop</button><button data-act="desel">✕</button>';
+    const pic = iconCanvas(S.icons[ICON_OF[u.kind]], 12);
+    pic.title = 'Show on the map (F)'; pic.style.cursor = 'pointer'; pic.onclick = () => ui.centerOnSelection();
+    p.prepend(pic);
   }
 
   function refreshShop() {
@@ -464,23 +475,35 @@
       else if (t === T.ROCK) { r = 128; g = 126; b = 122; }
       else if (t === T.DIRT || t === T.GRAVEL) { r = 150; g = 118; b = 80; }
       else { const L = w.lush[i]; r = 150 - 70 * L; g = 130 + 32 * L; b = 80 - 20 * L; }
+      if (!G.fog[i]) { r = 12; g = 18; b = 13; }
       d[i * 4] = r; d[i * 4 + 1] = g; d[i * 4 + 2] = b; d[i * 4 + 3] = 255;
     }
     mctx.putImageData(mimg, 0, 0);
+    // The last stragglers blink so they can be found.
+    if (G.total - G.cleared <= 40 && Math.floor(G.time * 3) % 2) {
+      mctx.fillStyle = '#ffe84a';
+      for (let i = 0; i < w.N; i++) if (LJ.isTree(i)) mctx.fillRect((i % w.W) - 1, ((i / w.W) | 0) - 1, 3, 3);
+    }
     for (const u of G.units) { mctx.fillStyle = u.kind === 'jack' ? '#fff' : '#ffd84a'; mctx.fillRect((u.x / TS) | 0, (u.y / TS) | 0, u.kind === 'jack' ? 1 : 2, u.kind === 'jack' ? 1 : 2); }
     mctx.fillStyle = '#ff2a1a';
-    for (const a of G.animals) mctx.fillRect(((a.x / TS) | 0) - 1, ((a.y / TS) | 0) - 1, 2, 2);
+    for (const a of G.animals) if (LJ.seenPx(a.x, a.y)) mctx.fillRect(((a.x / TS) | 0) - 1, ((a.y / TS) | 0) - 1, 2, 2);
     mctx.strokeStyle = 'rgba(255,255,255,0.9)'; mctx.lineWidth = 1;
     mctx.strokeRect(Math.round(G.cam.x / TS) + 0.5, Math.round(G.cam.y / TS) + 0.5, Math.round(vwW() / TS), Math.round(vwH() / TS));
   }
 
-  ui.reset = function () { panelSig = shopSig = orderSig = 'x'; $('overlay').innerHTML = ''; setTool('pointer'); };
+  ui.reset = function () { panelSig = shopSig = orderSig = 'x'; $('overlay').innerHTML = ''; };
 
   ui.tick = function (dt) {
     const sp = 260 * dt / (zoom / 3);
     let mx = 0, my = 0;
     if (keys.a || keys.arrowleft) mx--; if (keys.d || keys.arrowright) mx++;
     if (keys.w || keys.arrowup) my--; if (keys.s || keys.arrowdown) my++;
+    // Edge scrolling: the mouse near a window edge moves the camera (not while dragging, in a menu or during the ending).
+    if (mouse && !G.cine && !G.drag && !$('modal').classList.contains('open')) {
+      const E = 14;
+      if (mouse[0] < E) mx--; else if (mouse[0] > innerWidth - E) mx++;
+      if (mouse[1] < E) my--; else if (mouse[1] > innerHeight - E) my++;
+    }
     if ((mx || my) && !G.cine) { G.cam.x += mx * sp; G.cam.y += my * sp; clampCam(); }
     if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.remove('show');
     if ((miniT -= dt) <= 0) { miniT = 0.25; drawMini(); }

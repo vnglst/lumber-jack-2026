@@ -1,9 +1,11 @@
 'use strict';
-// The ending: a visitor in a suit, a speech, and what the land was cleared for.
+// The ending: once every last tree is gone, a visitor in a suit arrives, makes a speech,
+// and a data center spreads out until it covers the entire map.
 (function () {
   const TS = LJ.TS, T = LJ.T, G = LJ.G, S = LJ.sprites;
   const E = (LJ.ending = {});
-  const SITE_W = 7, SITE_H = 5, BONUS = 1000000;
+  const SITE_W = 7, SITE_H = 5, BONUS = 1000000, SPREAD = 16;
+  const BLOCK = S.dcFrame.width / TS; // tiles per data-center module
 
   function lines() {
     return [
@@ -11,7 +13,7 @@
       G.cleared.toLocaleString('en-US') + ' trees. Not one left standing. Magnificent work, truly.',
       'Allow me to introduce myself. I represent the people who bought this land.',
       'You see, we needed it empty. Completely empty. And you delivered.',
-      "Because right here, we're building the largest AI data center in the country.",
+      "Because all of this is going to be the largest AI data center in the country.",
       "Don't worry about the river. It'll make excellent cooling water.",
       'Your bonus: one million dollars. Plus shares in the company. Welcome aboard!'
     ];
@@ -33,10 +35,9 @@
     return seen;
   }
 
-  // The best building site: a clear patch, reachable, close to the village.
+  // Where the first building goes: a clear patch, reachable, close to the settlement.
   function findSite() {
-    const w = G.world, W = w.W, reach = reachable();
-    const v = G.village || { tx: 2, ty: w.roadY - 3, w: 2, h: 2 };
+    const w = G.world, W = w.W, reach = reachable(), v = G.base;
     const vx = v.tx + v.w / 2, vy = v.ty + v.h / 2;
     let best = null, bd = 1e9;
     for (let ty = 1; ty < w.H - SITE_H - 2; ty++) for (let tx = 4; tx < W - SITE_W - 1; tx++) {
@@ -59,11 +60,11 @@
     G.animals = []; G.animalCd = 1e9; G.order = null; G.orderCd = 1e9;
     G.sel.clear(); G.place = null; G.drag = null;
     LJ.cmd.stop(G.units);
+    LJ.revealAll();
     const site = findSite();
-    // Level the site.
     for (let y = site.ty; y < site.ty + SITE_H; y++) for (let x = site.tx; x < site.tx + SITE_W; x++) {
       const i = y * W + x;
-      w.obj[i] = 0; w.flower[i] = 0; w.type[i] = T.DIRT; w.lush[i] = 0;
+      w.obj[i] = 0; w.flower[i] = 0; w.deco[i] = 0; w.type[i] = T.DIRT; w.lush[i] = 0;
     }
     LJ.markAround((site.ty + 2) * W + site.tx + 3, 5);
     const fx = site.tx + 3, fy = site.ty + SITE_H;
@@ -78,7 +79,7 @@
       }
     }
     LJ.ui.cineStart();
-    LJ.ui.toast('Level 10 complete! Someone is coming up the road…');
+    LJ.ui.toast('The last tree is down! Someone is coming up the road…');
   };
 
   E.next = function () {
@@ -87,7 +88,6 @@
     LJ.sfx('click');
     c.line++;
     if (c.line < c.lines.length) { LJ.ui.cineLine(c.lines[c.line]); return; }
-    // Payday like no other.
     G.money += BONUS;
     LJ.float(G.suit.x, G.suit.y - 22, '+$1,000,000', 'money');
     LJ.sfx('level');
@@ -100,6 +100,23 @@
       { spr: S.mixer.l, x: s.tx * TS - 14, y: by + 6 }
     ];
   };
+
+  // Every 3x3-tile block of the map gets a start time, rippling outward from the first building with a ragged edge.
+  function planSpread() {
+    const w = G.world, s = G.cine.site, BW = Math.ceil(w.W / BLOCK), BH = Math.ceil(w.H / BLOCK);
+    const start = new Float32Array(BW * BH).fill(Infinity), order = [];
+    const cx = (s.tx + SITE_W / 2) / BLOCK, cy = (s.ty + SITE_H / 2) / BLOCK;
+    for (let by = 0; by < BH; by++) for (let bx = 0; bx < BW; bx++) {
+      const x0 = bx * BLOCK, y0 = by * BLOCK;
+      // Leave the first building itself uncovered.
+      if (x0 + BLOCK > s.tx && x0 < s.tx + SITE_W && y0 + BLOCK > s.ty - 1 && y0 < s.ty + SITE_H) continue;
+      order.push({ k: by * BW + bx, d: Math.hypot(bx + 0.5 - cx, by + 0.5 - cy) + LJ.hash(bx, by, 77) * 3 });
+    }
+    order.sort((a, b) => a.d - b.d);
+    // Slow at first, then faster and faster, like an operation that has found its stride.
+    order.forEach((o, r) => { start[o.k] = G.time + 0.6 + SPREAD * Math.pow(r / order.length, 0.6); });
+    G.dc = { BW, BH, start, order, next: 0, end: G.time + 0.6 + SPREAD };
+  }
 
   function walkSuit(dt) {
     const s = G.suit, W = G.world.W;
@@ -114,14 +131,14 @@
   }
 
   E.update = function (dt) {
-    const c = G.cine;
+    const c = G.cine, w = G.world;
     c.t += dt;
     if (c.phase === 'walk') {
       walkSuit(dt);
       LJ.ui.follow(G.suit.x, G.suit.y, dt);
       if (!G.suit.path.length) {
         c.phase = 'talk';
-        const near = G.units.filter(u => u.kind === 'jack').sort((a, b) => Math.hypot(a.x - G.suit.x, a.y - G.suit.y) - Math.hypot(b.x - G.suit.x, b.y - G.suit.y))[0];
+        const near = LJ.jacks().sort((a, b) => Math.hypot(a.x - G.suit.x, a.y - G.suit.y) - Math.hypot(b.x - G.suit.x, b.y - G.suit.y))[0];
         if (near) { G.suit.dir = near.x > G.suit.x ? 1 : -1; LJ.say(near, '…Who are you?'); }
         LJ.ui.cineLine(c.lines[0]);
       }
@@ -129,14 +146,23 @@
       const s = c.site, cx = (s.tx + SITE_W / 2) * TS, by = (s.ty + SITE_H) * TS;
       LJ.ui.follow(cx, by - 30, dt);
       const dc = G.props[0];
-      if (c.t > 3 && dc.spr === S.dcStage1) { dc.spr = S.dcStage2; LJ.sfx('build'); }
-      if (c.t > 7 && dc.spr === S.dcStage2) {
-        dc.spr = S.datacenter; G.props = [dc]; LJ.sfx('build'); LJ.sfx('level');
+      if (c.t > 2.5 && dc.spr === S.dcStage1) { dc.spr = S.dcStage2; LJ.sfx('build'); }
+      if (c.t > 5.5 && dc.spr === S.dcStage2) { dc.spr = S.datacenter; G.props = [dc]; LJ.sfx('build'); }
+      if (c.t < 5.5 && Math.random() < dt * 30) LJ.dust(cx + (Math.random() - 0.5) * SITE_W * TS, by - Math.random() * 20);
+      if (c.t > 7) { c.phase = 'spread'; c.t = 0; c.zoom0 = LJ.ui.zoom(); planSpread(); }
+    } else if (c.phase === 'spread') {
+      // Zoom out to the whole map while the data center grows over it.
+      const k = Math.min(1, c.t / (SPREAD * 0.8)), e = k * k * (3 - 2 * k), fit = LJ.ui.fitZoom();
+      LJ.ui.zoomTo(c.zoom0 + (fit - c.zoom0) * e);
+      const s = c.site;
+      LJ.ui.centerOn((s.tx + SITE_W / 2) * TS * (1 - e) + (w.W * TS / 2) * e, (s.ty + SITE_H / 2) * TS * (1 - e) + (w.H * TS / 2) * e);
+      const dcs = G.dc;
+      while (dcs.next < dcs.order.length && dcs.start[dcs.order[dcs.next].k] <= G.time) {
+        const k = dcs.order[dcs.next++].k, bx = (k % dcs.BW) * BLOCK * TS, byy = ((k / dcs.BW) | 0) * BLOCK * TS;
+        if (Math.random() < 0.5) LJ.dust(bx + 24, byy + 40);
+        if (dcs.next % 12 === 0) LJ.sfx('build');
       }
-      if (c.t < 7 && Math.random() < dt * 30) {
-        G.parts.push({ x: cx + (Math.random() - 0.5) * SITE_W * TS, y: by - Math.random() * 20, vx: (Math.random() - 0.5) * 20, vy: -12 - Math.random() * 10, t: 0, life: 1.2, col: '#c9b48a', smoke: true });
-      }
-      if (c.t > 10 && c.phase === 'build') { c.phase = 'end'; LJ.ui.endScreen(); }
+      if (G.time > dcs.end + 3 && c.phase === 'spread') { c.phase = 'end'; LJ.ui.endScreen(); }
     }
   };
 })();

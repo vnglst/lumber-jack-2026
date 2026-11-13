@@ -1,12 +1,12 @@
 'use strict';
-// Game state and simulation: jacks, vehicles, the village economy, wildlife and the ten levels.
+// Game state and simulation: jacks, vehicles, the settlement, fog of war, wildlife and the ten levels.
 (function () {
   const TS = LJ.TS, T = LJ.T, STUMP = LJ.STUMP;
   const G = (LJ.G = {});
   const PRICE = (LJ.PRICE = { wood: 3, lumber: 10, stone: 6 });
   const MAX_LEVEL = 10, WAGE = 20, PAY_EVERY = 60, SAW_TIME = 3.5;
-  // Share of the forest that must be cleared to complete each of the 10 levels.
-  const FR = [0.005, 0.03, 0.07, 0.12, 0.19, 0.28, 0.4, 0.55, 0.74, 0.965];
+  // Share of the forest that must be cleared to complete each of the 10 levels. The last level needs every single tree.
+  const FR = [0.005, 0.03, 0.07, 0.12, 0.19, 0.28, 0.4, 0.55, 0.74, 1];
   // Per species: seconds to chop with a plain axe, and wood yield. Oaks are slow but rich.
   const SPECIES = [null, { t: 3.6, y: 3 }, { t: 6, y: 6 }, { t: 4.5, y: 4 }];
   const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
@@ -16,40 +16,67 @@
     dozer: { name: 'Bulldozer', wage: 15, cap: () => 0, max: 2 },
     harv: { name: 'Harvester', wage: 30, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
+  // The starting tent grows into the village, one upgrade at a time.
+  const TIERS = (LJ.TIERS = [
+    { name: 'Tent', pop: 1, train: 10, sellMul: 1 },
+    { name: 'Cabin', level: 1, cost: { m: 120, w: 20 }, pop: 4, train: 10, sellMul: 1, desc: 'Stores wood near the forest, lets you hire jacks and brings in market orders.' },
+    { name: 'Lodge', level: 3, cost: { m: 600, l: 30 }, pop: 7, train: 5, sellMul: 1, desc: 'Room for 3 more jacks, and new jacks train twice as fast.' },
+    { name: 'Town Hall', level: 6, cost: { m: 1800, l: 80 }, pop: 10, train: 5, sellMul: 1.2, desc: 'Room for 3 more jacks, and the market pays 20% more.' }
+  ]);
+  // Buildings: the base (the tent and its upgrades) and the ones the player places around it.
+  // sight: how far it lifts the fog; heals: jacks nearby heal quickly; mask: which list of standing spots its ring joins.
+  const BLD = (LJ.BLD = {
+    base: { name: 'Village', sight: 5, heals: true },
+    bunk: { name: 'Bunkhouse', size: [2, 2], max: 4, sight: 5 },
+    sawmill: { name: 'Sawmill', size: [3, 2], max: 3, sight: 5, mask: 'sawMask' },
+    depot: { name: 'Log Depot', size: [2, 2], max: 4, sight: 5, mask: 'storeMask' },
+    tower: { name: 'Watchtower', size: [2, 2], max: 4, sight: 13, heals: true }
+  });
   let w, W, H, vis, par, q, stamp = 0;
 
   const jacks = () => G.units.filter(u => u.kind === 'jack');
   const countKind = k => G.units.filter(u => u.kind === k).length;
   const jackCount = () => jacks().length + (G.village ? G.village.queue.length : 0);
-  const popCap = () => 4 + 3 * (G.up.bunk || 0);
+  const popCap = () => TIERS[G.tier].pop + 3 * G.count.bunk;
   const canChop = u => u.kind === 'jack' || u.kind === 'harv';
-  LJ.jackCount = jackCount; LJ.popCap = popCap; LJ.WAGE = WAGE; LJ.jacks = jacks; LJ.countKind = countKind;
+  // How far a unit looks for trees (and how much fog it lifts around itself), in tiles.
+  const sightOf = u => (u.kind === 'harv' ? 8 : u.kind === 'jack' ? 6 + (G.up.foreman ? 3 : 0) : 5);
+  LJ.jackCount = jackCount; LJ.popCap = popCap; LJ.WAGE = WAGE; LJ.jacks = jacks; LJ.countKind = countKind; LJ.sightOf = sightOf;
 
   const vehItem = (id, level, m, desc, icon) => ({
-    id, name: VEH[id].name, desc: desc + ' Upkeep $' + VEH[id].wage + ' per payday.', icon, level, need: 'village', repeat: true,
+    id, name: VEH[id].name, desc: desc + ' Upkeep $' + VEH[id].wage + ' per payday.', icon, level, need: 'cabin', repeat: true,
     cost: () => ({ m: m + Math.round(m * 0.5) * countKind(id) }), can: () => countKind(id) < VEH[id].max, full: 'Max ' + VEH[id].max
   });
+  const bldItem = (id, level, cost, desc, icon) => ({
+    id, name: BLD[id].name, desc, icon, level, need: 'cabin', repeat: true, place: BLD[id].size,
+    cost, can: () => G.count[id] < BLD[id].max, full: 'Max ' + BLD[id].max
+  });
+  const nextTier = () => TIERS[Math.min(G.tier + 1, TIERS.length - 1)];
   const SHOP = (LJ.SHOP = [
+    { id: 'base', icon: 'village', repeat: true, done: () => G.tier >= TIERS.length - 1,
+      get name() { return 'Upgrade to ' + nextTier().name; },
+      get desc() { return nextTier().desc; },
+      get level() { return nextTier().level; },
+      cost: () => nextTier().cost },
     { id: 'sharpaxe', name: 'Sharper Axes', desc: 'Chop 35% faster.', icon: 'axe', level: 1, cost: () => ({ m: 40 }) },
     { id: 'sling', name: 'Log Sling', desc: 'Carry 14 instead of 8.', icon: 'bag', level: 1, cost: () => ({ m: 50 }) },
     { id: 'boots', name: 'Sturdy Boots', desc: 'Walk 25% faster.', icon: 'boot', level: 1, cost: () => ({ m: 70 }) },
-    { id: 'village', name: 'Village', desc: 'Stores wood, saws lumber, houses jacks. Build it close to the trees.', icon: 'village', level: 1, cost: () => ({ m: 120, w: 20 }), place: [3, 3] },
-    { id: 'jack', name: 'Hire a Jack', desc: 'Another pair of hands. Wants $' + WAGE + ' every payday.', icon: 'jack', level: 2, need: 'village', repeat: true,
-      cost: () => ({ m: 80 + 40 * (jackCount() - 1) }), can: () => jackCount() < popCap(), full: 'Village full' },
+    { id: 'jack', name: 'Hire a Jack', desc: 'Another pair of hands. Wants $' + WAGE + ' every payday.', icon: 'jack', level: 2, need: 'cabin', repeat: true,
+      cost: () => ({ m: 80 + 40 * (jackCount() - 1) }), can: () => jackCount() < popCap(), full: 'No room: build a bunkhouse' },
+    bldItem('bunk', 2, () => ({ m: 150 + 100 * G.count.bunk, w: 20 }), 'A house with room for 3 more jacks.', 'bunk'),
+    bldItem('sawmill', 2, () => ({ m: 150 + 150 * G.count.sawmill, w: 20 }), 'Jacks turn 2 wood into 1 lumber here. Lumber sells for $' + PRICE.lumber + '.', 'blade'),
     { id: 'rifles', name: 'Hunting Rifles', desc: 'Jacks shoot wild animals from a distance.', icon: 'rifle', level: 2, cost: () => ({ m: 150 }) },
     { id: 'barrow', name: 'Wheelbarrows', desc: 'Jacks carry 24.', icon: 'barrow', level: 2, need: 'sling', cost: () => ({ m: 160, w: 20 }) },
     { id: 'chainsaw', name: 'Chainsaws', desc: 'Chop twice as fast. Loud.', icon: 'chainsaw', level: 3, need: 'sharpaxe', cost: () => ({ m: 300 }) },
-    vehItem('truck', 3, 350, 'Hauls 60 goods per trip from village to market.', 'truck'),
-    { id: 'bunk', name: 'Bunkhouse', desc: 'Room for 3 more jacks.', icon: 'bunk', level: 3, need: 'village', repeat: true,
-      cost: () => ({ m: 250 + 250 * (G.up.bunk || 0), l: 15 }), can: () => (G.up.bunk || 0) < 2, full: 'Max 2' },
+    vehItem('truck', 3, 350, 'Hauls 60 goods per trip from storage to market.', 'truck'),
+    bldItem('depot', 3, () => ({ m: 150, l: 10 }), 'Extra drop-off point for wood. Place it out by the forest.', 'depot'),
+    bldItem('tower', 3, () => ({ m: 200, l: 20 }), 'Lifts the fog far around it, and jacks nearby heal quickly.', 'tower'),
     vehItem('dozer', 4, 600, 'Clears rocks (for stone) and fills in rivers so you can reach new forest.', 'dozer'),
-    { id: 'depot', name: 'Log Depot', desc: 'Extra drop-off point for wood. Place it far out in the forest.', icon: 'depot', level: 4, need: 'village', repeat: true,
-      cost: () => ({ m: 150, l: 10 }), can: () => G.depots < 4, full: 'Max 4', place: [2, 2] },
-    { id: 'foreman', name: 'Foreman', desc: 'Idle jacks and harvesters find the nearest trees on their own.', icon: 'hat', level: 5, cost: () => ({ m: 500 }) },
+    { id: 'foreman', name: 'Keen-eyed Foreman', desc: 'Jacks spot trees from 50% further away.', icon: 'hat', level: 5, cost: () => ({ m: 500 }) },
     { id: 'dispatch', name: 'Dispatcher', desc: 'Trucks keep hauling on their own whenever there are goods.', icon: 'clip', level: 5, need: 'truck', cost: () => ({ m: 450 }) },
     vehItem('harv', 6, 900, 'A machine that fells and carries trees by itself. Wolves ignore it.', 'harv'),
     { id: 'scope', name: 'Scoped Rifles', desc: 'Longer range, harder hits.', icon: 'rifle', level: 6, need: 'rifles', cost: () => ({ m: 400 }) },
-    { id: 'steam', name: 'Steam Sawmill', desc: 'The village saws lumber by itself.', icon: 'blade', level: 7, need: 'village', cost: () => ({ m: 1200, l: 40 }) },
+    { id: 'steam', name: 'Steam Sawmills', desc: 'Every sawmill saws lumber by itself.', icon: 'blade', level: 7, need: 'sawmill', cost: () => ({ m: 1200, l: 40 }) },
     { id: 'turbo', name: 'Turbo Harvesters', desc: 'Harvesters fell trees 40% faster and drive faster.', icon: 'harv', level: 8, need: 'harv', cost: () => ({ m: 1500 }) },
     { id: 'mega', name: 'Mega Haulers', desc: 'Trucks carry 120, harvesters 60.', icon: 'truck', level: 9, need: 'truck', cost: () => ({ m: 1500 }) }
   ]);
@@ -61,6 +88,7 @@
     'HR will hear about this. HR is a squirrel.'];
   const Q_ACK = ['On it!', 'Timber!', 'Chop chop.', 'Right away.', 'Consider it mulch.'];
   const Q_BROKE = ['No pay, no hurry.', 'My axe feels heavy today.', 'I work for money, not exposure.', "I'll chop when the cheque clears."];
+  const Q_NONE = ['No trees in sight, boss.', 'Nothing left around here.', 'Where to next?', 'All done here.'];
   const Q_VEH = {
     truck: ['Honk honk!', 'Beep beep.', '*diesel noises*', 'Loading zone, buddy.'],
     dozer: ['Rrrrumble.', 'I move mountains. Small ones.', 'Rocks fear me.', '*grinding*'],
@@ -87,27 +115,31 @@
   LJ.danger = level => [
     '', '', 'Wolves now hunt in packs.', 'The packs are getting bolder.', 'Bears have woken up. They are not happy.',
     'The animals are getting desperate.', 'Something in the forest is angry.', 'The packs are bigger than ever.',
-    'Whatever is left of the forest is fighting back.', 'The last animals have nowhere left to run.'][level - 1] || '';
+    'Whatever is left of the forest is fighting back.', 'Every last tree has to go.'][level - 1] || '';
 
   LJ.newGame = function (seed) {
     seed = seed || ((Math.random() * 1e9) | 0);
     w = LJ.genWorld(seed); W = w.W; H = w.H;
     vis = new Uint32Array(w.N); par = new Int32Array(w.N); q = new Int32Array(w.N); stamp = 0;
     Object.assign(G, {
-      world: w, ground: new LJ.Ground(w), units: [], buildings: [], jobs: [],
+      world: w, ground: new LJ.Ground(w), units: [], buildings: [],
       money: 0, wood: 0, lumber: 0, stone: 0, cleared: 0, total: w.totalTrees, level: 1, levelDone: false, up: {},
       time: 0, paused: true, sel: new Set(), floats: [], parts: [], falls: [], bubbles: [], bflies: [],
-      nextId: 1, drag: null, tool: 'pointer', exitIdx: w.roadY * W, sold: 0, cam: { x: 0, y: 0 },
-      stockpile: false, village: null, depots: 0, place: null, hover: null, order: null, orderCd: 25, payT: PAY_EVERY,
-      villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), campMask: new Uint8Array(w.N), smokeT: 0,
+      nextId: 1, drag: null, exitIdx: w.roadY * W, sold: 0, cam: { x: 0, y: 0 },
+      stockpile: false, village: null, base: null, tier: 0, count: { bunk: 0, sawmill: 0, depot: 0, tower: 0 },
+      place: null, hover: null, order: null, orderCd: 25, payT: PAY_EVERY,
+      villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), sawMask: new Uint8Array(w.N), smokeT: 0,
+      fog: new Uint8Array(w.N), fogDirty: true, fogT: 0, fogLeft: w.N, worldVer: 0,
       animals: [], graves: [], shots: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
-      cine: null, suit: null, props: [], critters: []
+      cine: null, suit: null, props: [], critters: [], dc: null
     });
     G.thr = FR.map(f => Math.max(1, Math.round(f * G.total)));
-    // Money that must have been earned (in total) before a level counts as complete.
-    G.quota = G.thr.map((t, i) => (i ? Math.round((t * 14) / 100) * 100 : 0));
-    ring(addBuilding('camp', 2, w.roadY - 3, 2, 2), G.campMask);
+    // Money that must have been earned (in total) before a level counts as complete. The last level only needs the trees gone.
+    G.quota = G.thr.map((t, i) => (i && i < MAX_LEVEL - 1 ? Math.round((t * 14) / 100) * 100 : 0));
+    G.base = addBuilding('base', 2, w.roadY - 4, 3, 3);
+    ring(G.base, G.villMask);
     addUnit(w.start.x, w.start.y, 'Jack', 'jack', 0);
+    reveal(4, w.roadY - 2, 9);
     spawnCritters();
     const r = LJ.rng(seed + 5);
     for (let i = 0; i < 400 && G.bflies.length < 60; i++) {
@@ -119,9 +151,11 @@
     G.ground.renderAll();
   };
 
-  // Top-left corner (world pixels) where a building's sprite is drawn: centred on its footprint, standing on its bottom edge.
+  // The sprite a building is drawn with, and the top-left corner (world pixels) where it goes:
+  // centred on its footprint, standing on its bottom edge.
+  LJ.bldSprite = b => (b.kind === 'base' ? LJ.sprites.base[G.tier] : LJ.sprites[b.kind]);
   LJ.bldOrigin = b => {
-    const spr = LJ.sprites[b.kind];
+    const spr = LJ.bldSprite(b);
     return [b.tx * TS + ((b.w * TS - spr.width) >> 1), (b.ty + b.h) * TS + 1 - spr.height];
   };
 
@@ -132,7 +166,14 @@
       const i = y * W + x;
       w.bld[i] = G.buildings.length; w.obj[i] = 0; w.flower[i] = 0; w.deco[i] = 0;
     }
+    reveal(tx + bw / 2, ty + bh / 2, BLD[kind].sight); // buildings never move, so they lift the fog once
+    G.worldVer++;
     return b;
+  }
+  // A building's footprint becomes bare earth.
+  function levelFootprint(b) {
+    for (let y = b.ty; y < b.ty + b.h; y++) for (let x = b.tx; x < b.tx + b.w; x++) w.type[y * W + x] = T.DIRT;
+    markAround((b.ty + 1) * W + b.tx + 1, 3);
   }
   // Marks the ring of tiles around a building: where units stand to use it.
   function ring(b, mask) {
@@ -145,10 +186,27 @@
     const u = {
       id: G.nextId++, kind, x: tx * TS + 8, y: ty * TS + 10, tile: ty * W + tx, path: [], state: 'idle', task: null,
       carry: 0, load: null, dir: 1, wait: 0, walkT: 0, swing: 0, sawT: 0, target: -1, clicks: 0, lastClick: -99,
-      lastWhack: -9, name, hired: wage > 0, wage, hp: 100, atkCd: 0, fighting: false
+      lastWhack: -9, name, hired: wage > 0, wage, hp: 100, atkCd: 0, fighting: false, hold: false
     };
     G.units.push(u);
     return u;
+  }
+
+  // ---------- Fog of war: tiles stay hidden until someone has seen them ----------
+  function reveal(cx, cy, r) {
+    const fog = G.fog;
+    for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(H - 1, Math.ceil(cy + r)); y++) {
+      for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(W - 1, Math.ceil(cx + r)); x++) {
+        const i = y * W + x;
+        if (!fog[i] && (x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r) { fog[i] = 1; G.fogDirty = true; G.fogLeft--; G.worldVer++; }
+      }
+    }
+  }
+  LJ.revealAll = () => { G.fog.fill(1); G.fogDirty = true; G.fogLeft = 0; };
+  function updFog(dt) {
+    if ((G.fogT -= dt) > 0) return;
+    G.fogT = 0.25;
+    for (const u of G.units) reveal(u.x / TS, u.y / TS, sightOf(u) + 1);
   }
 
   // Breadth-first search over passable tiles. Returns the path reversed (so units can pop()), or null.
@@ -245,8 +303,8 @@
   const storeGoal = c => G.storeMask[c] === 1;
   const exitGoal = c => c === G.exitIdx;
 
-  // Finds the nearest standing spot next to one of `tiles` that nobody else has claimed.
-  function nearestJobTile(u, tiles, test, four) {
+  // Finds the nearest standing spot next to a tile that passes `test` and that nobody else has claimed.
+  function nearestAdj(u, test, four) {
     let found = -1, sawClaimed = false;
     const K = four ? 4 : 8;
     const path = bfs(u.tile, c => {
@@ -255,7 +313,7 @@
         const nx = cx + DX[k], ny = cy + DY[k];
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const n = ny * W + nx;
-        if (tiles.has(n) && test(n)) {
+        if (test(n)) {
           if (w.claim[n] && w.claim[n] !== u.id) sawClaimed = true;
           else { found = n; return true; }
         }
@@ -263,6 +321,19 @@
       return false;
     });
     return { path, found, sawClaimed };
+  }
+  const seenTreeNear = (ax, ay, R) => n => {
+    if (!isTree(n) || !G.fog[n]) return false;
+    const dx = (n % W) - ax, dy = ((n / W) | 0) - ay;
+    return dx * dx + dy * dy <= R * R;
+  };
+  // Cheap check before a full search: is there any visible tree within R tiles of (ax, ay)?
+  function anyTreeNear(ax, ay, R) {
+    const test = seenTreeNear(ax, ay, R);
+    for (let y = Math.max(0, ay - R); y <= Math.min(H - 1, ay + R); y++) for (let x = Math.max(0, ax - R); x <= Math.min(W - 1, ax + R); x++) {
+      if (test(y * W + x)) return true;
+    }
+    return false;
   }
 
   function think(u) {
@@ -276,9 +347,9 @@
       if (!walkTo(u, c => Math.abs((c % W) - ax) <= 1 && Math.abs(((c / W) | 0) - ay) <= 1, 'hunt')) { u.wait = 0.4; u.state = 'think'; }
       return;
     }
-    if (t.type === 'saw') { if (!walkTo(u, c => G.villMask[c] === 1, 'toSaw', "Can't reach the village.")) endTask(u); return; }
+    if (t.type === 'saw') { if (!walkTo(u, c => G.sawMask[c] === 1, 'toSaw', "Can't reach a sawmill.")) endTask(u); return; }
     if (t.type === 'haul') {
-      const ok = u.load ? walkTo(u, exitGoal, 'haulExit', "Can't reach the road.") : walkTo(u, storeGoal, 'haulStore', "Can't reach the village.");
+      const ok = u.load ? walkTo(u, exitGoal, 'haulExit', "Can't reach the road.") : walkTo(u, storeGoal, 'haulStore', "Can't reach storage.");
       if (!ok) endTask(u);
       return;
     }
@@ -286,32 +357,33 @@
       const job = t.job;
       for (const c of job.tiles) if (!blocked(c)) job.tiles.delete(c);
       if (!job.tiles.size) { say(u, 'All clear!'); endTask(u); return; }
-      const r = nearestJobTile(u, job.tiles, blocked, true);
+      const r = nearestAdj(u, n => job.tiles.has(n) && blocked(n), true);
       if (r.path) { w.claim[r.found] = u.id; u.target = r.found; u.path = r.path; u.state = 'toDoze'; }
       else if (r.sawClaimed) { u.wait = 0.6; u.state = 'think'; }
       else { say(u, "Can't get at it from here."); endTask(u); }
       return;
     }
-    const job = t.job;
+    // Work: keep cutting the nearest visible tree within sight of the work spot, carrying wood off when full.
     if (u.carry >= capOf(u)) return goDrop(u);
-    if (job.trees.size === 0) { if (u.carry > 0) return goDrop(u); endTask(u); return; }
-    const r = nearestJobTile(u, job.trees, isTree, false);
+    let r = null;
+    if (t.first >= 0) { const f = t.first; t.first = -1; if (isTree(f)) r = nearestAdj(u, n => n === f); }
+    if (!r || !r.path) r = nearestAdj(u, seenTreeNear(t.ax, t.ay, sightOf(u)));
     if (r.path) { w.claim[r.found] = u.id; u.target = r.found; u.path = r.path; u.state = 'toTree'; }
     else if (u.carry > 0) goDrop(u);
     else if (r.sawClaimed) { u.wait = 0.6; u.state = 'think'; }
-    else { say(u, "Can't reach those trees, boss."); endTask(u); }
+    else { endTask(u); u.noTrees = G.worldVer; if (Math.random() < 0.5) say(u, LJ.pick(Q_NONE)); } // don't search again until the world changes
   }
 
-  // Where does chopped wood go? Nearest village or depot if there is one, else the camp pile (stockpiling) or the market road.
+  // Where does chopped wood go? Nearest storage if the settlement has any, else the camp pile (stockpiling) or the market road.
   function goDrop(u) {
-    const goal = G.village ? storeGoal : G.stockpile ? c => G.campMask[c] === 1 : exitGoal;
+    const goal = G.village ? storeGoal : G.stockpile ? c => G.villMask[c] === 1 : exitGoal;
     if (!walkTo(u, goal, 'toDrop', "I'm lost!")) { u.wait = 2; u.state = 'think'; }
   }
 
   function sell(u, wd, lum, st) {
     st = st || 0;
     if (wd + lum + st <= 0) return;
-    const gain = wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone;
+    const gain = Math.round((wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone) * TIERS[G.tier].sellMul);
     G.money += gain; G.earned += gain; G.sold += wd + lum + st;
     LJ.float(u.x + 6, u.y - 18, '+$' + gain, 'money');
     LJ.sfx('coin');
@@ -338,7 +410,8 @@
     const tx = t % W, ty = (t / W) | 0, bx = LJ.treeX(w, t), by = LJ.treeY(w, t);
     G.falls.push({ sp: w.obj[t], v: w.variant[t], t: 0, dir: u.x <= bx ? 1 : -1, x: bx, y: by });
     u.carry += SPECIES[w.obj[t]].y + (w.variant[t] === 2 ? 1 : 0);
-    w.obj[t] = STUMP; w.claim[t] = 0; G.cleared++;
+    w.obj[t] = STUMP; w.claim[t] = 0; G.cleared++; G.worldVer++;
+    if (u.task && u.task.type === 'work') { u.task.ax = tx; u.task.ay = ty; } // the work spot follows the forest edge
     // The land around a felled tree loses some of its lushness - cut enough and it turns to wasteland.
     for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
       const x = tx + dx, y = ty + dy;
@@ -347,7 +420,6 @@
       if (d <= 3.3) w.lush[n] = Math.max(0, w.lush[n] - 0.2 * (1 - d / 4.2));
       G.ground.mark(n);
     }
-    for (const j of G.jobs) if (j.trees) j.trees.delete(t);
     for (let i = 0; i < 8; i++) chip(tx * TS + 8, ty * TS + 6, '#3f8f3a');
     LJ.sfx('fall');
   }
@@ -366,13 +438,15 @@
   }
   LJ.chip = chip;
 
+  // Storage holds back a little for building (bunkhouses, upgrades); everything above that goes to market.
+  const RESERVE = (LJ.RESERVE = { wood: 20, lumber: 30 });
   // Take goods from storage for a market run. Lumber and stone first; raw wood only if nobody is sawing it.
   function loadUp(u) {
-    const cap = capOf(u), o = G.order;
-    const lum = Math.min(cap, G.lumber), st = Math.min(cap - lum, G.stone);
-    const sawing = G.up.steam || G.units.some(j => j.task && j.task.type === 'saw');
+    const cap = capOf(u), o = G.order, orderOf = k => o && o.state === 'active' && o.kind === k;
+    const lum = Math.min(cap, Math.max(0, G.lumber - (orderOf('lumber') ? 0 : RESERVE.lumber))), st = Math.min(cap - lum, G.stone);
+    const sawing = (G.up.steam && G.count.sawmill) || G.units.some(j => j.task && j.task.type === 'saw');
     const wantWood = !sawing || G.wood > 40 || (o && o.state === 'active' && o.kind === 'wood');
-    const wd = wantWood ? Math.min(cap - lum - st, G.wood) : 0;
+    const wd = wantWood ? Math.min(cap - lum - st, Math.max(0, G.wood - (orderOf('wood') ? 0 : RESERVE.wood))) : 0;
     if (lum + st + wd <= 0) return false;
     G.lumber -= lum; G.stone -= st; G.wood -= wd;
     u.load = { w: wd, l: lum, s: st };
@@ -518,15 +592,16 @@
     }
   }
 
+  // Jacks heal quickly near the settlement's main building or a watchtower.
   function nearHome(u) {
-    const x = u.tile % W, y = (u.tile / W) | 0, v = G.village;
-    if (v && Math.abs(x - v.tx - 1) <= 4 && Math.abs(y - v.ty - 1) <= 4) return true;
-    return Math.abs(x - 3) <= 3 && Math.abs(y - (w.roadY - 2)) <= 3;
+    const x = u.tile % W, y = (u.tile / W) | 0;
+    return G.buildings.some(b => BLD[b.kind].heals && Math.abs(x - b.tx - b.w / 2) <= 4 && Math.abs(y - b.ty - b.h / 2) <= 4);
   }
 
-  function dust(u) {
-    G.parts.push({ x: u.x + u.dir * 12 + (Math.random() - 0.5) * 8, y: u.y - 2, vx: (Math.random() - 0.5) * 20, vy: -10 - Math.random() * 10, t: 0, life: 0.9, col: '#c9b48a', smoke: true });
+  function dust(x, y) {
+    G.parts.push({ x: x + (Math.random() - 0.5) * 8, y, vx: (Math.random() - 0.5) * 20, vy: -10 - Math.random() * 10, t: 0, life: 0.9, col: '#c9b48a', smoke: true });
   }
+  LJ.dust = dust;
 
   function updUnit(u, dt) {
     if (u.kind === 'jack') {
@@ -554,10 +629,13 @@
         break;
       }
       case 'toDrop': deposit(u); think(u); break;
-      case 'toSaw':
+      case 'toSaw': {
         if (u.carry) { G.wood += u.carry; u.carry = 0; }
-        u.state = 'saw'; u.sawT = 0; face(u, (G.village.tx + 1.5) * TS);
+        u.state = 'saw'; u.sawT = 0;
+        const mill = G.buildings.find(b => b.kind === 'sawmill' && Math.abs(u.tile % W - b.tx - 1) <= 2 && Math.abs(((u.tile / W) | 0) - b.ty) <= 2);
+        if (mill) face(u, (mill.tx + 1.5) * TS);
         break;
+      }
       case 'saw':
         if (G.wood < 2) { u.swing = 0; break; }
         u.swing += dt; u.sawT += dt * effort(u);
@@ -571,7 +649,10 @@
         if (u.carry) { G.wood += u.carry; u.carry = 0; }
         if (loadUp(u)) think(u);
         else if (u.task && u.task.once) { say(u, 'Nothing to haul yet.'); endTask(u); }
-        else u.wait = 1;
+        else if (u.kind === 'jack') { // a jack goes back to chopping once storage is empty
+          const back = u.task && u.task.resume;
+          if (back) { setTask(u, back); think(u); } else endTask(u);
+        } else u.wait = 1;
         break;
       case 'haulExit':
         sell(u, u.load.w, u.load.l, u.load.s); u.load = null;
@@ -588,9 +669,9 @@
         if (!blocked(t)) { release(u); think(u); break; }
         const rock = w.type[t] === T.ROCK;
         u.sawT += dt * effort(u); u.swing += dt;
-        if (u.swing > 0.15) { u.swing = 0; dust(u); }
+        if (u.swing > 0.15) { u.swing = 0; dust(u.x + u.dir * 12, u.y - 2); }
         if (u.sawT >= (rock ? 2.5 : 4)) {
-          w.type[t] = T.GRAVEL; w.obj[t] = 0; markAround(t, 2);
+          w.type[t] = T.GRAVEL; w.obj[t] = 0; markAround(t, 2); G.worldVer++;
           if (rock) { G.stone += 2; LJ.float(u.x, u.y - 18, '+2 stone', ''); }
           LJ.sfx('rock');
           if (u.task && u.task.job) u.task.job.tiles.delete(t);
@@ -603,37 +684,22 @@
   }
 
   // ---------- Commands ----------
+  // Any new order clears a stop order ("hold"), which otherwise keeps automation from taking the unit over again.
   function setTask(u, task) {
     release(u);
     if (u.load) { G.wood += u.load.w; G.lumber += u.load.l; G.stone += u.load.s || 0; u.load = null; }
-    u.task = task; u.path = []; u.wait = 0; u.state = 'think';
+    u.task = task; u.path = []; u.wait = 0; u.state = 'think'; u.hold = false;
   }
+  const workTask = (ax, ay, first) => ({ type: 'work', ax, ay, first: first === undefined ? -1 : first });
+  const workAt = (u, tx, ty, first) => setTask(u, workTask(tx, ty, first));
 
   LJ.cmd = {
-    chop(units, trees) {
+    // Start working at a tree: that tree first, then whatever is nearest around it.
+    chop(units, tree) {
       units = units.filter(canChop);
-      if (!units.length || !trees.length) return null;
-      const job = { trees: new Set(trees), rect: null };
-      G.jobs.push(job);
-      for (const u of units) setTask(u, { type: 'clear', job });
+      if (!units.length) return;
+      units.forEach((u, k) => workAt(u, tree % W, (tree / W) | 0, k === 0 ? tree : -1));
       if (Math.random() < 0.5) say(units[0], LJ.pick(units[0].kind === 'jack' ? Q_ACK : Q_VEH[units[0].kind]));
-      return job;
-    },
-    // Trees in the box go to jacks and harvesters; rocks and water go to bulldozers.
-    area(units, x0, y0, x1, y1) {
-      const trees = [], rocks = [];
-      const ax = LJ.clamp(Math.floor(Math.min(x0, x1) / TS), 0, W - 1), bx = LJ.clamp(Math.floor(Math.max(x0, x1) / TS), 0, W - 1);
-      const ay = LJ.clamp(Math.floor(Math.min(y0, y1) / TS), 0, H - 1), by = LJ.clamp(Math.floor(Math.max(y0, y1) / TS), 0, H - 1);
-      for (let y = ay; y <= by; y++) for (let x = ax; x <= bx; x++) {
-        const i = y * W + x;
-        if (isTree(i)) trees.push(i); else if (blocked(i)) rocks.push(i);
-      }
-      let n = 0;
-      const job = trees.length && LJ.cmd.chop(units, trees);
-      if (job) { job.rect = [ax, ay, bx, by]; n += trees.length; }
-      const dz = units.filter(u => u.kind === 'dozer');
-      if (dz.length && rocks.length) { LJ.cmd.doze(dz, rocks, [ax, ay, bx, by]); n += rocks.length; }
-      return n;
     },
     // Bulldoze a straight-ish line of rock/water to reach a target tile.
     dozeTo(units, idx) {
@@ -643,15 +709,12 @@
       if (!path) { say(dz[0], "Can't get there."); return false; }
       const tiles = path.filter(blocked);
       if (!tiles.length) { LJ.cmd.move(dz, idx); return true; }
-      LJ.cmd.doze(dz, tiles, null);
+      const job = { tiles: new Set(tiles) };
+      for (const u of dz) setTask(u, { type: 'doze', job });
+      say(dz[0], LJ.pick(Q_VEH.dozer));
       return true;
     },
-    doze(units, tiles, rect) {
-      const job = { tiles: new Set(tiles), rect };
-      G.jobs.push(job);
-      for (const u of units) setTask(u, { type: 'doze', job });
-      say(units[0], LJ.pick(Q_VEH.dozer));
-    },
+    // Walk somewhere. Once there, jacks and harvesters start on any tree they can see.
     move(units, idx) {
       for (const u of units) {
         const path = bfs(u.tile, c => c === idx);
@@ -659,11 +722,14 @@
         else say(u, "Can't get there.");
       }
     },
-    // Without a village: walk whatever you carry to the market. With one: become a hauler.
+    // Without storage: walk whatever you carry to the market. With storage: become a hauler.
     sell(units) {
       units = units.filter(u => u.kind === 'jack' || u.kind === 'truck');
       for (const u of units) {
-        if (G.village) setTask(u, { type: 'haul', once: u.kind === 'truck' && !G.up.dispatch });
+        if (G.village) {
+          const back = u.task && u.task.type === 'work' ? workTask(u.task.ax, u.task.ay) : null;
+          setTask(u, { type: 'haul', once: u.kind === 'truck' && !G.up.dispatch, resume: back });
+        }
         else if (u.carry > 0) { setTask(u, null); if (!walkTo(u, exitGoal, 'sellRun', "I'm lost!")) u.state = 'idle'; }
       }
       if (G.village && units.length) say(units[0], units[0].kind === 'truck' ? 'Honk honk!' : 'To market!');
@@ -674,12 +740,13 @@
       if (units.length) say(units[0], LJ.pick(['Here, doggy...', "It's flannel time.", 'For the forest! Wait.']));
     },
     saw(units) {
-      if (!G.village) return;
+      if (!G.count.sawmill) return;
       units = units.filter(u => u.kind === 'jack');
       for (const u of units) setTask(u, { type: 'saw' });
       if (units.length) say(units[0], 'Sawdust time.');
     },
-    stop(units) { for (const u of units) { setTask(u, null); u.state = 'idle'; } }
+    // Stop means stop: the unit stays put, even with automation upgrades, until it gets a new order.
+    stop(units) { for (const u of units) { setTask(u, null); u.state = 'idle'; u.hold = true; } }
   };
 
   // Tapping a tree that is being chopped lands an extra whack.
@@ -704,18 +771,18 @@
 
   // ---------- Shop & building ----------
   function owned(id) {
-    if (id === 'village') return !!G.village;
+    if (id === 'cabin') return G.tier >= 1;
     if (VEH[id]) return countKind(id) > 0;
-    if (id === 'depot') return G.depots > 0;
+    if (BLD[id]) return G.count[id] > 0;
     return !!G.up[id];
   }
   const costText = c => '$' + c.m + (c.w ? ' + ' + c.w + ' wood' : '') + (c.l ? ' + ' + c.l + ' lumber' : '');
   const afford = c => G.money >= c.m && G.wood >= (c.w || 0) && G.lumber >= (c.l || 0);
   LJ.shopState = function (it) {
     const c = it.cost(), ct = costText(c);
-    if (!it.repeat && owned(it.id)) return { st: 'owned', label: '✓', costText: ct };
+    if ((!it.repeat && owned(it.id)) || (it.done && it.done())) return { st: 'owned', label: '✓', costText: ct };
     if (it.level > G.level) return { st: 'locked', label: 'Level ' + it.level, costText: ct };
-    if (it.need && !owned(it.need)) return { st: 'locked', label: 'Needs ' + SHOP.find(s => s.id === it.need).name, costText: ct };
+    if (it.need && !owned(it.need)) return { st: 'locked', label: 'Needs ' + (it.need === 'cabin' ? 'Cabin' : SHOP.find(s => s.id === it.need).name), costText: ct };
     if (it.can && !it.can()) return { st: 'locked', label: it.full, costText: ct };
     if (!afford(c)) return { st: 'cant', label: ct, costText: ct };
     return { st: 'ok', label: ct, costText: ct };
@@ -725,10 +792,24 @@
   function spawnVehicle(kind) {
     const n = countKind(kind) + 1;
     const u = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, VEH[kind].name + (VEH[kind].max > 1 ? ' ' + n : ''), kind, VEH[kind].wage);
-    // Delivered by road; drives up to the village to park.
+    // Delivered by road; drives up to storage to park.
     walkTo(u, storeGoal, 'return');
     say(u, LJ.pick(Q_VEH[kind]));
     return u;
+  }
+
+  // The tent grows: Cabin (storage, hiring, orders), Lodge, Town Hall.
+  function upgradeBase() {
+    G.tier++;
+    const b = G.base;
+    if (G.tier === 1) {
+      G.village = b;
+      ring(b, G.storeMask);
+      G.orderCd = 25; G.payT = PAY_EVERY; G.stockpile = false;
+    }
+    levelFootprint(b);
+    for (let i = 0; i < 24; i++) dust((b.tx + Math.random() * b.w) * TS, (b.ty + b.h) * TS - Math.random() * 30);
+    LJ.ui.toast('Your ' + TIERS[G.tier - 1].name.toLowerCase() + ' is now a ' + TIERS[G.tier].name + '!');
   }
 
   LJ.buy = function (id) {
@@ -736,9 +817,9 @@
     if (!it || LJ.shopState(it).st !== 'ok') { LJ.sfx('no'); return false; }
     if (it.place) { G.place = { kind: id, w: it.place[0], h: it.place[1] }; return 'place'; }
     pay(it.cost());
-    if (id === 'jack') G.village.queue.push({ t: 10, total: 10 });
+    if (id === 'base') upgradeBase();
+    else if (id === 'jack') G.village.queue.push({ t: TIERS[G.tier].train, total: TIERS[G.tier].train });
     else if (VEH[id]) spawnVehicle(id);
-    else if (it.repeat) G.up[id] = (G.up[id] || 0) + 1;
     else G.up[id] = true;
     if (id === 'dispatch') for (const u of G.units) if (u.task && u.task.type === 'haul') u.task.once = false;
     LJ.sfx('build');
@@ -749,7 +830,8 @@
     const p = G.place;
     for (let y = ty; y < ty + p.h; y++) for (let x = tx; x < tx + p.w; x++) {
       if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) return false;
-      if (!pass(y * W + x)) return false;
+      const i = y * W + x;
+      if (!pass(i) || !G.fog[i]) return false;
       if (x < 4 && Math.abs(y - w.roadY) < 2) return false;
     }
     return true;
@@ -767,12 +849,10 @@
       LJ.sfx('no'); return false;
     }
     pay(c);
-    for (let i = 0; i < w.N; i++) if (mask[i]) G.storeMask[i] = 1;
-    if (p.kind === 'village') { G.village = b; G.villMask = mask; G.orderCd = 25; G.payT = PAY_EVERY; }
-    else G.depots++;
+    if (BLD[p.kind].mask) ring(b, G[BLD[p.kind].mask]);
+    G.count[p.kind]++;
     G.place = null;
-    for (let y = ty; y < ty + p.h; y++) for (let x = tx; x < tx + p.w; x++) w.type[y * W + x] = T.DIRT;
-    markAround((ty + 1) * W + tx + 1, 3);
+    levelFootprint(b);
     // Anyone standing on the building site steps aside.
     for (const u of G.units) {
       if (w.bld[u.tile]) {
@@ -794,11 +874,11 @@
   LJ.statusOf = function (u) {
     const moving = u.path.length > 0;
     if (u.kind === 'truck') {
-      return { haulStore: moving ? 'Driving to the village' : 'Loading', haulExit: 'Driving to market', return: 'Returning to the village', move: 'Driving' }[u.state] ||
-        (G.up.dispatch ? 'Waiting for goods' : 'Parked');
+      return { haulStore: moving ? 'Driving to storage' : 'Loading', haulExit: 'Driving to market', return: 'Returning to storage', move: 'Driving' }[u.state] ||
+        (u.hold ? 'Stopped' : G.up.dispatch ? 'Waiting for goods' : 'Parked');
     }
     if (u.kind === 'dozer') return { toDoze: 'Driving to the rocks', doze: 'Bulldozing', move: 'Driving', return: 'Driving' }[u.state] || 'Parked';
-    if (u.kind === 'harv') return { chop: 'Harvesting', toTree: 'Driving to the trees', toDrop: 'Unloading', move: 'Driving', return: 'Driving' }[u.state] || 'Idle';
+    if (u.kind === 'harv') return { chop: 'Harvesting', toTree: 'Driving to the trees', toDrop: 'Unloading', move: 'Driving', return: 'Driving' }[u.state] || (u.hold ? 'Stopped' : 'No trees in sight');
     switch (u.state) {
       case 'chop': return 'Chopping';
       case 'toTree': return 'Walking to a tree';
@@ -809,7 +889,7 @@
       case 'saw': return G.wood < 2 ? 'Sawing (out of wood!)' : 'Sawing lumber';
       case 'move': return 'Walking';
       case 'hunt': return 'Hunting';
-      default: return u.fighting ? 'Fighting!' : 'Idle';
+      default: return u.fighting ? 'Fighting!' : u.hold ? 'Waiting for orders' : 'Idle — no trees in sight';
     }
   };
   LJ.capOf = capOf;
@@ -817,6 +897,13 @@
 
   // ---------- Simulation step ----------
   function updEconomy(dt) {
+    const b = G.base;
+    // Smoke from the campfire, later the chimney (busier with steam sawmills)
+    if ((G.smokeT -= dt) <= 0) {
+      G.smokeT = G.up.steam ? 0.2 : 0.5;
+      const [ox, oy] = LJ.bldOrigin(b), sm = LJ.bldSprite(b).smoke;
+      if (sm) G.parts.push({ x: ox + sm.x, y: oy + sm.y, vx: 3 + Math.random() * 4, vy: -14, t: 0, life: 1.6, col: G.up.steam ? '#eeeeee' : '#d8d4cc', smoke: true });
+    }
     const v = G.village;
     if (!v) return;
     // Training
@@ -833,16 +920,9 @@
         LJ.sfx('build');
       }
     }
-    // Steam sawmill
-    if (G.up.steam && G.wood >= 2 && (G.steamT += dt) >= 1.4) {
+    // Steam sawmills
+    if (G.up.steam && G.count.sawmill && G.wood >= 2 && (G.steamT += dt * G.count.sawmill) >= 1.4) {
       G.steamT = 0; G.wood -= 2; G.lumber++;
-      if (Math.random() < 0.3) LJ.float((v.tx + 1.5) * TS, v.ty * TS, '+1 lumber', '');
-    }
-    // Chimney smoke
-    if ((G.smokeT -= dt) <= 0) {
-      G.smokeT = G.up.steam ? 0.2 : 0.5;
-      const [ox, oy] = LJ.bldOrigin(v), sm = LJ.sprites.village.smoke;
-      G.parts.push({ x: ox + sm.x, y: oy + sm.y, vx: 3 + Math.random() * 4, vy: -14, t: 0, life: 1.6, col: G.up.steam ? '#eeeeee' : '#d8d4cc', smoke: true });
     }
     // Payday
     const bill = G.units.reduce((a, u) => a + u.wage, 0);
@@ -856,7 +936,7 @@
     const o = G.order;
     if (!o) {
       if ((G.orderCd -= dt) <= 0) {
-        const crew = jacks().length + 2 * countKind('harv') + countKind('truck'), lum = Math.random() < 0.6;
+        const crew = jacks().length + 2 * countKind('harv') + countKind('truck'), lum = G.count.sawmill > 0 && Math.random() < 0.6;
         const qty = lum ? 5 + crew * 3 + ((Math.random() * 4) | 0) : 16 + crew * 8 + ((Math.random() * 8) | 0);
         G.order = { kind: lum ? 'lumber' : 'wood', qty, got: 0, state: 'offer', ttl: 40, time: lum ? 150 : 120, bonus: Math.round(qty * (lum ? 9 : 2.5) / 5) * 5 };
         LJ.sfx('click');
@@ -870,28 +950,18 @@
     }
   }
 
-  // Automation upgrades: idle machines and jacks find their own work.
+  // Idle jacks and harvesters start on any tree they can see; with a dispatcher, idle trucks haul. Stopped units are left alone.
   function updAuto(dt) {
     if ((G.autoT -= dt) > 0) return;
-    G.autoT = 1.5;
+    G.autoT = 1;
     const stock = G.wood + G.lumber + G.stone;
     for (const u of G.units) {
-      if (u.task || u.path.length || u.wait > 0 || u.fighting) continue;
-      if (G.up.dispatch && u.kind === 'truck' && stock >= 15) { setTask(u, { type: 'haul', once: false }); continue; }
-      if (G.up.foreman && canChop(u)) {
-        let found = -1;
-        bfs(u.tile, c => {
-          const cx = c % W, cy = (c / W) | 0;
-          for (let k = 0; k < 8; k++) {
-            const nx = cx + DX[k], ny = cy + DY[k];
-            if (nx >= 0 && ny >= 0 && nx < W && ny < H && isTree(ny * W + nx)) { found = ny * W + nx; return true; }
-          }
-          return false;
-        });
-        if (found >= 0) {
-          const fx = (found % W) * TS, fy = ((found / W) | 0) * TS;
-          LJ.cmd.area([u], fx - 5 * TS, fy - 5 * TS, fx + 5 * TS, fy + 5 * TS);
-        }
+      if (u.task || u.hold || u.path.length || u.wait > 0 || u.fighting) continue;
+      if (u.noTrees === G.worldVer && canChop(u)) continue;
+      if (G.up.dispatch && u.kind === 'truck' && stock >= 15) setTask(u, { type: 'haul', once: false });
+      else if (canChop(u)) {
+        const tx = u.tile % W, ty = (u.tile / W) | 0;
+        if (anyTreeNear(tx, ty, sightOf(u))) { workAt(u, tx, ty); think(u); }
       }
     }
   }
@@ -909,6 +979,8 @@
     }
   }
   const tileOfPx = (x, y) => ((y / TS) | 0) * W + ((x / TS) | 0);
+  LJ.tileOfPx = tileOfPx;
+  LJ.seenPx = (x, y) => G.fog[tileOfPx(x, y)] === 1;
   function critterStop(c, t) { c.moving = false; c.flee = false; c.t = t; }
   function critterGo(c, x, y) {
     c.tx = LJ.clamp(x, 8, W * TS - 8); c.ty = LJ.clamp(y, 8, H * TS - 8); c.moving = true;
@@ -947,10 +1019,10 @@
       if (u.state === 'sellRun' && !u.path.length && u.wait <= 0) { sell(u, u.carry, 0); u.carry = 0; u.state = 'idle'; }
       else updUnit(u, dt);
     }
-    if (G.jobs.length) G.jobs = G.jobs.filter(j => (j.trees || j.tiles).size && G.units.some(u => u.task && u.task.job === j));
     updCritters(dt);
     if (G.cine) LJ.ending.update(dt);
     else {
+      updFog(dt);
       updEconomy(dt);
       updAuto(dt);
       updWild(dt);
@@ -973,8 +1045,7 @@
         b.t = 1 + Math.random() * 2;
         b.tx = LJ.clamp(b.x + (Math.random() - 0.5) * 60, 4, W * TS - 4);
         b.ty = LJ.clamp(b.y + (Math.random() - 0.5) * 60, 4, H * TS - 4);
-        const i = ((b.y / TS) | 0) * W + ((b.x / TS) | 0);
-        if (w.lush[i] < 0.5) b.dead = true;
+        if (w.lush[tileOfPx(b.x, b.y)] < 0.5) b.dead = true;
       }
       const dx = b.tx - b.x, dy = b.ty - b.y, d = Math.hypot(dx, dy);
       if (d > 1) { b.x += (dx / d) * 16 * dt; b.y += (dy / d) * 16 * dt; }

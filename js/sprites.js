@@ -169,6 +169,8 @@
   })();
 
   // ---------- Buildings ----------
+  // Outlines a building sprite and records where its chimney (or fire) smokes, in sprite pixels.
+  const outlined = (c, smoke) => { const o = outline(c); o.smoke = smoke; return o; };
   function stoneRow(x, a, b, w, h) {
     R(x, a, b, w, h, '#6a6760');
     for (let y = b; y < b + h; y += 2) {
@@ -213,7 +215,6 @@
     roof(x, 2, 60, 8, 36, 20);
     R(x, 2, 35, 58, 2, '#5a1711'); R(x, 13, 8, 36, 1, '#f39a74');
     box(x, 44, 0, 8, 14, '#8d8a86', '#b4b1aa', '#5f5c59');
-    c.smoke = { x: 49, y: 1 }; // chimney top, in sprite pixels (after the outline is added)
     R(x, 45, 4, 3, 1, '#6f6c69'); R(x, 48, 8, 3, 1, '#6f6c69'); R(x, 43, 0, 10, 2, '#5f5c59'); R(x, 43, 0, 10, 1, '#8d8a86');
     // Banner with crossed axes on a pole
     R(x, 57, 26, 1, 30, '#5a3a20'); R(x, 57, 25, 1, 1, '#e8c25a');
@@ -223,9 +224,7 @@
     // Barrel and crate
     R(x, 1, 47, 6, 9, '#8a5a30'); R(x, 2, 47, 1, 9, '#b07a44'); R(x, 1, 49, 6, 1, '#4a4a52'); R(x, 1, 53, 6, 1, '#4a4a52'); R(x, 1, 47, 6, 1, '#5e3820');
     box(x, 0, 56, 7, 6, '#b9854a', '#d8a868', '#7a5230'); pts(x, [[1, 57], [2, 58], [3, 59], [4, 60], [5, 57], [4, 58], [2, 60]], '#7a5230');
-    const o = outline(c);
-    o.smoke = c.smoke;
-    return o;
+    return outlined(c, { x: 49, y: 1 });
   })();
 
   function logEnd(x, cx, cy) {
@@ -260,7 +259,7 @@
     R(x, 31, 28, 4, 1, '#5c3a1f'); R(x, 32, 24, 2, 4, '#ff8a2a'); R(x, 31, 26, 1, 2, '#ff8a2a'); R(x, 34, 25, 1, 3, '#ff8a2a');
     R(x, 32, 22, 1, 3, '#ffd84a'); R(x, 33, 25, 1, 2, '#ffd84a'); R(x, 32, 26, 1, 1, '#fff3b0');
     box(x, 26, 31, 12, 3, '#8a5a30', '#a8743a', '#5e3820'); R(x, 26, 31, 1, 3, '#e3c286');
-    return outline(c);
+    return outlined(c, { x: 34, y: 21 }); // smoke from the campfire
   })();
 
   S.sign = (function () {
@@ -272,6 +271,111 @@
     R(x, 12, 3, 2, 3, '#f0c040'); R(x, 12, 3, 1, 1, '#fff0a0');
     return outline(c);
   })();
+
+  function door(x, a, b, w, h) {
+    R(x, a, b, w, h, '#4a2f1a'); R(x, a + 1, b + 1, w - 2, h - 1, '#7a4a26');
+    for (let X = a + 2; X < a + w - 1; X += 3) R(x, X, b + 1, 1, h - 1, '#5e3820');
+    R(x, a + 1, b + 1, 1, h - 1, '#94603a'); R(x, a + w - 3, b + (h >> 1), 1, 1, '#e8c25a');
+  }
+  function banner(x, px, top) {
+    R(x, px, top, 1, 30, '#5a3a20'); R(x, px, top - 1, 1, 1, '#e8c25a');
+    R(x, px - 7, top + 1, 7, 11, '#2f6fd8'); R(x, px - 7, top + 1, 7, 1, '#5e97ee'); R(x, px - 7, top + 1, 1, 11, '#5e97ee');
+    pts(x, [[px - 7, top + 12], [px - 1, top + 12], [px - 6, top + 11], [px - 2, top + 11]], '#2f6fd8');
+    pts(x, [[px - 6, top + 3], [px - 5, top + 4], [px - 4, top + 5], [px - 3, top + 6], [px - 2, top + 7], [px - 2, top + 3], [px - 3, top + 4], [px - 5, top + 6], [px - 6, top + 7]], '#ffffff');
+  }
+
+  // Tier 2: a two-storey lodge with a stone ground floor.
+  S.lodge = (function () {
+    const W = 66, H = 84, c = mk(W, H), x = cx2(c);
+    shadow(x, 36, 79, 32, 4);
+    stoneRow(x, 5, 72, 56, 7);
+    stoneRow(x, 7, 52, 52, 20); R(x, 46, 52, 13, 20, 'rgba(0,0,0,0.12)');
+    windowLit(x, 12, 57); windowLit(x, 47, 57); door(x, 27, 57, 12, 15);
+    R(x, 7, 32, 52, 20, '#e8d6aa'); R(x, 45, 32, 14, 20, '#cdb98c');
+    R(x, 7, 32, 52, 2, '#5a3a20'); R(x, 7, 50, 52, 2, '#5a3a20');
+    for (const bx of [7, 20, 32, 45, 57]) R(x, bx, 32, 2, 20, '#5a3a20');
+    windowLit(x, 11, 37); windowLit(x, 23, 37); windowLit(x, 48, 37);
+    roof(x, 1, 65, 6, 34, 22);
+    R(x, 1, 33, 64, 2, '#5a1711'); R(x, 14, 6, 38, 1, '#f39a74');
+    box(x, 47, 0, 8, 14, '#8d8a86', '#b4b1aa', '#5f5c59'); R(x, 46, 0, 10, 2, '#5f5c59'); R(x, 46, 0, 10, 1, '#8d8a86');
+    banner(x, 63, 40);
+    R(x, 0, 64, 6, 9, '#8a5a30'); R(x, 1, 64, 1, 9, '#b07a44'); R(x, 0, 66, 6, 1, '#4a4a52'); R(x, 0, 70, 6, 1, '#4a4a52');
+    return outlined(c, { x: 52, y: 1 });
+  })();
+
+  // Tier 3: a stone town hall with a clock tower.
+  S.hall = (function () {
+    const W = 72, H = 94, c = mk(W, H), x = cx2(c);
+    shadow(x, 38, 89, 34, 4);
+    stoneRow(x, 3, 82, 66, 7);
+    R(x, 4, 48, 64, 34, '#a9a49a'); R(x, 52, 48, 16, 34, '#8f8a80');
+    for (let y = 50; y < 82; y += 4) for (let X = 4 + ((y >> 2) & 1) * 4; X < 68; X += 8) R(x, X, y, 7, 1, '#bdb8ad');
+    for (let y = 52; y < 82; y += 4) R(x, 4, y, 64, 1, '#8a857b');
+    for (const wx of [9, 20, 47, 58]) windowLit(x, wx, 56);
+    for (const cx of [27, 43]) box(x, cx, 52, 3, 30, '#d8d3c6', '#f0ece2', '#a9a49a');
+    door(x, 31, 62, 10, 20); R(x, 31, 60, 10, 2, '#6a655c');
+    R(x, 28, 82, 16, 2, '#bdb8ad'); R(x, 26, 84, 20, 2, '#a9a49a');
+    roof(x, 0, 72, 30, 50, 12);
+    R(x, 0, 49, 72, 2, '#5a1711');
+    // Clock tower
+    box(x, 28, 14, 16, 36, '#b8b3a8', '#d8d3c6', '#8a857b');
+    disc(x, 36, 26, 5.5, '#4a3a2a'); disc(x, 36, 26, 4.5, '#f4efe0'); R(x, 36, 23, 1, 4, '#222'); R(x, 36, 26, 3, 1, '#222');
+    R(x, 31, 36, 2, 6, '#3a2a20'); R(x, 39, 36, 2, 6, '#3a2a20');
+    for (let y = 2; y < 14; y++) { const h = Math.round((y - 2) * 0.75); R(x, 36 - h - 1, y, h + 1, 1, '#d9553a'); R(x, 36, y, h + 1, 1, '#bf432d'); }
+    R(x, 35, 0, 2, 2, '#e8c25a');
+    // Flags and a chimney
+    banner(x, 70, 52); box(x, 8, 22, 7, 14, '#8d8a86', '#b4b1aa', '#5f5c59'); R(x, 7, 22, 9, 2, '#5f5c59');
+    return outlined(c, { x: 12, y: 23 });
+  })();
+
+  S.bunk = (function () {
+    const W = 38, H = 42, c = mk(W, H), x = cx2(c);
+    shadow(x, 20, 38, 18, 3);
+    stoneRow(x, 3, 34, 32, 4);
+    R(x, 4, 20, 30, 14, '#e8d6aa'); R(x, 25, 20, 9, 14, '#cdb98c');
+    R(x, 4, 20, 30, 2, '#5a3a20'); for (const bx of [4, 18, 32]) R(x, bx, 20, 2, 14, '#5a3a20');
+    windowLit(x, 8, 23); door(x, 22, 24, 8, 10);
+    roof(x, 1, 37, 4, 22, 10); R(x, 1, 21, 36, 2, '#5a1711');
+    box(x, 28, 0, 5, 9, '#8d8a86', '#b4b1aa', '#5f5c59');
+    return outlined(c, { x: 31, y: 1 });
+  })();
+
+  S.sawmill = (function () {
+    const W = 54, H = 46, c = mk(W, H), x = cx2(c);
+    shadow(x, 28, 42, 26, 3);
+    R(x, 2, 34, 50, 6, '#8a6a42'); R(x, 2, 34, 50, 1, '#a5814f');
+    // Sawdust heap and a stack of fresh planks
+    for (let i = 0; i < 6; i++) R(x, 3 + i, 33 - Math.min(i, 5 - i), 8 - i * 2 > 0 ? 2 : 1, Math.min(i, 5 - i) + 1, '#e3c286');
+    for (let i = 0; i < 4; i++) { R(x, 38, 31 - i * 2, 13, 2, i % 2 ? '#e2c080' : '#f0d59a'); R(x, 38, 32 - i * 2, 13, 1, '#a87c44'); }
+    // Saw bench with a log and the big circular blade
+    box(x, 10, 27, 26, 4, '#7a5433', '#9a7044', '#4f3520'); R(x, 12, 31, 2, 5, '#4f3520'); R(x, 32, 31, 2, 5, '#4f3520');
+    R(x, 11, 23, 13, 4, '#9a6332'); R(x, 11, 23, 13, 1, '#c48a4e'); R(x, 11, 23, 1, 4, '#e8c88c');
+    disc(x, 28, 23, 7, '#6f747c'); disc(x, 28, 23, 6, '#c8ced6'); disc(x, 28, 23, 2, '#55555f');
+    pts(x, [[28, 15], [35, 23], [28, 31], [21, 23], [23, 18], [33, 18], [23, 28], [33, 28]], '#3a3a44');
+    R(x, 26, 19, 2, 1, '#eef2f6');
+    // Posts and roof
+    for (const px of [3, 25, 48]) box(x, px, 12, 3, 23, '#6b4526', '#8a5c34', '#4a2f1a');
+    roof(x, 0, 54, 2, 14, 0); R(x, 0, 13, 54, 2, '#5a1711');
+    return outlined(c);
+  })();
+
+  S.tower = (function () {
+    const W = 30, H = 60, c = mk(W, H), x = cx2(c);
+    shadow(x, 16, 56, 13, 2.5);
+    for (const lx of [5, 23]) box(x, lx, 22, 3, 34, '#6b4526', '#8a5c34', '#4a2f1a');
+    for (let i = 0; i < 16; i++) { R(x, 7 + i, 25 + i * 2, 2, 1, '#5a3a20'); R(x, 22 - i, 25 + i * 2, 2, 1, '#5a3a20'); }
+    for (let y = 26; y < 55; y += 4) R(x, 13, y, 5, 1, '#8a5c34');
+    R(x, 13, 24, 1, 32, '#4a2f1a'); R(x, 17, 24, 1, 32, '#4a2f1a');
+    box(x, 2, 18, 26, 5, '#8a5a30', '#a8743a', '#5e3820');
+    R(x, 3, 13, 1, 5, '#5a3a20'); R(x, 26, 13, 1, 5, '#5a3a20'); R(x, 3, 14, 24, 1, '#7a5230');
+    for (let y = 2; y < 13; y++) { const h = Math.round((y - 2) * 1.25) + 1; R(x, 15 - h, y, h, 1, '#d9553a'); R(x, 15, y, h, 1, '#bf432d'); }
+    R(x, 1, 12, 28, 2, '#7f2318');
+    R(x, 15, 0, 1, 3, '#5a3a20'); R(x, 16, 0, 4, 2, '#2f6fd8');
+    return outlined(c);
+  })();
+
+  // The settlement's main building, by tier: tent, cabin, lodge, town hall.
+  S.base = [S.camp, S.village, S.lodge, S.hall];
 
   // ---------- Icons (12x12) ----------
   const I = (S.icons = {});
@@ -289,5 +393,6 @@
   I.clock = icon(x => { disc(x, 6, 6, 5.5, '#4a2f1a'); disc(x, 6, 6, 4.5, '#f4f4f4'); R(x, 6, 3, 1, 4, '#222'); R(x, 6, 6, 3, 1, '#222'); });
   I.bunk = icon(x => { R(x, 1, 5, 10, 6, '#b9854a'); for (let i = 0; i < 5; i++) R(x, 1 + i, 4 - i + 1, 10 - i * 2, 1, '#c9442e'); R(x, 5, 7, 2, 4, '#4a2f1a'); R(x, 2, 7, 2, 2, '#ffd76a'); R(x, 8, 7, 2, 2, '#ffd76a'); });
   I.rifle = icon(x => { R(x, 0, 6, 5, 3, '#7a4520'); R(x, 4, 5, 8, 2, '#3a3a44'); R(x, 4, 5, 8, 1, '#8c949e'); R(x, 5, 7, 1, 2, '#3a3a44'); R(x, 0, 8, 2, 2, '#5c3a1f'); });
+  I.tower = S.tower;
   I.truck = S.truck.full.r; I.dozer = S.dozer.r; I.harv = S.harv.r; I.village = S.village; I.depot = S.depot;
 })();

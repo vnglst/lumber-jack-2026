@@ -105,7 +105,6 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 }
 #toolbar button.wide { width: auto; padding: 0 14px; font-size: 16px; color: #f6c453; }
 #toolbar button svg { width: 26px; height: 26px; }
-#toolbar button.on { box-shadow: 0 0 0 2px #f6c453, 0 0 10px #f6a623; color: #f6c453; }
 #toolbar .sep { width: 2px; height: 30px; background: #24150a; }
 #shopDot { position: absolute; right: -5px; top: -5px; width: 14px; height: 14px; border-radius: 50%; background: #5fdc3c; border: 2px solid #24150a; display: none; }
 #shopDot.on { display: block; }

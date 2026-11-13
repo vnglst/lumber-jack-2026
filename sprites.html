@@ -41,9 +41,10 @@
     section('Plants', [].concat(...Object.keys(D).map(k => D[k].map((c, i) => [k + (D[k].length > 1 ? ' ' + (i + 1) : ''), c]))));
     section('Wildlife', [['deer', S.deer[0].r], ['deer walking', S.deer[1].r], ['squirrel', S.squirrel[0].r], ['squirrel hop', S.squirrel[1].r],
       ['wolf 1', S.wolf[0].r], ['wolf 2', S.wolf[1].r], ['bear 1', S.bear[0].r], ['bear 2', S.bear[1].r], ['gravestone', S.grave]]);
-    section('Buildings', [['camp', S.camp], ['village', S.village], ['log depot', S.depot], ['market sign', S.sign]]);
+    section('Settlement: the tent and its upgrades', [['tent', S.camp], ['cabin', S.village], ['lodge', S.lodge], ['town hall', S.hall]]);
+    section('Buildings', [['bunkhouse', S.bunk], ['sawmill', S.sawmill], ['log depot', S.depot], ['watchtower', S.tower], ['market sign', S.sign]]);
     section('Vehicles', [['truck', S.truck.empty.r], ['truck (loaded)', S.truck.full.r], ['bulldozer', S.dozer.r], ['harvester', S.harv.r], ['cement mixer', S.mixer.r]]);
-    section('The ending', [['the man in the suit', S.suit.idle.r], ['walking', S.suit.walk[0].r], ['foundation', S.dcStage1], ['steel frame', S.dcStage2], ['AI data center', S.datacenter], ['crane', S.crane]]);
+    section('The ending', [['the man in the suit', S.suit.idle.r], ['walking', S.suit.walk[0].r], ['foundation', S.dcStage1], ['steel frame', S.dcStage2], ['AI data center', S.datacenter], ['crane', S.crane], ['module frame', S.dcFrame]].concat(S.dcBlocks.map((c, i) => ['module ' + (i + 1), c])));
     section('Icons', Object.entries(S.icons).filter(([, c]) => c.width <= 16));
   </script>
 </body>

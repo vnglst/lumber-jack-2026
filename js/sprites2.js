@@ -1,7 +1,7 @@
 'use strict';
 // More procedural pixel art: wildlife, and the set for the ending (kept out of sight until then).
 (function () {
-  const S = LJ.sprites, { mk, cx2, art, outline, both, R, disc, shadow, pts } = LJ.spr;
+  const S = LJ.sprites, { mk, cx2, art, outline, both, R, disc, shadow, pts, box } = LJ.spr;
 
   // Fur: body pixels catch light along the top edge and get scattered darker tufts.
   function creature(rows, pal, fur, seed) {
@@ -132,5 +132,38 @@
     disc(x, 6, 15, 3, '#1d1d24'); disc(x, 6, 15, 1.2, '#8c8c96'); disc(x, 13, 15, 3, '#1d1d24'); disc(x, 13, 15, 1.2, '#8c8c96');
     disc(x, 23, 15, 3, '#1d1d24'); disc(x, 23, 15, 1.2, '#8c8c96');
     return both(outline(c));
+  })();
+
+  // ---------- Data-center modules: one per 3x3 tiles, tiled until they cover the whole map ----------
+  const DCB = 48; // 3x3 tiles; the ending and renderer read the size from these sprites
+  function dcModule(seed) {
+    const c = mk(DCB, DCB), x = cx2(c), r = LJ.rng(seed);
+    R(x, 0, 0, DCB, DCB, '#b9bdc6');
+    for (let i = 0; i < DCB; i += 12) { R(x, i, 0, 1, DCB, '#a4a8b2'); R(x, 0, i, DCB, 1, '#a4a8b2'); }
+    for (let i = 0; i < 40; i++) R(x, (r() * DCB) | 0, (r() * DCB) | 0, 1, 1, '#c8ccd4');
+    // Parapet: lit top-left edge, shaded bottom-right
+    R(x, 0, 0, DCB, 2, '#dfe2e8'); R(x, 0, 0, 2, DCB, '#dfe2e8'); R(x, 0, DCB - 2, DCB, 2, '#80848e'); R(x, DCB - 2, 0, 2, DCB, '#80848e');
+    // Rooftop cooling units with fans
+    const n = 1 + ((r() * 2) | 0);
+    for (let k = 0; k < n; k++) {
+      const ax = 5 + ((r() * 22) | 0), ay = 5 + k * 20 + ((r() * 4) | 0);
+      R(x, ax + 1, ay + 13, 16, 2, 'rgba(40,44,56,0.35)');
+      box(x, ax, ay, 16, 13, '#8c8f98', '#b4b7c0', '#5f636c');
+      disc(x, ax + 5, ay + 6.5, 3.5, '#2e313a'); disc(x, ax + 5, ay + 6.5, 1, '#9a9ea8');
+      disc(x, ax + 12, ay + 6.5, 2.5, '#2e313a'); R(x, ax + 12, ay + 6, 1, 1, '#9a9ea8');
+    }
+    // Vents and a cable tray
+    for (let k = 0; k < 3; k++) box(x, 34 + (k % 2) * 5, 6 + k * 12, 4, 4, '#9a9ea8', '#c8ccd4', '#6f737c');
+    R(x, 2, 44, 44, 1, '#3a3d46');
+    return c;
+  }
+  S.dcBlocks = [dcModule(3), dcModule(17), dcModule(29)];
+  // Under construction: a concrete slab with a steel frame going up.
+  S.dcFrame = (function () {
+    const c = mk(DCB, DCB), x = cx2(c);
+    R(x, 0, 0, DCB, DCB, '#8f8f96'); R(x, 0, 0, DCB, 1, '#a8a8b0');
+    for (let i = 2; i < DCB; i += 11) { R(x, i, 0, 2, DCB, '#c96a36'); R(x, 0, i, DCB, 2, '#a8532a'); }
+    for (let k = 0; k < 4; k++) for (let j = 0; j < 9; j++) R(x, 4 + k * 11 + j, 4 + k * 11 + j, 1, 1, '#8a4322');
+    return c;
   })();
 })();

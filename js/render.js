@@ -131,7 +131,7 @@
           break;
         }
         case 2: {
-          const b = d.b, spr = S[b.kind];
+          const b = d.b, spr = LJ.bldSprite(b);
           const o = LJ.bldOrigin(b), bx = o[0] - cx, by = o[1] - cy;
           ctx.drawImage(spr, bx, by);
           if (b.queue.length) bar(ctx, bx + 14, by - 5, 28, 1 - b.queue[0].t / b.queue[0].total, '#58c8ff');
@@ -194,33 +194,29 @@
 
     // Tiles queued for the bulldozer
     ctx.fillStyle = '#ff9a2a';
-    for (const j of G.jobs) {
-      if (!j.tiles) continue;
-      for (const t of j.tiles) {
+    for (const u of G.units) {
+      if (!u.task || u.task.type !== 'doze') continue;
+      for (const t of u.task.job.tiles) {
         const x = (t % W) * TS - cx, y = ((t / W) | 0) * TS - cy;
         if (x < -16 || y < -16 || x > vw || y > vh) continue;
         ctx.fillRect(x + 5, y + 5, 6, 1); ctx.fillRect(x + 5, y + 10, 6, 1); ctx.fillRect(x + 5, y + 5, 1, 6); ctx.fillRect(x + 10, y + 5, 1, 6);
       }
     }
 
-    // Area job outlines
-    for (const j of G.jobs) {
-      if (!j.rect) continue;
-      dashRect(ctx, j.rect[0] * TS - cx, j.rect[1] * TS - cy, (j.rect[2] - j.rect[0] + 1) * TS, (j.rect[3] - j.rect[1] + 1) * TS, 'rgba(255,216,74,0.8)', G.time);
-    }
+    // Box selection
     if (G.drag) {
       const d = G.drag, x = Math.min(d.x0, d.x1) - cx, y = Math.min(d.y0, d.y1) - cy;
       const dw = Math.abs(d.x1 - d.x0), dh = Math.abs(d.y1 - d.y0);
-      ctx.fillStyle = d.kind === 'area' ? 'rgba(255,216,74,0.15)' : 'rgba(140,255,110,0.12)';
+      ctx.fillStyle = 'rgba(140,255,110,0.12)';
       ctx.fillRect(x, y, dw, dh);
-      dashRect(ctx, Math.round(x), Math.round(y), Math.round(dw), Math.round(dh), d.kind === 'area' ? '#ffd84a' : '#8dff6a', G.time);
+      dashRect(ctx, Math.round(x), Math.round(y), Math.round(dw), Math.round(dh), '#8dff6a', G.time);
     }
 
     // Warning markers at the screen edge for animals that are out of view
     if (Math.floor(G.time * 4) % 2) {
       for (const a of G.animals) {
         const ax = a.x - cx, ay = a.y - cy;
-        if (ax >= 0 && ay >= 0 && ax < vw && ay < vh) continue;
+        if ((ax >= 0 && ay >= 0 && ax < vw && ay < vh) || !LJ.seenPx(a.x, a.y)) continue;
         const mx = Math.round(LJ.clamp(ax, 5, vw - 6)), my = Math.round(LJ.clamp(ay, 22, vh - 30));
         ctx.fillStyle = '#1b1422'; ctx.fillRect(mx - 4, my - 4, 9, 9);
         ctx.fillStyle = '#ff3a2a'; ctx.fillRect(mx - 3, my - 3, 7, 7);
@@ -240,7 +236,49 @@
       else { ctx.fillRect(x - 1, y, 3, 1); }
       ctx.fillStyle = '#222'; ctx.fillRect(x, y, 1, 1);
     }
+
+    if (G.dc) drawDataCenter(ctx, G, cx, cy, vw, vh);
+    drawFog(ctx, G, w, cx, cy);
   };
+
+  // The data center at the end: 3x3-tile modules that go up one after another until they cover the map.
+  function drawDataCenter(ctx, G, cx, cy, vw, vh) {
+    const dc = G.dc, B = S.dcFrame.width, t = G.time;
+    const bx0 = Math.max(0, Math.floor(cx / B)), bx1 = Math.min(dc.BW - 1, Math.floor((cx + vw) / B));
+    const by0 = Math.max(0, Math.floor(cy / B)), by1 = Math.min(dc.BH - 1, Math.floor((cy + vh) / B));
+    for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
+      const k = by * dc.BW + bx, age = t - dc.start[k];
+      if (!(age >= 0)) continue;
+      const x = bx * B - cx, y = by * B - cy;
+      ctx.drawImage(age < 0.45 ? S.dcFrame : S.dcBlocks[(hash(bx, by, 3) * 3) | 0], x, y);
+      if (age >= 0.45) { // status lights along the cable tray
+        for (let i = 0; i < 6; i++) {
+          const on = hash(bx * 7 + i, by, Math.floor(t * 4 + i)) < 0.6;
+          ctx.fillStyle = on ? (i % 3 ? '#3fb8ff' : '#7dffb0') : '#1d4a6a';
+          ctx.fillRect(x + 5 + i * 7, y + 44, 2, 1);
+        }
+      }
+    }
+  }
+
+  // Fog of war: a tile-sized mask, scaled up with smoothing so its edges fade softly.
+  let fogCv = null, fogCtx = null, fogImg = null;
+  function drawFog(ctx, G, w, cx, cy) {
+    if (!G.fogLeft) return; // everything explored
+    if (!fogCv || fogCv.width !== w.W || fogCv.height !== w.H) {
+      fogCv = document.createElement('canvas'); fogCv.width = w.W; fogCv.height = w.H;
+      fogCtx = fogCv.getContext('2d'); fogImg = fogCtx.createImageData(w.W, w.H); G.fogDirty = true;
+    }
+    if (G.fogDirty) {
+      const d = fogImg.data;
+      for (let i = 0; i < w.N; i++) { d[i * 4] = 10; d[i * 4 + 1] = 16; d[i * 4 + 2] = 11; d[i * 4 + 3] = G.fog[i] ? 0 : 255; }
+      fogCtx.putImageData(fogImg, 0, 0);
+      G.fogDirty = false;
+    }
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(fogCv, -cx, -cy, w.W * TS, w.H * TS);
+    ctx.imageSmoothingEnabled = false;
+  }
 
   function dashRect(ctx, x, y, w, h, col, time) {
     ctx.fillStyle = col;
