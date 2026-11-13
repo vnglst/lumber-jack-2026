@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumberjack — sprite sheet</title>
+  <style>
+    body { margin: 0; padding: 20px; background: #3c8f31; color: #fff; font: 600 13px ui-rounded, "Trebuchet MS", system-ui, sans-serif; }
+    h1 { font-size: 20px; margin: 0 0 4px; } h2 { font-size: 15px; margin: 22px 0 8px; color: #ffe9b8; }
+    p { margin: 0 0 8px; opacity: .85; }
+    .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+    figure { margin: 0; text-align: center; background: rgba(0, 0, 0, .18); padding: 8px; border-radius: 6px; }
+    canvas { image-rendering: pixelated; display: block; margin: 0 auto 4px; }
+  </style>
+</head>
+<body>
+  <h1>Lumberjack — sprite sheet</h1>
+  <p>Every sprite is drawn in code (js/sprites.js, js/sprites2.js). Shown at 4×.</p>
+  <div id="out"></div>
+  <script src="js/util.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/sprites2.js"></script>
+  <script>
+    const S = LJ.sprites, out = document.getElementById('out');
+    function section(title, items) {
+      const h = document.createElement('h2'); h.textContent = title; out.appendChild(h);
+      const row = document.createElement('div'); row.className = 'row'; out.appendChild(row);
+      for (const [name, src] of items) {
+        const k = src.width > 80 ? 3 : 4, c = document.createElement('canvas');
+        c.width = src.width; c.height = src.height; c.getContext('2d').drawImage(src, 0, 0);
+        c.style.width = src.width * k + 'px'; c.style.height = src.height * k + 'px';
+        const f = document.createElement('figure'); f.appendChild(c); f.append(name); row.appendChild(f);
+      }
+    }
+    const J = S.jack.axe, K = S.jack.saw;
+    section('Jacks', [['idle', J.idle.r], ['walk 1', J.walk[0].r], ['walk 2', J.walk[1].r], ['axe up', J.chop[0].r], ['axe down', J.chop[1].r],
+      ['carrying', J.carry[0].r], ['carry walk', J.carry[1].r], ['facing left', J.idle.l], ['chainsaw', K.chop[0].r], ['chainsaw 2', K.chop[1].r]]);
+    section('Wildlife', [['wolf 1', S.wolf[0].r], ['wolf 2', S.wolf[1].r], ['wolf (left)', S.wolf[0].l], ['bear 1', S.bear[0].r], ['bear 2', S.bear[1].r], ['gravestone', S.grave]]);
+    section('Trees', [].concat(...S.trees.map((sp, i) => sp.map((c, v) => [['pine', 'oak', 'birch'][i] + ' ' + (v + 1), c]))));
+    section('Rocks', S.rocks.map((c, i) => ['rock ' + (i + 1), c]));
+    section('Buildings', [['camp', S.camp], ['village', S.village], ['log depot', S.depot], ['market sign', S.sign]]);
+    section('Vehicles', [['truck', S.truck.empty.r], ['truck (loaded)', S.truck.full.r], ['bulldozer', S.dozer.r], ['harvester', S.harv.r], ['cement mixer', S.mixer.r]]);
+    section('The ending', [['the man in the suit', S.suit.idle.r], ['walking', S.suit.walk[0].r], ['walking 2', S.suit.walk[1].r],
+      ['construction: foundation', S.dcStage1], ['construction: steel frame', S.dcStage2], ['AI data center', S.datacenter], ['crane', S.crane]]);
+    section('Icons', Object.entries(S.icons));
+  </script>
+</body>
+</html>
