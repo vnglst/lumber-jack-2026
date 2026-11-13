@@ -101,13 +101,14 @@
       stockpile: false, village: null, depots: 0, place: null, hover: null, order: null, orderCd: 25, payT: PAY_EVERY,
       villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), campMask: new Uint8Array(w.N), smokeT: 0,
       animals: [], graves: [], shots: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
-      cine: null, suit: null, props: []
+      cine: null, suit: null, props: [], critters: []
     });
     G.thr = FR.map(f => Math.max(1, Math.round(f * G.total)));
     // Money that must have been earned (in total) before a level counts as complete.
     G.quota = G.thr.map((t, i) => (i ? Math.round((t * 14) / 100) * 100 : 0));
     ring(addBuilding('camp', 2, w.roadY - 3, 2, 2), G.campMask);
     addUnit(w.start.x, w.start.y, 'Jack', 'jack', 0);
+    spawnCritters();
     const r = LJ.rng(seed + 5);
     for (let i = 0; i < 400 && G.bflies.length < 60; i++) {
       const x = (r() * W) | 0, y = (r() * H) | 0;
@@ -118,12 +119,18 @@
     G.ground.renderAll();
   };
 
+  // Top-left corner (world pixels) where a building's sprite is drawn: centred on its footprint, standing on its bottom edge.
+  LJ.bldOrigin = b => {
+    const spr = LJ.sprites[b.kind];
+    return [b.tx * TS + ((b.w * TS - spr.width) >> 1), (b.ty + b.h) * TS + 1 - spr.height];
+  };
+
   function addBuilding(kind, tx, ty, bw, bh) {
     const b = { kind, tx, ty, w: bw, h: bh, queue: [] };
     G.buildings.push(b);
     for (let y = ty; y < ty + bh; y++) for (let x = tx; x < tx + bw; x++) {
       const i = y * W + x;
-      w.bld[i] = G.buildings.length; w.obj[i] = 0; w.flower[i] = 0;
+      w.bld[i] = G.buildings.length; w.obj[i] = 0; w.flower[i] = 0; w.deco[i] = 0;
     }
     return b;
   }
@@ -328,11 +335,8 @@
   }
 
   function fell(t, u) {
-    const tx = t % W, ty = (t / W) | 0, s = w.seed;
-    G.falls.push({
-      sp: w.obj[t], v: w.variant[t], t: 0, dir: u.x <= tx * TS + 8 ? 1 : -1,
-      x: tx * TS + 8 + ((LJ.hash(t, 1, s) * 7) | 0) - 3, y: ty * TS + 13 + ((LJ.hash(t, 2, s) * 5) | 0) - 2
-    });
+    const tx = t % W, ty = (t / W) | 0, bx = LJ.treeX(w, t), by = LJ.treeY(w, t);
+    G.falls.push({ sp: w.obj[t], v: w.variant[t], t: 0, dir: u.x <= bx ? 1 : -1, x: bx, y: by });
     u.carry += SPECIES[w.obj[t]].y + (w.variant[t] === 2 ? 1 : 0);
     w.obj[t] = STUMP; w.claim[t] = 0; G.cleared++;
     // The land around a felled tree loses some of its lushness - cut enough and it turns to wasteland.
@@ -837,7 +841,8 @@
     // Chimney smoke
     if ((G.smokeT -= dt) <= 0) {
       G.smokeT = G.up.steam ? 0.2 : 0.5;
-      G.parts.push({ x: (v.tx + 1.5) * TS + 12, y: v.ty * TS - 14, vx: 3 + Math.random() * 4, vy: -14, t: 0, life: 1.6, col: G.up.steam ? '#eeeeee' : '#d8d4cc', smoke: true });
+      const [ox, oy] = LJ.bldOrigin(v), sm = LJ.sprites.village.smoke;
+      G.parts.push({ x: ox + sm.x, y: oy + sm.y, vx: 3 + Math.random() * 4, vy: -14, t: 0, life: 1.6, col: G.up.steam ? '#eeeeee' : '#d8d4cc', smoke: true });
     }
     // Payday
     const bill = G.units.reduce((a, u) => a + u.wage, 0);
@@ -891,6 +896,50 @@
     }
   }
 
+  // ---------- Peaceful wildlife: deer and squirrels that flee from people and vanish with the forest ----------
+  function spawnCritters() {
+    const r = LJ.rng(w.seed + 9);
+    for (let tries = 0; tries < 3000 && G.critters.length < 26; tries++) {
+      const x = (r() * W) | 0, y = (r() * H) | 0, i = y * W + x;
+      if (w.type[i] !== T.GRASS || isTree(i) || x < 14) continue;
+      let trees = 0;
+      for (let k = 0; k < 8; k++) { const n = (y + DY[k]) * W + x + DX[k]; if (n >= 0 && n < w.N && isTree(n)) trees++; }
+      if (trees < 2) continue;
+      G.critters.push({ kind: G.critters.length % 3 === 0 ? 'deer' : 'squirrel', x: x * TS + 8, y: y * TS + 10, tx: 0, ty: 0, t: r() * 4, dir: r() < 0.5 ? 1 : -1, walkT: 0, moving: false, flee: false, alpha: 1 });
+    }
+  }
+  const tileOfPx = (x, y) => ((y / TS) | 0) * W + ((x / TS) | 0);
+  function critterStop(c, t) { c.moving = false; c.flee = false; c.t = t; }
+  function critterGo(c, x, y) {
+    c.tx = LJ.clamp(x, 8, W * TS - 8); c.ty = LJ.clamp(y, 8, H * TS - 8); c.moving = true;
+  }
+  function updCritters(dt) {
+    for (const c of G.critters) {
+      if (c.gone) { c.alpha -= dt * 0.8; continue; }
+      const tile = tileOfPx(c.x, c.y);
+      if (w.lush[tile] < 0.4) { c.gone = true; continue; } // nothing left to live on
+      const deer = c.kind === 'deer';
+      if (!c.flee) {
+        for (const u of G.units) {
+          if (Math.hypot(u.x - c.x, u.y - c.y) < (deer ? 70 : 44)) {
+            const a = Math.atan2(c.y - u.y, c.x - u.x);
+            critterGo(c, c.x + Math.cos(a) * 90, c.y + Math.sin(a) * 90); c.flee = true;
+            break;
+          }
+        }
+      }
+      if (!c.moving && (c.t -= dt) <= 0) critterGo(c, c.x + (Math.random() - 0.5) * 90, c.y + (Math.random() - 0.5) * 90);
+      if (!c.moving) continue;
+      const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy);
+      const sp = c.flee ? (deer ? 85 : 70) : deer ? 16 : 24;
+      if (d < 1.5) { critterStop(c, 1.5 + Math.random() * 5); continue; }
+      const nx = c.x + (dx / d) * sp * dt, ny = c.y + (dy / d) * sp * dt;
+      if (!wildPass(tileOfPx(nx, ny))) { critterStop(c, 0.4); continue; }
+      c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1; c.walkT += dt;
+    }
+    if (G.critters.some(c => c.alpha <= 0)) G.critters = G.critters.filter(c => c.alpha > 0);
+  }
+
   LJ.update = function (dt) {
     G.time += dt;
     for (const u of G.units) {
@@ -899,6 +948,7 @@
       else updUnit(u, dt);
     }
     if (G.jobs.length) G.jobs = G.jobs.filter(j => (j.trees || j.tiles).size && G.units.some(u => u.task && u.task.job === j));
+    updCritters(dt);
     if (G.cine) LJ.ending.update(dt);
     else {
       updEconomy(dt);

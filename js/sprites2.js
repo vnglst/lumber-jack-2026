@@ -3,34 +3,46 @@
 (function () {
   const S = LJ.sprites, { mk, cx2, art, outline, both, R, disc, shadow, pts } = LJ.spr;
 
-  // ---------- Wolf ----------
-  const WP = { G: '#7d838c', g: '#565b64', w: '#cfd2d8', K: '#1d2026', N: '#0c0c10', d: '#3a3e45', E: '#ffd23a' };
-  const WOLF_BODY = [
-    '...........K..K...',
-    '..........GGGGGg..',
-    'g........GGGGEGGg.',
-    'gg..GGGGGGGGGGGGGN',
-    '.gGGGGGGGGGGGGGww.',
-    '.GGGGGGGGGGGGw....',
-    '.GGGGGGGGGGGG.....',
-    '.GGgGGGGGgGGG.....'];
-  const WOLF_LEGS = [
-    ['.Gg.gG...Gg.gG....', '.G...G...G...G....', '.d...d...d...d....'],
-    ['..gG.Gg...gG.Gg...', '...G..G....G..G...', '...d..d....d..d...']];
-  S.wolf = WOLF_LEGS.map(l => both(outline(art(WOLF_BODY.concat(l), WP))));
-
-  // ---------- Bear ----------
-  function bear(step) {
-    const c = mk(26, 17), x = cx2(c);
-    disc(x, 8, 8, 6.5, '#6b4526'); disc(x, 14, 8, 6.2, '#6b4526'); disc(x, 11, 6, 5, '#84582f');
-    disc(x, 20, 7, 4.2, '#6b4526'); R(x, 17, 2, 2, 2, '#4a2f1a'); R(x, 21, 2, 2, 2, '#4a2f1a');
-    R(x, 22, 8, 3, 2, '#c9a074'); pts(x, [[24, 8]], '#0c0c10'); pts(x, [[21, 6]], '#0c0c10');
-    const o = step ? 1 : 0;
-    R(x, 3 + o, 12, 3, 5, '#4a2f1a'); R(x, 8 - o, 12, 3, 5, '#5c3a1f'); R(x, 13 + o, 12, 3, 5, '#4a2f1a'); R(x, 17 - o, 12, 3, 5, '#5c3a1f');
-    R(x, 5, 12, 12, 1, '#4a2f1a');
+  // Fur: body pixels catch light along the top edge and get scattered darker tufts.
+  function creature(rows, pal, fur, seed) {
+    const w = rows[0].length, h = rows.length, c = mk(w, h + 2), x = cx2(c);
+    shadow(x, w / 2 + 1, h, w * 0.42, 1.8);
+    rows.forEach((r, y) => {
+      for (let i = 0; i < r.length; i++) {
+        const ch = r[i];
+        let col = pal[ch];
+        if (!col) continue;
+        if (fur[ch]) {
+          const above = y > 0 ? rows[y - 1][i] : '.';
+          if (above === '.' || !pal[above]) col = fur[ch][1];
+          else if (LJ.hash(i, y, seed) < 0.2) col = fur[ch][0];
+        }
+        x.fillStyle = col; x.fillRect(i, y, 1, 1);
+      }
+    });
     return both(outline(c));
   }
-  S.bear = [bear(0), bear(1)];
+
+  // ---------- Wolf ----------
+  const WP = { G: '#7d838c', g: '#565b64', l: '#a8adb6', w: '#d4d7dc', K: '#16181d', E: '#ffd23a', N: '#0c0c10' };
+  const WOLF_BODY = [
+    '.............gG.gG....', '............lGGGGGg...', '............lGGEGGGGgN', 'g...........GGGGGwwwK.',
+    'gg..lllGGGGGGGGGGww...', '.gGlGGGGGGGGGGGGGw....', '..GGGGGGGGGGGGGGw.....', '..gGGGGGGGGGGGGgw.....', '..ggGwwwwwwwGGgw......'];
+  const WOLF_LEGS = [
+    ['..gG.gG.....gG.gG.....', '..g..gG.....g..gG.....', '..g..g......g...g.....', '..K..K......K...K.....'],
+    ['...gGgG.....gGgG......', '....gG......gG........', '...g..g....g..g.......', '...K..K....K..K.......']];
+  S.wolf = WOLF_LEGS.map((l, i) => creature(WOLF_BODY.concat(l), WP, { G: ['#656a74', '#a8adb6'] }, 31 + i));
+
+  // ---------- Bear ----------
+  const BP = { B: '#6b4526', b: '#4a2f1a', l: '#8f6038', m: '#c9a074', K: '#0c0c10', c: '#e8e0d0' };
+  const BEAR_BODY = [
+    '.....................bb.bb..', '.......llll.........bBBbBBb.', '.....llBBBBll......bBBBBBBB.', '....lBBBBBBBBll...bBBKBBBmm.',
+    '...lBBBBBBBBBBBllbBBBBBBmmK.', '..lBBBBBBBBBBBBBBBBBBBBBmb..', '..BBBBBBBBBBBBBBBBBBBBBBb...', '..BBBBBBBBBBBBBBBBBBBBBb....',
+    '..bBBBBBBBBBBBBBBBBBBBBb....', '..bBBBBBBBBBBBBBBBBBBBb.....'];
+  const BEAR_LEGS = [
+    ['...bBBBb.bBBBb.bBBBb.bBBb...', '...bBBBb.bBBBb.bBBBb.bBBb...', '...bBBb..bBBb...bBBb.bBBb...', '...cccc..cccc...cccc.cccc...'],
+    ['....bBBBbbBBBb...bBBBbbBBb..', '....bBBb.bBBb....bBBb.bBBb..', '...bBBb...bBBb..bBBb...bBBb.', '...cccc...cccc..cccc...cccc.']];
+  S.bear = BEAR_LEGS.map((l, i) => creature(BEAR_BODY.concat(l), BP, { B: ['#563620', '#8f6038'] }, 57 + i));
 
   // ---------- Gravestone ----------
   S.grave = (function () {

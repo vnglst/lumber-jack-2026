@@ -70,7 +70,7 @@
   function pickUnit(wx, wy, slack) {
     let best = null, bd = 1e9;
     for (const u of G.units) {
-      const v = u.kind !== 'jack', rx = (v ? 14 : 8) + slack, ry = (v ? 9 : 10) + slack, lift = v ? 6 : 8;
+      const v = u.kind !== 'jack', rx = (v ? 16 : 8) + slack, ry = (v ? 10 : 12) + slack, lift = v ? 7 : 9;
       const dx = wx - u.x, dy = wy - (u.y - lift);
       if (Math.abs(dx) <= rx && Math.abs(dy) <= ry) {
         const d = dx * dx + dy * dy;
@@ -94,8 +94,7 @@
   // Tree canopies reach up over the tile above, so also try the tile below the pointer.
   function treeAt(wx, wy) {
     const w = G.world, i = tileAt(wx, wy);
-    if (LJ.isTree(i)) return i;
-    if (i + w.W < w.N && LJ.isTree(i + w.W)) return i + w.W;
+    for (let k = 0; k < LJ.TREE_ROWS; k++) if (i + k * w.W < w.N && LJ.isTree(i + k * w.W)) return i + k * w.W;
     return -1;
   }
   const isExit = i => { const w = G.world, x = i % w.W, y = (i / w.W) | 0; return x <= 1 && Math.abs(y - w.roadY) <= 1; };
@@ -520,7 +519,7 @@
     }
     for (const b of G.bubbles) {
       if (!b.el) { b.el = document.createElement('div'); b.el.className = 'bubble'; b.el.textContent = b.text; ov.appendChild(b.el); }
-      const lift = b.u.kind === 'jack' ? 20 : 22;
+      const lift = b.u.kind === 'jack' ? 25 : 24;
       b.el.style.transform = 'translate(' + ((b.u.x - cx) * zoom) + 'px,' + ((b.u.y - cy - lift) * zoom) + 'px) translate(-50%,-100%)';
     }
   };

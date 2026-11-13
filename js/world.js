@@ -3,7 +3,9 @@
 (function () {
   const TS = (LJ.TS = 16);
   const T = (LJ.T = { GRASS: 0, DIRT: 1, WATER: 2, ROCK: 3, GRAVEL: 4 });
-  const STUMP = (LJ.STUMP = 9);
+  LJ.STUMP = 9;
+  // How many tile rows a tree's canopy reaches above its base: used for tap targets and view culling.
+  LJ.TREE_ROWS = Math.ceil(Math.max(...LJ.sprites.trees.flat().map(c => c.ay)) / TS);
   const { hash, vnoise, fbm } = LJ;
 
   LJ.genWorld = function (seed) {
@@ -62,9 +64,33 @@
         obj[i] = sp < 0.44 ? (h2 < 0.8 ? 1 : 2) : sp > 0.58 ? (h2 < 0.55 ? 3 : 2) : (h2 < 0.7 ? 2 : h2 < 0.85 ? 1 : 3);
         variant[i] = Math.floor(hash(x, y, seed + 43) * 4);
         hp[i] = 1; total++;
-      } else if (hash(x, y, seed + 51) < 0.3) flower[i] = 1;
+      } else if (hash(x, y, seed + 51) < 0.18) flower[i] = 1;
     }
     for (let x = 0; x < 9; x++) type[roadY * W + x] = T.DIRT;
+
+    // Decoration: purely visual plants and pebbles; codes index LJ.DECO.
+    const deco = new Uint8Array(N), decoV = new Uint8Array(N);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x, t = type[i], h = hash(x, y, seed + 61);
+      decoV[i] = (hash(x, y, seed + 62) * 3) | 0;
+      if (t === T.WATER) { if (h < 0.05) deco[i] = 6; continue; }
+      if (t !== T.GRASS || obj[i] || nearStart(x, y) || (y === roadY && x < 10)) continue;
+      let nearW = false, nearTree = false;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const n = ny * W + nx;
+        if (type[n] === T.WATER && (dx === 0 || dy === 0)) nearW = true;
+        if (obj[n] >= 1 && obj[n] <= 3) nearTree = true;
+      }
+      if (nearW) deco[i] = h < 0.3 ? 5 : h < 0.45 ? 7 : 0;
+      else if (nearTree) deco[i] = h < 0.06 ? 2 : h < 0.12 ? 3 : h < 0.18 ? 4 : h < 0.22 ? 1 : 0;
+      else deco[i] = h < 0.08 ? 1 : h < 0.1 ? 3 : 0;
+    }
+
+    // Trees and stumps are nudged off the tile grid so the forest doesn't look planted.
+    const tbx = new Int8Array(N), tby = new Int8Array(N);
+    for (let i = 0; i < N; i++) { tbx[i] = ((hash(i, 1, seed) * 11) | 0) - 5; tby[i] = ((hash(i, 2, seed) * 7) | 0) - 3; }
 
     // Sanity check: the start region (west of the first river) must hold a fair share of the forest.
     const seen = new Uint8Array(N), stack = [roadY * W + 5];
@@ -84,90 +110,123 @@
     const frac = reach / total;
     if (!force && (frac < 0.28 || frac > 0.6)) return null;
 
-    return { W, H, N, seed, type, obj, variant, lush, wear, bld, flower, hp, claim, roadY, totalTrees: total, start: { x: 6, y: roadY } };
+    return { W, H, N, seed, type, obj, variant, lush, wear, bld, flower, hp, claim, deco, decoV, tbx, tby, roadY, totalTrees: total, start: { x: 6, y: roadY } };
   }
 
   // ---------- Ground renderer ----------
-  const GL = [[38, 110, 44], [50, 132, 50], [64, 152, 58], [88, 174, 68]];
-  const GD = [[112, 118, 52], [130, 134, 60], [148, 148, 70], [166, 160, 84]];
-  const GX = [[92, 74, 52], [106, 86, 60], [120, 98, 68], [134, 110, 78]];
-  const DT = [[124, 92, 58], [140, 106, 68], [156, 120, 80], [172, 136, 94]];
-  const GV = [[98, 96, 92], [118, 116, 110], [138, 136, 128], [158, 155, 146]];
-  const WA = [[31, 92, 168], [43, 118, 194], [66, 146, 218], [104, 184, 232], [200, 232, 248]];
-  const BANK = [[150, 128, 86], [176, 154, 106]];
+  // Palettes: lush, dry and dead grass (the forest turns to wasteland as it is cleared), dirt, gravel, water, mud.
+  const { rgb, step, dith } = LJ.spr, P = a => a.map(rgb);
+  const GL = P(['#2f6a2a', '#3b7d30', '#4a9137', '#5ba43f', '#74b84a']), GL_BLADE = rgb('#285c25'), GL_TIP = rgb('#93cc5c');
+  const GD = P(['#5d6a28', '#707d30', '#85903c', '#9aa24a', '#b0b35c']), GD_BLADE = rgb('#4c5722'), GD_TIP = rgb('#c4c272');
+  const GX = P(['#5a4630', '#6b553a', '#7d6646', '#8f7754', '#a28a64']), GX_BLADE = rgb('#463624'), GX_TIP = rgb('#b49c74');
+  const DT = P(['#6e4a2c', '#835a36', '#986b42', '#ad7e50', '#c39461']), PEB = rgb('#dcb47e'), PEB_D = rgb('#55361f');
+  const GV = P(['#5e5a54', '#76726a', '#8e8a80', '#a6a196', '#bdb8ab']);
+  const WA = P(['#1d5ca6', '#2470bd', '#3388cf', '#57a6e0', '#9fd2f2', '#e4f4fb']), MUD = P(['#5f4c32', '#77613f', '#8f7a52']);
   const FLOWERS = [[255, 255, 255], [255, 150, 190], [240, 70, 70], [190, 130, 255], [255, 220, 80]];
 
   LJ.Ground = function (w) {
     this.w = w;
+    const PW = w.W * TS, PH = w.H * TS;
     this.cv = document.createElement('canvas');
-    this.cv.width = w.W * TS; this.cv.height = w.H * TS;
+    this.cv.width = PW; this.cv.height = PH;
     this.ctx = this.cv.getContext('2d');
     this.img = this.ctx.createImageData(TS, TS);
     this.dirty = new Set();
+    // Every pixel looks up its tile through a fixed, noise-based offset, so tile borders wobble naturally.
+    this.jx = new Int8Array(PW * PH); this.jy = new Int8Array(PW * PH); this.PW = PW; this.PH = PH;
+    for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) {
+      const p = y * PW + x;
+      this.jx[p] = Math.round((vnoise(x * 0.11, y * 0.11, w.seed + 201) - 0.5) * 11);
+      this.jy[p] = Math.round((vnoise(x * 0.11 + 31.7, y * 0.11 + 11.3, w.seed + 202) - 0.5) * 11);
+    }
   };
   const GP = LJ.Ground.prototype;
 
-  GP.tAt = function (x, y) {
-    const w = this.w;
-    let tx = (x / TS) | 0, ty = (y / TS) | 0;
-    if (x < 0) tx = 0; else if (tx >= w.W) tx = w.W - 1;
-    if (y < 0) ty = 0; else if (ty >= w.H) ty = w.H - 1;
+  // Tile index that pixel (x, y) belongs to, after jitter.
+  GP.tj = function (x, y) {
+    const w = this.w, PW = this.PW;
+    x = x < 0 ? 0 : x >= PW ? PW - 1 : x; y = y < 0 ? 0 : y >= this.PH ? this.PH - 1 : y;
+    const p = y * PW + x;
+    let tx = ((x + this.jx[p]) / TS) | 0, ty = ((y + this.jy[p]) / TS) | 0;
+    if (x + this.jx[p] < 0) tx = 0; else if (tx >= w.W) tx = w.W - 1;
+    if (y + this.jy[p] < 0) ty = 0; else if (ty >= w.H) ty = w.H - 1;
     return ty * w.W + tx;
   };
+  GP.near = function (x, y, r, test) {
+    const t = this.w.type;
+    return test(t[this.tj(x - r, y)]) || test(t[this.tj(x + r, y)]) || test(t[this.tj(x, y - r)]) || test(t[this.tj(x, y + r)]);
+  };
+  const isW = t => t === T.WATER, isLand = t => t !== T.WATER, isGrass = t => t === T.GRASS;
 
-  // Each pixel looks up its tile through a noise-jittered coordinate, which makes tile borders wobble naturally.
-  GP.shade = function (px, py, d, o) {
-    const w = this.w, s = w.seed, type = w.type;
-    const jx = px + (vnoise(px * 0.13, py * 0.13, s + 201) - 0.5) * 10;
-    const jy = py + (vnoise(px * 0.13 + 31.7, py * 0.13 + 11.3, s + 202) - 0.5) * 10;
-    const i = this.tAt(jx, jy), t = type[i], h = hash(px, py, s + 7);
+  // wet/dry: whether the 3x3 tiles around this tile hold any water / any land, so far-away pixels skip the edge checks.
+  GP.shade = function (px, py, d, o, wet, dry) {
+    const w = this.w, s = w.seed, i = this.tj(px, py), t = w.type[i], h = hash(px, py, s + 13);
     let c;
     if (t === T.WATER) {
-      const land = type[this.tAt(jx - 3, jy)] !== T.WATER || type[this.tAt(jx + 3, jy)] !== T.WATER ||
-        type[this.tAt(jx, jy - 3)] !== T.WATER || type[this.tAt(jx, jy + 3)] !== T.WATER;
-      const wv = vnoise(px * 0.07, py * 0.22, s + 300);
-      c = land ? (h < 0.1 ? WA[4] : WA[3]) : wv < 0.35 ? WA[0] : wv < 0.7 ? WA[1] : WA[2];
+      if (dry && this.near(px, py, 2, isLand)) c = h < 0.55 ? WA[5] : WA[4];
+      else if (dry && this.near(px, py, 5, isLand)) c = WA[3];
+      else {
+        // Short, broken highlight streaks running with the current.
+        const rp = vnoise(px * 0.11, py * 0.75, s + 4);
+        c = rp > 0.8 ? WA[4] : rp > 0.72 ? WA[3] : WA[step(vnoise(px * 0.06, py * 0.06, s + 5), 3, px, py)];
+      }
+    } else if (wet && t !== T.ROCK && this.near(px, py, 3, isW)) {
+      c = h < 0.06 ? PEB : MUD[step(vnoise(px * 0.3, py * 0.3, s + 6), 3, px, py)];
+    } else if (t === T.DIRT) {
+      if (h < 0.022) c = PEB;
+      else if (hash(px, py - 1, s + 13) < 0.022) c = PEB_D;
+      else if (h < 0.3 && this.near(px, py, 2, isGrass)) c = w.lush[i] > 0.5 ? GL[1] : GD[1]; // grass creeping onto the path
+      else c = DT[step(vnoise(px * 0.18, py * 0.18, s + 7) * 0.7 + hash(px, py, s + 8) * 0.3, 5, px, py)];
+    } else if (t === T.GRAVEL || t === T.ROCK) {
+      c = h < 0.04 ? GV[4] : hash(px, py - 1, s + 13) < 0.04 ? GV[0] : GV[step(vnoise(px * 0.25, py * 0.25, s + 9) * 0.6 + h * 0.4, 5, px, py)];
     } else {
-      const nearW = type[this.tAt(jx - 2, jy)] === T.WATER || type[this.tAt(jx + 2, jy)] === T.WATER ||
-        type[this.tAt(jx, jy - 2)] === T.WATER || type[this.tAt(jx, jy + 2)] === T.WATER;
-      const n = vnoise(px * 0.21, py * 0.21, s + 400) * 0.65 + hash(px, py, s + 8) * 0.35;
-      const k = n < 0.3 ? 0 : n < 0.6 ? 1 : n < 0.86 ? 2 : 3;
-      if (nearW) c = BANK[h < 0.5 ? 0 : 1];
-      else if (t === T.GRASS) {
-        const L = w.lush[i] + (h - 0.5) * 0.35;
-        c = (L > 0.62 ? GL : L > 0.3 ? GD : GX)[k];
-      } else if (t === T.DIRT) c = DT[k];
-      else c = GV[k];
+      // Grass: lush, dry or dead depending on how much forest has been cut around it.
+      const L = w.lush[i] + (dith(px, py) - 0.5) * 0.16;
+      const pal = L > 0.62 ? GL : L > 0.3 ? GD : GX, blade = L > 0.62 ? GL_BLADE : L > 0.3 ? GD_BLADE : GX_BLADE, tip = L > 0.62 ? GL_TIP : L > 0.3 ? GD_TIP : GX_TIP;
+      const v = fbm(px * 0.02, py * 0.02, s + 11, 2) * 0.5 + vnoise(px * 0.13, py * 0.13, s + 12) * 0.35 + h * 0.15;
+      let k = step((v - 0.22) * 1.7, 5, px, py, 0.8);
+      if (wet && this.near(px, py, 5, isW)) k = Math.max(0, k - 1); // damp grass by the water
+      const hb = hash(px, py, s + 14) < 0.05, ht = hash(px, py + 1, s + 14) < 0.05;
+      c = hb ? blade : ht ? (k >= 3 ? tip : pal[Math.min(4, k + 1)]) : pal[k];
     }
     d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
   };
 
   GP.renderTile = function (i) {
     const w = this.w, tx = i % w.W, ty = (i / w.W) | 0, d = this.img.data, s = w.seed;
-    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) this.shade(tx * TS + x, ty * TS + y, d, (y * TS + x) * 4);
+    let wet = false, dry = false;
+    for (let y = Math.max(0, ty - 1); y <= Math.min(w.H - 1, ty + 1); y++) for (let x = Math.max(0, tx - 1); x <= Math.min(w.W - 1, tx + 1); x++) {
+      if (w.type[y * w.W + x] === T.WATER) wet = true; else dry = true;
+    }
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) this.shade(tx * TS + x, ty * TS + y, d, (y * TS + x) * 4, wet, dry);
     const set = (x, y, c) => {
       if (x < 0 || y < 0 || x >= TS || y >= TS) return;
       const o = (y * TS + x) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2];
     };
     if (w.flower[i] && w.type[i] === T.GRASS && w.obj[i] === 0 && w.lush[i] > 0.55) {
-      const n = 1 + Math.floor(hash(tx, ty, s + 90) * 3);
+      const n = 1 + Math.floor(hash(tx, ty, s + 90) * 2);
       for (let k = 0; k < n; k++) {
         const fx = 2 + Math.floor(hash(tx, ty, s + 91 + k) * 12), fy = 2 + Math.floor(hash(tx, ty, s + 95 + k) * 12);
         const col = FLOWERS[Math.floor(hash(tx, ty, s + 99 + k) * FLOWERS.length)];
-        set(fx - 1, fy, col); set(fx + 1, fy, col); set(fx, fy - 1, col); set(fx, fy + 1, col);
-        set(fx, fy, [255, 200, 40]); set(fx, fy + 2, [30, 90, 36]);
+        set(fx, fy, col); set(fx, fy + 1, [40, 100, 40]);
       }
-    }
-    if (w.obj[i] === STUMP) {
-      const OUT = [58, 36, 20], TOP = [222, 188, 128], RING = [186, 142, 84], SIDE = [112, 72, 40];
-      for (let x = 5; x <= 10; x++) { set(x, 6, OUT); set(x, 13, OUT); }
-      for (let y = 7; y <= 12; y++) { set(4, y, OUT); set(11, y, OUT); }
-      for (let y = 7; y <= 12; y++) for (let x = 5; x <= 10; x++) set(x, y, y <= 9 ? TOP : SIDE);
-      set(7, 8, RING); set(8, 8, RING); set(6, 9, RING); set(9, 7, RING);
-      set(5, 12, OUT); set(10, 12, OUT);
     }
     this.ctx.putImageData(this.img, tx * TS, ty * TS);
   };
+
+  // Where a tree's (or stump's) trunk meets the ground, in world pixels.
+  LJ.treeX = (w, i) => (i % w.W) * TS + 8 + w.tbx[i];
+  LJ.treeY = (w, i) => ((i / w.W) | 0) * TS + 13 + w.tby[i];
+
+  // Decoration types (codes stored in world.deco). show() says whether the spot still suits it; y is its ground offset in the tile.
+  LJ.DECO = [null,
+    { name: 'flowers', show: (w, i) => w.type[i] === T.GRASS && w.lush[i] > 0.45, y: 12 },
+    { name: 'mushrooms', show: (w, i) => w.type[i] === T.GRASS && w.lush[i] > 0.45, y: 12 },
+    { name: 'bush', show: (w, i) => w.type[i] === T.GRASS && w.lush[i] > 0.45, y: 12 },
+    { name: 'fern', show: (w, i) => w.type[i] === T.GRASS && w.lush[i] > 0.45, y: 12 },
+    { name: 'reeds', show: (w, i) => w.type[i] === T.GRASS && w.lush[i] > 0.3, y: 12 },
+    { name: 'lily', show: (w, i) => w.type[i] === T.WATER, y: 6 },
+    { name: 'pebbles', show: (w, i) => w.type[i] !== T.WATER, y: 12 }];
 
   GP.renderAll = function () { for (let i = 0; i < this.w.N; i++) this.renderTile(i); this.dirty.clear(); };
   GP.mark = function (i) { this.dirty.add(i); };

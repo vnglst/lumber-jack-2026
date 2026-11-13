@@ -1,5 +1,6 @@
 'use strict';
-// Procedural pixel art. Every sprite is drawn in code onto a small canvas.
+// Procedural pixel art, part 1: drawing helpers, vehicles, buildings and icons.
+// Every sprite is drawn in code onto a small canvas. Light always comes from the top-left.
 (function () {
   const S = (LJ.sprites = {});
   const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -7,7 +8,7 @@
   const OUT = '#1b1422';
 
   function art(rows, pal, ox, w, h) {
-    const c = mk(w || rows[0].length, h || rows.length), x = cx2(c);
+    const c = mk(w || rows[0].length + (ox || 0), h || rows.length), x = cx2(c);
     rows.forEach((r, y) => {
       for (let i = 0; i < r.length; i++) {
         const p = pal[r[i]];
@@ -37,6 +38,7 @@
   function flip(src) {
     const c = mk(src.width, src.height), x = cx2(c);
     x.translate(src.width, 0); x.scale(-1, 1); x.drawImage(src, 0, 0);
+    if (src.ax !== undefined) { c.ax = src.width - src.ax; c.ay = src.ay; }
     return c;
   }
   const both = c => ({ r: c, l: flip(c) });
@@ -51,8 +53,9 @@
       }
     }
   }
+  // Translucent ground shadow; translucent pixels are never outlined.
   function shadow(x, cx, cy, rx, ry) {
-    x.fillStyle = 'rgba(8,24,16,0.3)';
+    x.fillStyle = 'rgba(8,24,16,0.32)';
     for (let dy = -Math.ceil(ry); dy <= Math.ceil(ry); dy++) {
       const k = 1 - (dy / ry) * (dy / ry);
       if (k <= 0) continue;
@@ -60,133 +63,36 @@
       x.fillRect(Math.round(cx - half), Math.round(cy + dy), half * 2, 1);
     }
   }
-
-  // ---------- Trees ----------
-  const PAL_OAK = { o: '#123a1c', s: ['#1f5a28', '#2f7a31', '#449a3a', '#6fbf4c'] };
-  const PAL_YEL = { o: '#3b4712', s: ['#5d7d1f', '#86a22a', '#adc238', '#d6de57'] };
-  const PAL_PINE = { o: '#0d2b21', s: ['#155038', '#1e6a45', '#2d8650', '#4ea65e'] };
-
-  function paintMask(x, m, W, H, pal, seed, cx, cy, rad) {
-    for (let y = 0; y < H; y++) for (let X = 0; X < W; X++) {
-      if (!m[y * W + X]) continue;
-      const edge = !m[y * W + X - 1] || !m[y * W + X + 1] || !m[(y - 1) * W + X] || !m[(y + 1) * W + X];
-      let col;
-      if (edge) col = pal.o;
-      else {
-        const light = ((cx - X) * 0.45 + (cy - y) * 0.9) / rad;
-        const v = light * 0.5 + 0.5 + (LJ.hash(X >> 1, y >> 1, seed) - 0.5) * 0.6;
-        col = pal.s[v < 0.3 ? 0 : v < 0.55 ? 1 : v < 0.82 ? 2 : 3];
-      }
-      x.fillStyle = col; x.fillRect(X, y, 1, 1);
-    }
-  }
-
-  function blobTree(seed, pal, trunk, sc) {
-    const W = 30, H = 38, c = mk(W, H), x = cx2(c), r = LJ.rng(seed), m = new Uint8Array(W * H);
-    const cx = 15, cy = 16 - (sc - 1) * 6;
-    const bl = [[cx, cy, 7.5 * sc]];
-    for (let i = 0; i < 6; i++) {
-      const a = r() * 6.283, d = (3 + r() * 3.5) * sc;
-      bl.push([cx + Math.cos(a) * d * 1.15, cy + Math.sin(a) * d * 0.85, (4 + r() * 2.6) * sc]);
-    }
-    for (let y = 1; y < H - 1; y++) for (let X = 1; X < W - 1; X++) for (const b of bl) {
-      const dx = X - b[0], dy = y - b[1];
-      if (dx * dx + dy * dy < b[2] * b[2]) { m[y * W + X] = 1; break; }
-    }
-    shadow(x, 15, 34, 9 * sc, 3);
-    R(x, 13, Math.round(cy + 3), 4, 35 - Math.round(cy + 3), trunk[0]);
-    R(x, 14, Math.round(cy + 3), 1, 35 - Math.round(cy + 3), trunk[1]);
-    R(x, 12, 34, 6, 1, trunk[0]);
-    paintMask(x, m, W, H, pal, seed, cx, cy, 10 * sc);
-    return c;
-  }
-
-  function pine(seed, sc) {
-    const W = 30, H = 38, c = mk(W, H), x = cx2(c), r = LJ.rng(seed), m = new Uint8Array(W * H);
-    const h = Math.round(27 * sc), top = 31 - h, tiers = 3 + (r() < 0.5 ? 1 : 0);
-    shadow(x, 15, 34, 7 * sc, 2.5);
-    R(x, 14, 29, 3, 6, '#4a2f1a'); R(x, 14, 29, 1, 6, '#6b4526');
-    for (let y = top; y <= 31; y++) {
-      const t = (y - top) / h, tp = (t * tiers) % 1;
-      const hw = 1 + t * 5.5 * sc + tp * 3.4 * sc;
-      for (let X = Math.round(15 - hw); X <= Math.round(15 + hw); X++) m[y * W + X] = 1;
-    }
-    paintMask(x, m, W, H, PAL_PINE, seed, 17, top + h * 0.45, 12 * sc);
-    return c;
-  }
-
-  S.trees = [[], [], []];
-  for (let v = 0; v < 4; v++) {
-    const sc = [1, 0.86, 1.08, 0.94][v];
-    S.trees[0].push(pine(100 + v * 7, sc));
-    S.trees[1].push(blobTree(200 + v * 13, PAL_OAK, ['#4a2f1a', '#6b4526'], sc));
-    S.trees[2].push(blobTree(300 + v * 11, PAL_YEL, ['#8c8676', '#d8d4c4'], sc * 0.92));
-  }
-
-  // ---------- Rocks ----------
-  function rock(seed) {
-    const W = 20, H = 18, c = mk(W, H), x = cx2(c), r = LJ.rng(seed), m = new Uint8Array(W * H);
-    const bl = [[10, 10, 6.5, 5], [5 + r() * 3, 11.5, 4, 3.5], [13 + r() * 2, 9 + r() * 2, 4.5, 4.2], [9 + r() * 3, 7 + r(), 4, 3.5]];
-    for (let y = 1; y < 16; y++) for (let X = 1; X < W - 1; X++) for (const b of bl) {
-      const dx = (X - b[0]) / b[2], dy = (y - b[1]) / b[3];
-      if (dx * dx + dy * dy < 1) { m[y * W + X] = 1; break; }
-    }
-    shadow(x, 10, 15, 9, 2);
-    const pal = ['#56555d', '#7b7a80', '#a09f9c', '#c6c4ba'];
-    for (let y = 0; y < H; y++) for (let X = 0; X < W; X++) {
-      if (!m[y * W + X]) continue;
-      const edge = !m[y * W + X - 1] || !m[y * W + X + 1] || !m[(y - 1) * W + X] || !m[(y + 1) * W + X];
-      const v = ((10 - X) * 0.5 + (9 - y)) / 9 * 0.6 + 0.5 + (LJ.hash(X >> 1, y >> 1, seed) - 0.5) * 0.35;
-      x.fillStyle = edge ? '#2c2a33' : pal[v < 0.3 ? 0 : v < 0.55 ? 1 : v < 0.8 ? 2 : 3];
-      x.fillRect(X, y, 1, 1);
-    }
-    if (r() < 0.6) { R(x, 6 + (r() * 6 | 0), 5 + (r() * 2 | 0), 3, 1, '#5d8a3a'); }
-    return c;
-  }
-  S.rocks = [rock(11), rock(23), rock(37), rock(51)];
-
-  // ---------- People ----------
-  const JP = { B: '#2f6fd8', b: '#1f4c9e', S: '#f2bd8e', K: '#2a1c1c', H: '#7a4520', R: '#d5392f', r: '#8f211e', P: '#3d4f7a', p: '#2b2019' };
-  const BODY = [
-    '....BBBB....', '...BBBBBB...', '...bBBBBBBB.', '...SSSSSS...', '...SSKSSK...', '...HHHHHH...',
-    '....HHHH....', '..RRrRRrRR..', '.SRRrRRrRRS.', '.SRRRRRRRRS.', '...RrRRrR...'];
-  const SP = { h: '#2a2019', S: '#f2bd8e', K: '#2a1c1c', G: '#343846', w: '#f4f4f4', T: '#c22d2d', D: '#23262f', P: '#23262f', p: '#111' };
-  const SUIT = [
-    '....hhhh....', '...hhhhhh...', '...hhhhhh...', '...SSSSSS...', '...SSKSSK...', '...SSSSSS...',
-    '....SSSS....', '..GGwTTwGG..', '.SGGGTTGGGS.', '.SGGGTTGGGS.', '...GGGGGG...'];
-  const LEGS = [
-    ['...PPPPPP...', '...PP..PP...', '...PP..PP...', '...pp..pp...'],
-    ['...PPPPPP...', '..PP....PP..', '..PP....PP..', '..pp....pp..'],
-    ['...PPPPPP...', '....PPPP....', '....PPPP....', '....pppp....']];
-
-  function person(body, pal, leg, overlay) {
-    const rows = body.concat(LEGS[leg]);
-    const c = art(rows, pal, 4, 20, 15);
-    if (overlay) overlay(cx2(c));
-    return both(outline(c));
-  }
   const pts = (x, list, col) => { x.fillStyle = col; for (const p of list) x.fillRect(p[0], p[1], 1, 1); };
-  const WOODC = '#a8743a', METAL = '#d5dbe2';
-  const axeIdle = x => { pts(x, [[14, 9], [15, 8], [15, 7], [16, 6], [16, 5]], WOODC); pts(x, [[15, 3], [16, 3], [17, 3], [17, 4], [16, 4]], METAL); };
-  const axeUp = x => { pts(x, [[14, 8], [15, 7], [15, 6], [16, 5], [16, 4], [17, 3], [17, 2]], WOODC); pts(x, [[16, 1], [17, 1], [18, 1], [18, 2], [18, 3]], METAL); };
-  const axeDown = x => { pts(x, [[14, 9], [15, 9], [16, 9], [17, 9]], WOODC); pts(x, [[18, 8], [18, 9], [18, 10], [19, 9], [17, 8]], METAL); };
-  const sawA = x => { R(x, 13, 8, 3, 3, '#e2731e'); R(x, 13, 7, 2, 1, '#3a2a20'); R(x, 16, 9, 3, 1, '#d5dbe2'); R(x, 16, 10, 3, 1, '#8c949e'); };
-  const sawB = x => { R(x, 14, 8, 3, 3, '#e2731e'); R(x, 14, 7, 2, 1, '#3a2a20'); R(x, 17, 9, 3, 1, '#d5dbe2'); R(x, 17, 10, 3, 1, '#8c949e'); };
-  const logOn = x => { R(x, 2, 6, 17, 3, '#a8703a'); R(x, 2, 6, 17, 1, '#c98f52'); R(x, 2, 6, 1, 3, '#ecd29a'); R(x, 18, 6, 1, 3, '#ecd29a'); };
-
-  function jackSet(idleO, upO, downO) {
-    const j = (leg, o) => person(BODY, JP, leg, o);
-    return {
-      idle: j(0, idleO), walk: [j(1, idleO), j(2, idleO)],
-      chop: [j(0, upO), j(0, downO)],
-      carry: [j(0, logOn), j(1, logOn), j(2, logOn)]
-    };
+  // A rectangle with a lit top-left edge and a shaded bottom-right edge.
+  function box(x, a, b, w, h, base, hi, lo) {
+    R(x, a, b, w, h, base); R(x, a, b, w, 1, hi); R(x, a, b, 1, h, hi); R(x, a, b + h - 1, w, 1, lo); R(x, a + w - 1, b + 1, 1, h - 1, lo);
   }
-  S.jack = { axe: jackSet(axeIdle, axeUp, axeDown), saw: jackSet(sawA, sawA, sawB) };
-  const brief = x => { R(x, 15, 10, 4, 3, '#6b4526'); R(x, 16, 9, 2, 1, '#3a2a20'); };
-  S.suit = { idle: person(SUIT, SP, 0, brief), walk: [person(SUIT, SP, 1, brief), person(SUIT, SP, 2, brief)] };
+  const icon = fn => { const c = mk(12, 12); fn(cx2(c)); return c; };
 
-  // Selection rings
+  // ---------- Pixel buffer helpers for the shaded, noise-based art (used by art.js) ----------
+  const rgb = s => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => v / 16);
+  const dith = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
+  // Quantize a 0..1 shade to one of `n` steps, with ordered dithering at the boundaries.
+  const step = (v, n, x, y, amt) => Math.max(0, Math.min(n - 1, Math.floor(v * n + (dith(x, y) - 0.5) * (amt === undefined ? 0.9 : amt))));
+  const LIGHT = (() => { const v = [-0.5, -0.7, 0.55], n = Math.hypot(...v); return v.map(c => c / n); })();
+  class Buf {
+    constructor(w, h) { this.w = w; this.h = h; this.d = new Uint8ClampedArray(w * h * 4); }
+    set(x, y, c, a) {
+      x |= 0; y |= 0;
+      if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
+      const o = (y * this.w + x) * 4, d = this.d;
+      if (a === undefined || a >= 1) { d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255; return; }
+      const k = d[o + 3] / 255, na = a + k * (1 - a);
+      for (let i = 0; i < 3; i++) d[o + i] = (c[i] * a + d[o + i] * k * (1 - a)) / na;
+      d[o + 3] = na * 255;
+    }
+    canvas() { const c = mk(this.w, this.h); c.getContext('2d').putImageData(new ImageData(this.d, this.w, this.h), 0, 0); return c; }
+  }
+  LJ.spr = { mk, cx2, art, outline, flip, both, R, disc, shadow, pts, box, icon, rgb, dith, step, LIGHT, Buf };
+
+  // ---------- Selection rings ----------
   function ring(w, h) {
     const c = mk(w, h), x = cx2(c);
     for (let i = 0; i < 64; i++) {
@@ -196,133 +102,192 @@
     }
     return c;
   }
-  S.ringS = ring(17, 8); S.ringL = ring(32, 12);
+  S.ringS = ring(19, 8); S.ringL = ring(34, 12);
 
   // ---------- Vehicles ----------
-  function wheel(x, cx, cy) { disc(x, cx, cy, 3, '#1d1d24'); disc(x, cx, cy, 1.2, '#8c8c96'); }
+  function wheel(x, cx, cy, r) {
+    disc(x, cx, cy, r, '#18181e'); disc(x, cx, cy, r - 1, '#33333c'); disc(x, cx, cy, r - 1.8, '#a4a8b2'); disc(x, cx, cy, 0.9, '#4a4a55');
+    R(x, Math.round(cx - r * 0.5), Math.round(cy - r * 0.5), 1, 1, '#d8dce2');
+  }
+  function logSide(x, x0, y, len) {
+    R(x, x0, y, len, 3, '#9a6332'); R(x, x0, y, len, 1, '#c48a4e'); R(x, x0, y + 2, len, 1, '#6e4220');
+    R(x, x0, y, 1, 3, '#e8c88c'); R(x, x0, y + 1, 1, 1, '#b98d52');
+    for (let i = x0 + 3; i < x0 + len - 1; i += 5) R(x, i, y + 1, 2, 1, '#7d4c26');
+  }
+  function glass(x, a, b, w, h) {
+    R(x, a, b, w, h, '#8fcbe6'); R(x, a + w - 1, b, 1, h, '#5a9cc0'); R(x, a, b + h - 1, w, 1, '#5a9cc0');
+    R(x, a + 1, b, 1, 1, '#eaf7fd'); R(x, a + 2, b + 1, 1, 1, '#eaf7fd'); R(x, a + 1, b + 1, 1, 1, '#c8e8f6');
+  }
   function truck(full) {
-    const c = mk(28, 17), x = cx2(c);
-    R(x, 1, 9, 17, 3, '#7a5433'); R(x, 1, 5, 1, 5, '#4a321f'); R(x, 17, 5, 1, 5, '#4a321f');
-    if (full) {
-      R(x, 2, 4, 15, 2, '#b98148'); R(x, 2, 6, 15, 2, '#9a6732'); R(x, 2, 8, 15, 1, '#b98148');
-      for (let i = 0; i < 3; i++) R(x, 2, 4 + i * 2, 1, 1, '#ecd29a');
-    }
-    R(x, 18, 3, 7, 9, '#d5392f'); R(x, 19, 4, 5, 4, '#bfe6f5'); R(x, 25, 8, 2, 4, '#b02a24');
-    R(x, 18, 3, 7, 1, '#ef6a5a');
-    R(x, 1, 12, 26, 2, '#33333b');
-    wheel(x, 6, 14); wheel(x, 22, 14);
+    const c = mk(36, 22), x = cx2(c);
+    shadow(x, 19, 19, 17, 2.5);
+    R(x, 2, 14, 31, 2, '#26262c');
+    box(x, 2, 11, 20, 3, '#7a5433', '#9a7044', '#4f3520');
+    for (let i = 5; i < 21; i += 4) R(x, i, 12, 1, 2, '#5f4128');
+    R(x, 2, 6, 1, 5, '#4f3520'); R(x, 21, 6, 1, 5, '#4f3520');
+    if (full) { logSide(x, 3, 8, 18); logSide(x, 3, 5, 18); logSide(x, 5, 2, 14); }
+    box(x, 22, 4, 10, 10, '#d5392f', '#f06a58', '#9e2620');
+    box(x, 31, 8, 4, 6, '#c3322a', '#f06a58', '#9e2620');
+    glass(x, 24, 5, 6, 4);
+    R(x, 23, 10, 1, 3, '#9e2620'); R(x, 25, 10, 2, 1, '#2a1a1a');
+    R(x, 34, 10, 1, 1, '#ffe27a'); R(x, 31, 14, 4, 1, '#9a9ea8');
+    R(x, 22, 0, 1, 4, '#6a6a74'); R(x, 22, 0, 1, 1, '#a4a8b2');
+    wheel(x, 7, 17, 3.5); wheel(x, 14, 17, 3.5); wheel(x, 28, 17, 3.5);
     return both(outline(c));
   }
   S.truck = { empty: truck(false), full: truck(true) };
 
   S.dozer = (function () {
-    const c = mk(27, 18), x = cx2(c);
-    R(x, 2, 13, 17, 4, '#26262e'); for (let i = 0; i < 6; i++) R(x, 3 + i * 3, 14, 1, 2, '#6a6a74');
-    R(x, 3, 7, 14, 6, '#f0b820'); R(x, 3, 7, 14, 1, '#ffd95a');
-    R(x, 5, 1, 8, 6, '#f0b820'); R(x, 6, 2, 6, 4, '#bfe6f5'); R(x, 5, 1, 8, 1, '#ffd95a');
-    R(x, 15, 3, 1, 4, '#44444c');
-    R(x, 17, 11, 5, 2, '#b8891a'); R(x, 22, 5, 3, 12, '#aab0b8'); R(x, 24, 5, 1, 12, '#d8dde2');
+    const c = mk(34, 24), x = cx2(c);
+    shadow(x, 17, 21, 16, 2.5);
+    R(x, 3, 14, 19, 1, '#2a2a31'); R(x, 2, 15, 21, 6, '#2a2a31'); R(x, 3, 21, 19, 1, '#2a2a31');
+    for (let i = 0; i < 7; i++) { R(x, 3 + i * 3, 14, 2, 1, '#5a5a64'); R(x, 3 + i * 3, 21, 2, 1, '#5a5a64'); }
+    for (const rx of [5, 10, 15, 20]) { disc(x, rx, 18, 1.9, '#6a6a74'); R(x, rx - 1, 17, 1, 1, '#a4a8b2'); }
+    box(x, 3, 9, 17, 6, '#f2b81e', '#ffe066', '#b8860f'); R(x, 4, 11, 15, 1, '#d99f14');
+    box(x, 5, 1, 10, 9, '#f2b81e', '#ffe066', '#b8860f');
+    glass(x, 6, 2, 8, 5); R(x, 10, 2, 1, 5, '#2a2a31');
+    R(x, 17, 4, 1, 5, '#55555f'); R(x, 17, 3, 1, 1, '#2a2a31');
+    R(x, 19, 12, 6, 2, '#b8860f'); R(x, 19, 12, 6, 1, '#d99f14');
+    box(x, 25, 6, 4, 15, '#a8adb6', '#e2e6ea', '#6f747c');
+    R(x, 28, 7, 1, 13, '#d8dde2'); R(x, 25, 20, 5, 1, '#55555f');
+    R(x, 9, 0, 2, 1, '#ff9a2a');
     return both(outline(c));
   })();
 
   S.harv = (function () {
-    const c = mk(30, 20), x = cx2(c);
-    R(x, 2, 8, 16, 7, '#3e8f3a'); R(x, 2, 8, 16, 1, '#63b85a');
-    R(x, 8, 2, 8, 6, '#3e8f3a'); R(x, 9, 3, 6, 4, '#bfe6f5'); R(x, 8, 2, 8, 1, '#63b85a');
-    pts(x, [[16, 6], [17, 5], [18, 5], [19, 4], [20, 4], [21, 3], [22, 3], [23, 3], [24, 4], [25, 5], [25, 6], [25, 7], [25, 8]], '#2a2a32');
-    R(x, 23, 9, 5, 6, '#e2731e'); R(x, 23, 15, 5, 1, '#d5dbe2'); R(x, 24, 11, 3, 2, '#3a2a20');
-    wheel(x, 5, 16); wheel(x, 11, 16); wheel(x, 17, 16);
+    const c = mk(38, 26), x = cx2(c);
+    shadow(x, 18, 23, 17, 2.5);
+    box(x, 2, 11, 20, 7, '#3e8f3a', '#6cbf5a', '#25602a'); R(x, 3, 14, 18, 1, '#2f7530');
+    box(x, 9, 3, 10, 9, '#3e8f3a', '#6cbf5a', '#25602a'); glass(x, 10, 4, 8, 5);
+    R(x, 3, 7, 5, 4, '#2f7530'); R(x, 3, 7, 5, 1, '#6cbf5a'); R(x, 5, 3, 1, 4, '#55555f');
+    pts(x, [[19, 9], [20, 8], [21, 7], [22, 6], [23, 5], [24, 4], [25, 4], [26, 4], [27, 4], [28, 5], [29, 6], [30, 7], [30, 8], [30, 9]], '#ffb21a');
+    pts(x, [[19, 10], [20, 9], [21, 8], [22, 7], [23, 6], [24, 5], [25, 5], [26, 5], [27, 5], [28, 6], [29, 7], [29, 8], [29, 9]], '#c7820f');
+    box(x, 27, 10, 6, 7, '#e2731e', '#ff9e4a', '#a84f12');
+    R(x, 33, 11, 2, 5, '#d5dbe2'); R(x, 34, 11, 1, 5, '#8c949e'); R(x, 28, 12, 3, 2, '#3a2a20');
+    wheel(x, 6, 20, 4); wheel(x, 13, 20, 4); wheel(x, 20, 20, 4);
     return both(outline(c));
   })();
 
   // ---------- Buildings ----------
-  S.village = (function () {
-    const c = mk(56, 62), x = cx2(c);
-    R(x, 4, 57, 50, 4, 'rgba(8,24,16,0.3)');
-    R(x, 6, 30, 44, 27, '#b9854a');
-    for (let y = 33; y < 54; y += 4) R(x, 6, y, 44, 1, '#8f6235');
-    R(x, 6, 30, 2, 27, '#7a5230'); R(x, 48, 30, 2, 27, '#7a5230');
-    R(x, 6, 54, 44, 3, '#7d7a74'); for (let i = 0; i < 7; i++) R(x, 8 + i * 6, 55, 2, 1, '#5d5a55');
-    R(x, 23, 41, 10, 13, '#4a2f1a'); R(x, 24, 42, 8, 12, '#74492a'); R(x, 30, 48, 1, 1, '#f2d16b');
-    for (const wx of [10, 38]) {
-      R(x, wx, 38, 8, 8, '#4a2f1a'); R(x, wx + 1, 39, 6, 6, '#ffd76a');
-      R(x, wx + 4, 39, 1, 6, '#4a2f1a'); R(x, wx + 1, 42, 6, 1, '#4a2f1a');
-    }
-    for (let y = 6; y < 32; y++) {
-      const inset = Math.max(0, Math.round((14 - (y - 6)) * 0.5));
-      for (let X = 2 + inset; X < 54 - inset; X++) {
-        const row = (y - 6) >> 2, k = (X + row * 3) % 6;
-        x.fillStyle = ((y - 6) & 3) === 3 ? '#7f2318' : k === 0 ? '#9c2d1f' : row % 2 ? '#c9442e' : '#d9553a';
-        x.fillRect(X, y, 1, 1);
+  function stoneRow(x, a, b, w, h) {
+    R(x, a, b, w, h, '#6a6760');
+    for (let y = b; y < b + h; y += 2) {
+      for (let i = a + ((y >> 1) & 1) * 3; i < a + w; i += 6) {
+        R(x, i, y, Math.min(5, a + w - i), 1, ((i + y) % 3) ? '#9a978f' : '#86837b');
       }
     }
-    R(x, 9, 5, 38, 2, '#ee8560'); R(x, 2, 32, 52, 2, '#5a1711');
-    R(x, 39, 0, 7, 11, '#8d8a86'); R(x, 39, 0, 7, 2, '#5f5c59'); R(x, 40, 5, 2, 1, '#6f6c69'); R(x, 43, 8, 2, 1, '#6f6c69');
-    R(x, 25, 34, 6, 6, '#2f6fd8'); pts(x, [[26, 35], [29, 35], [27, 36], [28, 36], [27, 37], [28, 37], [26, 38], [29, 38]], '#fff');
-    disc(x, 46, 51, 3.5, '#c8ced6'); disc(x, 46, 51, 1, '#55555f');
-    return outline(c);
+  }
+  function roof(x, x0, x1, y0, y1, ridgeInset) {
+    for (let y = y0; y < y1; y++) {
+      const inset = Math.max(0, Math.round((ridgeInset - (y - y0)) * 0.55));
+      const a = x0 + inset, b = x1 - inset, row = (y - y0) >> 2, ry = (y - y0) & 3;
+      for (let X = a; X < b; X++) {
+        const t = (X - a) / (b - a), k = (X + (row & 1) * 3) % 6;
+        let col = t < 0.45 ? (row % 2 ? '#d9553a' : '#e0613f') : '#bf432d';
+        if (ry === 3) col = t < 0.45 ? '#8f2a1c' : '#7a2218';
+        else if (k === 0) col = '#9c2d1f';
+        else if (ry === 0 && t < 0.5) col = '#ee8560';
+        R(x, X, y, 1, 1, col);
+      }
+    }
+  }
+  function windowLit(x, a, b) {
+    R(x, a - 2, b, 2, 8, '#3f6f3a'); R(x, a + 7, b, 2, 8, '#3f6f3a'); R(x, a - 2, b, 2, 1, '#5e9a52'); R(x, a + 7, b, 2, 1, '#5e9a52');
+    R(x, a, b, 7, 8, '#4a2f1a'); R(x, a + 1, b + 1, 5, 6, '#ffd76a'); R(x, a + 1, b + 1, 2, 2, '#fff1a8');
+    R(x, a + 3, b + 1, 1, 6, '#4a2f1a'); R(x, a + 1, b + 4, 5, 1, '#4a2f1a'); R(x, a - 1, b + 8, 9, 1, '#7a5230');
+  }
+  S.village = (function () {
+    const W = 62, H = 68, c = mk(W, H), x = cx2(c);
+    shadow(x, 34, 63, 31, 4);
+    stoneRow(x, 6, 55, 50, 7);
+    R(x, 7, 34, 48, 21, '#e8d6aa'); R(x, 41, 34, 14, 21, '#cdb98c');
+    for (let y = 36; y < 54; y += 3) for (let X = 8; X < 54; X += 7) R(x, X + ((y / 3) & 1) * 3, y, 1, 1, '#d6c294');
+    R(x, 7, 34, 48, 2, '#5a3a20'); R(x, 7, 53, 48, 2, '#5a3a20');
+    for (const bx of [7, 21, 40, 53]) R(x, bx, 34, 2, 21, '#5a3a20');
+    for (let i = 0; i < 9; i++) { R(x, 42 + i, 36 + i * 2, 2, 2, '#5a3a20'); }
+    windowLit(x, 11, 39); windowLit(x, 44, 39);
+    R(x, 25, 42, 12, 13, '#4a2f1a'); R(x, 26, 43, 10, 12, '#7a4a26'); R(x, 27, 41, 8, 2, '#4a2f1a'); R(x, 28, 42, 6, 1, '#7a4a26');
+    for (let X = 28; X < 36; X += 3) R(x, X, 43, 1, 12, '#5e3820');
+    R(x, 26, 43, 1, 12, '#94603a'); R(x, 33, 49, 1, 1, '#e8c25a');
+    R(x, 24, 55, 14, 2, '#9a978f'); R(x, 24, 55, 14, 1, '#b4b1aa');
+    roof(x, 2, 60, 8, 36, 20);
+    R(x, 2, 35, 58, 2, '#5a1711'); R(x, 13, 8, 36, 1, '#f39a74');
+    box(x, 44, 0, 8, 14, '#8d8a86', '#b4b1aa', '#5f5c59');
+    c.smoke = { x: 49, y: 1 }; // chimney top, in sprite pixels (after the outline is added)
+    R(x, 45, 4, 3, 1, '#6f6c69'); R(x, 48, 8, 3, 1, '#6f6c69'); R(x, 43, 0, 10, 2, '#5f5c59'); R(x, 43, 0, 10, 1, '#8d8a86');
+    // Banner with crossed axes on a pole
+    R(x, 57, 26, 1, 30, '#5a3a20'); R(x, 57, 25, 1, 1, '#e8c25a');
+    R(x, 50, 27, 7, 11, '#2f6fd8'); R(x, 50, 27, 7, 1, '#5e97ee'); R(x, 50, 27, 1, 11, '#5e97ee');
+    pts(x, [[50, 38], [56, 38], [51, 37], [55, 37]], '#2f6fd8'); pts(x, [[53, 37], [53, 36]], '#1f4ea8');
+    pts(x, [[51, 29], [52, 30], [53, 31], [54, 32], [55, 33], [55, 29], [54, 30], [52, 32], [51, 33]], '#ffffff');
+    // Barrel and crate
+    R(x, 1, 47, 6, 9, '#8a5a30'); R(x, 2, 47, 1, 9, '#b07a44'); R(x, 1, 49, 6, 1, '#4a4a52'); R(x, 1, 53, 6, 1, '#4a4a52'); R(x, 1, 47, 6, 1, '#5e3820');
+    box(x, 0, 56, 7, 6, '#b9854a', '#d8a868', '#7a5230'); pts(x, [[1, 57], [2, 58], [3, 59], [4, 60], [5, 57], [4, 58], [2, 60]], '#7a5230');
+    const o = outline(c);
+    o.smoke = c.smoke;
+    return o;
   })();
 
-  function logPile(x, ox, oy) {
-    const rows = [[5, 0], [4, 2.5], [3, 5]];
-    rows.forEach((rw, ri) => {
-      for (let i = 0; i < rw[0]; i++) {
-        const cx = ox + rw[1] + i * 5 + 2.5, cy = oy - ri * 4.3;
-        disc(x, cx, cy, 2.6, '#7a4d26'); disc(x, cx, cy, 1.8, '#e6c88a'); x.fillStyle = '#b98d52'; x.fillRect(Math.floor(cx), Math.floor(cy), 1, 1);
-      }
-    });
+  function logEnd(x, cx, cy) {
+    disc(x, cx, cy, 2.7, '#6e4220'); disc(x, cx, cy, 2, '#e3c286'); disc(x, cx, cy, 1, '#c79a5c'); R(x, Math.floor(cx) - 1, Math.floor(cy) - 1, 1, 1, '#f4dca6');
   }
   S.depot = (function () {
-    const c = mk(34, 30), x = cx2(c);
-    R(x, 2, 26, 30, 3, 'rgba(8,24,16,0.3)');
-    R(x, 2, 8, 30, 19, '#8a6a42'); R(x, 3, 9, 28, 17, '#a5814f');
-    logPile(x, 4, 22);
-    for (const px of [1, 31]) { R(x, px, 12, 2, 15, '#5c3a1f'); }
-    R(x, 1, 18, 3, 1, '#7a5230'); R(x, 30, 18, 3, 1, '#7a5230');
-    R(x, 14, 2, 1, 8, '#5c3a1f'); R(x, 15, 2, 6, 4, '#f0b820'); R(x, 15, 2, 6, 1, '#ffd95a');
+    const c = mk(38, 34), x = cx2(c);
+    shadow(x, 20, 30, 18, 3);
+    R(x, 2, 18, 34, 12, '#8a6a42'); R(x, 2, 18, 34, 1, '#a5814f');
+    for (let X = 4; X < 36; X += 5) R(x, X, 19, 1, 11, '#7a5c38');
+    const rows = [[6, 0], [5, 2.5], [4, 5], [3, 7.5]];
+    rows.forEach((rw, ri) => { for (let i = 0; i < rw[0]; i++) logEnd(x, 6 + rw[1] + i * 5, 26 - ri * 4.4); });
+    for (const px of [1, 35]) { box(x, px, 12, 2, 18, '#6b4526', '#8a5c34', '#4a2f1a'); }
+    R(x, 1, 17, 36, 1, '#7a5230'); R(x, 1, 23, 2, 1, '#7a5230'); R(x, 35, 23, 2, 1, '#7a5230');
+    R(x, 31, 1, 1, 11, '#5c3a1f'); R(x, 32, 1, 5, 4, '#f0b820'); R(x, 32, 1, 5, 1, '#ffd95a'); R(x, 36, 2, 1, 3, '#c48f12');
     return outline(c);
   })();
 
   S.camp = (function () {
-    const c = mk(34, 30), x = cx2(c);
-    R(x, 3, 26, 24, 3, 'rgba(8,24,16,0.3)');
-    for (let y = 4; y < 26; y++) {
-      const half = Math.round((y - 4) * 0.6) + 1;
-      R(x, 14 - half, y, half, 1, '#eadbb0'); R(x, 14, y, half, 1, '#c9b27c');
+    const c = mk(40, 34), x = cx2(c);
+    shadow(x, 18, 30, 17, 3);
+    for (let y = 4; y < 29; y++) {
+      const half = Math.round((y - 4) * 0.58) + 1;
+      R(x, 15 - half, y, half, 1, y % 5 === 0 ? '#dccb98' : '#eadbb0');
+      R(x, 15, y, half, 1, y % 5 === 0 ? '#b49d68' : '#c9b27c');
     }
-    for (let y = 14; y < 26; y++) { const half = Math.round((y - 14) * 0.3) + 1; R(x, 14 - half, y, half * 2, 1, '#3a2a20'); }
-    R(x, 13, 2, 2, 3, '#5c3a1f');
-    R(x, 26, 24, 6, 2, '#5c3a1f'); R(x, 28, 21, 2, 3, '#ff8a2a'); R(x, 28, 20, 1, 2, '#ffd84a'); R(x, 29, 22, 1, 1, '#ffd84a');
+    for (let y = 15; y < 29; y++) { const half = Math.round((y - 15) * 0.32) + 1; R(x, 15 - half, y, half * 2, 1, '#2e2018'); }
+    R(x, 14, 15, 1, 14, '#c9b27c'); R(x, 14, 2, 2, 3, '#5c3a1f');
+    pts(x, [[2, 28], [3, 27], [28, 28], [27, 27]], '#5c3a1f');
+    // Campfire with a ring of stones and a log seat
+    for (const [a, b] of [[29, 29], [31, 30], [34, 30], [36, 29], [33, 28]]) R(x, a, b, 2, 1, '#8d8a86');
+    R(x, 31, 28, 4, 1, '#5c3a1f'); R(x, 32, 24, 2, 4, '#ff8a2a'); R(x, 31, 26, 1, 2, '#ff8a2a'); R(x, 34, 25, 1, 3, '#ff8a2a');
+    R(x, 32, 22, 1, 3, '#ffd84a'); R(x, 33, 25, 1, 2, '#ffd84a'); R(x, 32, 26, 1, 1, '#fff3b0');
+    box(x, 26, 31, 12, 3, '#8a5a30', '#a8743a', '#5e3820'); R(x, 26, 31, 1, 3, '#e3c286');
     return outline(c);
   })();
 
   S.sign = (function () {
-    const c = mk(14, 16), x = cx2(c);
-    R(x, 6, 7, 2, 9, '#5c3a1f'); R(x, 1, 1, 12, 7, '#c99a5b'); R(x, 1, 1, 12, 1, '#e3bb7c');
-    pts(x, [[3, 4], [4, 3], [4, 5], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [5, 2], [5, 6]], '#4a2f1a');
+    const c = mk(16, 20), x = cx2(c);
+    shadow(x, 9, 18, 5, 1.5);
+    box(x, 7, 8, 2, 11, '#6b4526', '#8a5c34', '#4a2f1a');
+    box(x, 1, 1, 14, 8, '#c99a5b', '#e3bb7c', '#8f6a3a');
+    pts(x, [[3, 4], [4, 3], [4, 5], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [5, 2], [5, 6]], '#4a2f1a');
+    R(x, 12, 3, 2, 3, '#f0c040'); R(x, 12, 3, 1, 1, '#fff0a0');
     return outline(c);
   })();
 
   // ---------- Icons (12x12) ----------
-  const icon = fn => { const c = mk(12, 12); fn(cx2(c)); return c; };
   const I = (S.icons = {});
   I.coin = icon(x => { disc(x, 6, 6, 5.5, '#b9820f'); disc(x, 6, 6, 4.5, '#ffd84a'); R(x, 5, 3, 2, 6, '#d39a17'); R(x, 4, 4, 1, 1, '#fff3b0'); });
   I.log = icon(x => { R(x, 1, 3, 9, 6, '#a8703a'); R(x, 1, 3, 9, 1, '#c98f52'); R(x, 1, 8, 9, 1, '#7a4d26'); disc(x, 9.5, 6, 3, '#7a4d26'); disc(x, 9.5, 6, 2.2, '#ecd29a'); R(x, 9, 6, 1, 1, '#b98d52'); });
   I.plank = icon(x => { R(x, 0, 2, 10, 3, '#f0d59a'); R(x, 0, 5, 10, 1, '#b98d52'); R(x, 2, 6, 10, 3, '#e2c080'); R(x, 2, 9, 10, 1, '#a87c44'); R(x, 10, 2, 1, 4, '#c9a468'); });
-  I.stone = icon(x => { x.drawImage(S.rocks[0], 1, 0, 18, 16, 0, 0, 12, 11); });
-  I.jack = icon(x => { x.drawImage(S.jack.axe.idle.r, 4, 0, 14, 12, -1, 0, 14, 12); });
-  I.axe = icon(x => { for (let i = 0; i < 8; i++) R(x, 2 + i, 10 - i, 2, 1, WOODC); R(x, 6, 1, 5, 3, METAL); R(x, 8, 4, 3, 2, METAL); R(x, 10, 1, 1, 5, '#fff'); });
+  I.axe = icon(x => { for (let i = 0; i < 8; i++) R(x, 2 + i, 10 - i, 2, 1, '#a8743a'); R(x, 6, 1, 5, 3, '#d5dbe2'); R(x, 8, 4, 3, 2, '#d5dbe2'); R(x, 10, 1, 1, 5, '#fff'); });
   I.chainsaw = icon(x => { R(x, 1, 5, 5, 4, '#e2731e'); R(x, 1, 3, 4, 2, '#3a2a20'); R(x, 6, 6, 6, 1, '#d5dbe2'); R(x, 6, 7, 6, 1, '#8c949e'); R(x, 2, 6, 2, 1, '#ffb066'); });
   I.boot = icon(x => { R(x, 3, 1, 4, 7, '#7a4520'); R(x, 3, 7, 7, 3, '#7a4520'); R(x, 3, 10, 8, 1, '#2b2019'); R(x, 3, 1, 4, 1, '#a8743a'); R(x, 4, 3, 2, 1, '#e6c88a'); R(x, 4, 5, 2, 1, '#e6c88a'); });
-  I.bag = icon(x => { R(x, 2, 4, 8, 7, '#8a6a42'); R(x, 3, 3, 6, 1, '#8a6a42'); R(x, 4, 1, 4, 2, '#5c3a1f'); R(x, 5, 2, 2, 1, '#0000'); R(x, 2, 6, 8, 1, '#5c3a1f'); R(x, 5, 6, 2, 2, '#e6c88a'); });
+  I.bag = icon(x => { R(x, 2, 4, 8, 7, '#8a6a42'); R(x, 3, 3, 6, 1, '#8a6a42'); R(x, 4, 1, 4, 2, '#5c3a1f'); R(x, 2, 6, 8, 1, '#5c3a1f'); R(x, 5, 6, 2, 2, '#e6c88a'); });
   I.barrow = icon(x => { R(x, 2, 4, 7, 4, '#c8372d'); R(x, 3, 3, 5, 1, '#a8703a'); R(x, 8, 5, 4, 1, '#5c3a1f'); disc(x, 3.5, 9.5, 2, '#1d1d24'); R(x, 6, 8, 1, 3, '#5c3a1f'); });
   I.blade = icon(x => { disc(x, 6, 6, 5.5, '#8c949e'); disc(x, 6, 6, 4.3, '#d5dbe2'); disc(x, 6, 6, 1.2, '#55555f'); pts(x, [[6, 0], [11, 6], [6, 11], [0, 6], [2, 2], [9, 2], [2, 9], [9, 9]], '#55555f'); });
   I.clip = icon(x => { R(x, 2, 1, 8, 10, '#a8703a'); R(x, 3, 2, 6, 8, '#f4f4f4'); R(x, 4, 0, 4, 2, '#8c949e'); R(x, 4, 4, 4, 1, '#666'); R(x, 4, 6, 4, 1, '#666'); R(x, 4, 8, 3, 1, '#666'); });
   I.hat = icon(x => { R(x, 3, 3, 6, 4, '#f0b820'); R(x, 4, 2, 4, 1, '#ffd95a'); R(x, 1, 7, 10, 2, '#d39a17'); R(x, 5, 2, 2, 5, '#ffd95a'); });
-  I.road = icon(x => { R(x, 0, 3, 12, 6, '#8d8a86'); R(x, 0, 3, 12, 1, '#5f5c59'); R(x, 0, 8, 12, 1, '#5f5c59'); R(x, 1, 6, 2, 1, '#f4f4f4'); R(x, 5, 6, 2, 1, '#f4f4f4'); R(x, 9, 6, 2, 1, '#f4f4f4'); });
   I.clock = icon(x => { disc(x, 6, 6, 5.5, '#4a2f1a'); disc(x, 6, 6, 4.5, '#f4f4f4'); R(x, 6, 3, 1, 4, '#222'); R(x, 6, 6, 3, 1, '#222'); });
   I.bunk = icon(x => { R(x, 1, 5, 10, 6, '#b9854a'); for (let i = 0; i < 5; i++) R(x, 1 + i, 4 - i + 1, 10 - i * 2, 1, '#c9442e'); R(x, 5, 7, 2, 4, '#4a2f1a'); R(x, 2, 7, 2, 2, '#ffd76a'); R(x, 8, 7, 2, 2, '#ffd76a'); });
   I.rifle = icon(x => { R(x, 0, 6, 5, 3, '#7a4520'); R(x, 4, 5, 8, 2, '#3a3a44'); R(x, 4, 5, 8, 1, '#8c949e'); R(x, 5, 7, 1, 2, '#3a3a44'); R(x, 0, 8, 2, 2, '#5c3a1f'); });
-  LJ.spr = { mk, cx2, art, outline, flip, both, R, disc, shadow, pts, icon };
   I.truck = S.truck.full.r; I.dozer = S.dozer.r; I.harv = S.harv.r; I.village = S.village; I.depot = S.depot;
 })();

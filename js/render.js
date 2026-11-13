@@ -19,12 +19,12 @@
       f = cargo ? set.carry[1 + k] : set.walk[k];
     } else f = cargo ? set.carry[0] : set.idle;
     const img = u.dir > 0 ? f.r : f.l;
-    const x = Math.round(u.x) - 11 - cx, y = Math.round(u.y) - 16 - cy;
-    if (!ghost && G.sel.has(u)) ctx.drawImage(S.ringS, x + 3, y + 12);
+    const x = Math.round(u.x) - img.ax - cx, y = Math.round(u.y) - img.ay - cy;
+    if (!ghost && G.sel.has(u)) ctx.drawImage(S.ringS, x + 2, y + 17);
     ctx.drawImage(img, x, y);
     if (ghost) return;
-    if (u.hp < 100) bar(ctx, x + 4, y - 4, 12, u.hp / 100, u.hp > 40 ? '#5fdc3c' : '#ff4a3a');
-    else if (u.state === 'chop' && u.target >= 0 && !u.path.length) bar(ctx, x + 4, y - 4, 12, 1 - G.world.hp[u.target], '#ffd84a');
+    if (u.hp < 100) bar(ctx, x + 4, y - 3, 12, u.hp / 100, u.hp > 40 ? '#5fdc3c' : '#ff4a3a');
+    else if (u.state === 'chop' && u.target >= 0 && !u.path.length) bar(ctx, x + 4, y - 3, 12, 1 - G.world.hp[u.target], '#ffd84a');
   }
 
   function drawVehicle(ctx, u, cx, cy, G, ghost) {
@@ -39,12 +39,18 @@
   }
   const drawAny = (ctx, u, cx, cy, G, ghost) => (u.kind === 'jack' ? drawUnit : drawVehicle)(ctx, u, cx, cy, G, ghost);
 
-  function drawAnimal(ctx, a, cx, cy) {
-    const fr = S[a.kind][Math.floor(a.walkT * 9) % 2], img = a.dir > 0 ? fr.r : fr.l;
-    const x = Math.round(a.x) - (img.width >> 1) - cx, y = Math.round(a.y) - img.height + 1 - cy;
-    ctx.drawImage(img, x, y);
-    if (a.hp < a.max) bar(ctx, x + (img.width >> 1) - 7, y - 4, 12, a.hp / a.max, '#ff4a3a');
+  // Draws a two-frame, left/right creature centred on (x, y = its feet); returns the top-left corner.
+  function drawCreature(ctx, frames, frame, dir, x, y, foot, cx, cy) {
+    const fr = frames[frame], img = dir > 0 ? fr.r : fr.l;
+    const X = Math.round(x) - (img.width >> 1) - cx, Y = Math.round(y) + foot - img.height - cy;
+    ctx.drawImage(img, X, Y);
+    return [X + (img.width >> 1), Y];
   }
+  function drawAnimal(ctx, a, cx, cy) {
+    const [mx, top] = drawCreature(ctx, S[a.kind], Math.floor(a.walkT * 9) % 2, a.dir, a.x, a.y, 1, cx, cy);
+    if (a.hp < a.max) bar(ctx, mx - 7, top - 4, 12, a.hp / a.max, '#ff4a3a');
+  }
+  const decoShown = (w, i, dc) => !w.bld[i] && !w.obj[i] && LJ.DECO[dc].show(w, i);
 
   LJ.render = function () {
     const G = LJ.G, w = G.world, cv = LJ.cv, ctx = LJ.ctx;
@@ -54,8 +60,9 @@
     ctx.fillStyle = '#0c1a0d'; ctx.fillRect(0, 0, vw, vh);
     ctx.drawImage(G.ground.cv, -cx, -cy);
 
-    const tx0 = Math.max(0, Math.floor(cx / TS) - 1), tx1 = Math.min(W - 1, Math.floor((cx + vw) / TS) + 1);
-    const ty0 = Math.max(0, Math.floor(cy / TS) - 1), ty1 = Math.min(H - 1, Math.floor((cy + vh) / TS) + 3);
+    // Trees are up to 3 tiles tall, so look a little beyond the screen edges for things that poke into view.
+    const tx0 = Math.max(0, Math.floor(cx / TS) - 2), tx1 = Math.min(W - 1, Math.floor((cx + vw) / TS) + 2);
+    const ty0 = Math.max(0, Math.floor(cy / TS) - 1), ty1 = Math.min(H - 1, Math.floor((cy + vh) / TS) + LJ.TREE_ROWS);
 
     // Water sparkles
     const tb = Math.floor(G.time * 3);
@@ -77,9 +84,13 @@
     const list = [];
     for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
       const i = ty * W + tx, o = w.obj[i];
-      if (o >= 1 && o <= 3) list.push({ k: 0, i, tx, ty, y: ty * TS + 13 + ((hash(i, 2, s) * 5) | 0) - 2 });
-      else if (w.type[i] === T.ROCK) list.push({ k: 1, i, tx, ty, y: ty * TS + 15 });
+      if (o >= 1 && o <= 3) list.push({ k: 0, i, bx: LJ.treeX(w, i), y: LJ.treeY(w, i) });
+      else if (o === LJ.STUMP) list.push({ k: 11, i, bx: LJ.treeX(w, i), y: LJ.treeY(w, i) - 1 });
+      else if (w.type[i] === T.ROCK) { const oy = ((hash(i, 7, s) * 9) | 0) - 4; list.push({ k: 1, i, tx, ty, oy, y: ty * TS + 14 + oy }); }
+      const dc = w.deco[i];
+      if (dc && decoShown(w, i, dc)) list.push({ k: 12, i, tx, ty, dc, y: ty * TS + LJ.DECO[dc].y + ((hash(i, 5, s) * 5) | 0) - 2 });
     }
+    for (const c of G.critters) list.push({ k: 13, c, y: c.y });
     for (const b of G.buildings) list.push({ k: 2, b, y: (b.ty + b.h) * TS });
     list.push({ k: 5, y: w.roadY * TS + 1 });
     for (const u of G.units) list.push({ k: 3, u, y: u.y });
@@ -95,15 +106,33 @@
       switch (d.k) {
         case 0: {
           const spr = S.trees[w.obj[d.i] - 1][w.variant[d.i]];
-          let ox = ((hash(d.i, 1, s) * 7) | 0) - 3;
-          if (w.hp[d.i] < 1 && w.claim[d.i]) ox += Math.floor(G.time * 12) % 2 ? 1 : 0; // shiver while being chopped
-          ctx.drawImage(spr, d.tx * TS + 8 + ox - 15 - cx, d.y - 35 - cy);
+          const shiver = w.hp[d.i] < 1 && w.claim[d.i] && Math.floor(G.time * 12) % 2 ? 1 : 0; // shivers while being chopped
+          ctx.drawImage(spr, d.bx - spr.ax + shiver - cx, d.y - spr.ay - cy);
           break;
         }
-        case 1: ctx.drawImage(S.rocks[(hash(d.i, 3, s) * 4) | 0], d.tx * TS - 2 - cx, d.ty * TS - 3 - cy); break;
+        case 1: {
+          // Rock fields: boulders of mixed sizes, nudged off the grid, with pebbles in some of the gaps.
+          const h = hash(d.i, 3, s), spr = h < 0.2 ? S.pebbles[(h * 10) & 1] : S.rocks[(h * 4) | 0];
+          ctx.drawImage(spr, d.tx * TS + 8 - (spr.width >> 1) + ((hash(d.i, 4, s) * 11) | 0) - 5 - cx, d.ty * TS + 18 + d.oy - spr.height - cy);
+          break;
+        }
+        case 11: { const spr = S.stumps[w.variant[d.i] % 3]; ctx.drawImage(spr, d.bx - 9 - cx, d.y - 11 - cy); break; }
+        case 12: {
+          const name = LJ.DECO[d.dc].name, list = name === 'pebbles' ? S.pebbles : S.decor[name], spr = list[w.decoV[d.i] % list.length];
+          const ox = ((hash(d.i, 6, s) * 7) | 0) - 3;
+          ctx.drawImage(spr, d.tx * TS + 8 + ox - (spr.width >> 1) - cx, d.y + 2 - spr.height - cy);
+          break;
+        }
+        case 13: {
+          const c = d.c;
+          ctx.globalAlpha = Math.max(0, c.alpha);
+          drawCreature(ctx, S[c.kind], c.moving ? Math.floor(c.walkT * 8) % 2 : 0, c.dir, c.x, c.y, 2, cx, cy);
+          ctx.globalAlpha = 1;
+          break;
+        }
         case 2: {
           const b = d.b, spr = S[b.kind];
-          const bx = b.tx * TS + ((b.w * TS - spr.width) >> 1) - cx, by = (b.ty + b.h) * TS + 1 - spr.height - cy;
+          const o = LJ.bldOrigin(b), bx = o[0] - cx, by = o[1] - cy;
           ctx.drawImage(spr, bx, by);
           if (b.queue.length) bar(ctx, bx + 14, by - 5, 28, 1 - b.queue[0].t / b.queue[0].total, '#58c8ff');
           break;
@@ -115,17 +144,18 @@
           ctx.translate(f.x - cx, f.y - cy);
           ctx.rotate(f.dir * p * p * 1.5);
           ctx.globalAlpha = f.t > 0.6 ? Math.max(0, 1 - (f.t - 0.6) / 0.3) : 1;
-          ctx.drawImage(spr, -15, -35);
+          ctx.drawImage(spr, -spr.ax, -spr.ay);
           ctx.restore();
           break;
         }
-        case 5: ctx.drawImage(S.sign, 2 - cx, (w.roadY - 1) * TS - 4 - cy); break;
+        case 5: ctx.drawImage(S.sign, 2 - cx, w.roadY * TS + 2 - S.sign.height - cy); break;
         case 6: drawAnimal(ctx, d.a, cx, cy); break;
         case 7: ctx.drawImage(S.grave, Math.round(d.g.x) - 5 - cx, Math.round(d.g.y) - 12 - cy); break;
         case 9: ctx.drawImage(d.p.spr, Math.round(d.p.x - d.p.spr.width / 2) - cx, Math.round(d.p.y - d.p.spr.height) - cy); break;
         case 10: {
           const s = G.suit, f = s.path.length ? S.suit.walk[Math.floor(s.walkT * 8) % 2] : S.suit.idle;
-          ctx.drawImage(s.dir > 0 ? f.r : f.l, Math.round(s.x) - 11 - cx, Math.round(s.y) - 16 - cy);
+          const img = s.dir > 0 ? f.r : f.l;
+          ctx.drawImage(img, Math.round(s.x) - img.ax - cx, Math.round(s.y) - img.ay - cy);
           break;
         }
         case 8: {
