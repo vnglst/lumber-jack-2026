@@ -502,10 +502,12 @@
       '<button data-a="resume" data-esc>Back to work</button>' +
       '<button data-a="help" class="ghost">How to play</button>' +
       '<button data-a="sound" class="ghost">Sound: ' + (muted ? 'off' : 'on') + '</button>' +
+      '<button data-a="music" class="ghost">Music: ' + (LJ.music.isOn() ? 'on' : 'off') + '</button>' +
       '<button data-a="fresh" class="ghost">New game</button></div>' +
       '<p class="fine">The game saves itself as you play.</p>', {
       help: ui.showHelp,
       sound: () => { toggleSound(); ui.showMenu(); },
+      music: () => { LJ.music.toggle(); ui.showMenu(); },
       fresh: () => dialog('<h1>Start a new game?</h1><p>This forest and everything you built in it will be replaced by a fresh one.</p>' +
         '<div class="row"><button data-a="yes">Start a new game</button><button data-a="no" class="ghost" data-esc>Keep playing</button></div>', { yes: ui.restart, no: ui.showMenu })
     });

@@ -60,6 +60,7 @@ How to read it:
 | 47 | 14 Nov | Map-edge navigation and black padding | Active |
 | 48 | 14 Nov | An interface of its own: painted boards, not Stardew wood | Active |
 | 49 | 14 Nov | Predictable navigation and controls | Active |
+| 50 | 14 Nov | Music for the opening, play and other scenes | Active |
 
 ---
 
@@ -621,3 +622,21 @@ How to read it:
 - *Decision: a clicked button gives the keyboard back, so Space and Enter never re-trigger the last button pressed.*
 - *Decision: the idle hint now points to the idle button. Idle means no task, no path, not told to stop and not fighting, the same rule the hint already used.*
 - Saves and game rules are unchanged. The offline shell cache is bumped to v3.
+
+## 50. Music for the opening, play and other scenes (14 Nov 2026)
+
+> Compose nice music for intro, playing and other scenes.
+
+- The game has original music for the opening screen, the opening drive, play, and the other scenes.
+- *Decision: music is composed as data and synthesized in the browser, like the sound effects: scores in `js/songs.js` in a short text notation, played by a sequencer and eight synthesized instruments in `js/music.js`. No audio files and no dependencies.*
+- *Decision: six pieces, all original, with a Finnish colour (a plucked kantele-like voice, a flute, a bowed jouhikko-like voice, frame drum):*
+  - *"Revontulet" on the opening screen: 5/4, the metre of the old runo songs, in D dorian.*
+  - *"Maantie" during the opening drive: sparse and quiet, so Jack's story is heard over it.*
+  - *"Savotta" while playing, levels 1–4: a working tune in D, with the melody resting every fourth section.*
+  - *"Korpi" while playing, from level 5: the same camp further in, slower and in the relative minor.*
+  - *A drum-led piece while a war party is attacking; the play music returns when it retreats.*
+  - *The ending theme: the camp tune's opening, slowed and turned minor, on bells. Mr. Grant arrives and talks in silence; the theme starts when construction does. Nothing before the ending hints at it.*
+- *Decision: songs cross-fade over about a second and a half when the scene changes. The sequencer runs from the frame loop, so a hidden tab falls silent and resumes where it left off.*
+- *Decision: the ♪ button now mutes everything, music included. Music has its own on/off in the pause menu, remembered in the browser (`lumberjack-music`), separate from saves.*
+- *Decision: browsers only allow sound after a first tap or key press. The first one anywhere, including on the opening screen, starts the audio, so the title music begins then rather than on page load.*
+- Added tests that every score parses, fills whole bars and that tracks of one song line up. The offline shell includes the two new scripts and is bumped to v4.
