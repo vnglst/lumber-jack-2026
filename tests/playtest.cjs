@@ -33,7 +33,10 @@ function opening(seed, seconds = 600) {
     if (!firstSale && g.sold) { firstSale = true; events.push({ time: Math.round(g.time), event: 'first sale' }); }
     if (!lj.jackCount()) { events.push({ time: Math.round(g.time), event: 'crew lost' }); break; }
   }
-  return { seed, seconds, level: g.level, cleared: g.cleared, money: g.money, earned: g.earned, jacks: lj.jackCount(), events };
+  return {
+    seed, seconds, level: g.level, cleared: g.cleared, money: g.money, earned: g.earned, jacks: lj.jackCount(),
+    crew: lj.jacks().map(u => ({ name: u.name, xp: Math.floor(u.xp || 0), rank: lj.rankOf(u).name })), events
+  };
 }
 
 if (require.main === module) {

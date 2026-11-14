@@ -11,6 +11,25 @@
   const SPECIES = [null, { t: 3.6, y: 3 }, { t: 6, y: 6 }, { t: 4.5, y: 4 }];
   const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
   const NAMES = ['Jacques', 'Jackie', 'Big Jack', 'Jack Jr.', 'Jaq', 'Old Jack', 'Jax', 'Jacko', 'Lil Jack', 'Jackson', 'Jacqueline', 'Jock'];
+  const JACK_RANKS = (LJ.JACK_RANKS = [
+    { name: 'Greenhorn', xp: 0, work: 1, carry: 0, speed: 1 },
+    { name: 'Woodsman', xp: 40, work: 1.15, carry: 2, speed: 1.03 },
+    { name: 'Veteran', xp: 160, work: 1.3, carry: 4, speed: 1.06 },
+    { name: 'Expert', xp: 480, work: 1.4, carry: 5, speed: 1.08 },
+    { name: 'Master', xp: 1200, work: 1.5, carry: 6, speed: 1.1 }
+  ]);
+  const rankOf = (LJ.rankOf = u => {
+    let rank = JACK_RANKS[0];
+    for (const r of JACK_RANKS) if ((u.xp || 0) >= r.xp) rank = r;
+    return rank;
+  });
+  function gainXP(u, amount) {
+    if (u.kind !== 'jack' || u.dead || amount <= 0) return;
+    const before = rankOf(u);
+    u.xp = Math.min(JACK_RANKS[JACK_RANKS.length - 1].xp, (u.xp || 0) + amount);
+    const after = rankOf(u);
+    if (after !== before) LJ.float(u.x, u.y - 22, after.name + '!', 'xp');
+  }
   const VEH = (LJ.VEH = {
     truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, cap: () => (G.up.mega ? 120 : 60), max: 3 },
     shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, cap: () => 40, max: 4, sprite: 'truck', voice: 'truck' },
@@ -252,7 +271,7 @@
   function makeUnit(tx, ty, name, kind, wage) {
     return {
       id: G.nextId++, kind, x: tx * TS + 8, y: ty * TS + 10, tile: ty * W + tx, path: [], state: 'idle', task: null,
-      carry: 0, load: null, dir: 1, wait: 0, walkT: 0, swing: 0, sawT: 0, target: -1, clicks: 0, lastClick: -99,
+      carry: 0, load: null, xp: 0, dir: 1, wait: 0, walkT: 0, swing: 0, sawT: 0, target: -1, clicks: 0, lastClick: -99,
       lastWhack: -9, name, hired: wage > 0, wage, hp: kind === 'jack' ? 100 : VEH[kind].hp, atkCd: 0, fighting: false, hold: false
     };
   }
@@ -306,12 +325,12 @@
   }
   LJ.bfs = bfs;
 
-  const capOf = u => (u && u.kind !== 'jack' ? VEH[u.kind].cap() : G.up.barrow ? 24 : G.up.sling ? 14 : 8);
+  const capOf = u => (u && u.kind !== 'jack' ? VEH[u.kind].cap() : (G.up.barrow ? 24 : G.up.sling ? 14 : 8) + (u ? rankOf(u).carry : 0));
   // Unpaid hired jacks slack off, and unpaid machines run out of fuel, until the debt is cleared.
   const effort = u => (G.money < 0 && u.hired ? 0.7 : 1);
   function chopTime(t, u) {
     if (u.kind === 'harv') return 1.6 * (G.up.turbo ? 0.6 : 1);
-    return SPECIES[w.obj[t]].t * (G.up.sharpaxe ? 0.65 : 1) * (G.up.chainsaw ? 0.5 : 1);
+    return SPECIES[w.obj[t]].t * (G.up.sharpaxe ? 0.65 : 1) * (G.up.chainsaw ? 0.5 : 1) / rankOf(u).work;
   }
   function speedOf(u) {
     // Trails (worn dirt, gravel) help a little; the road to market helps a lot, most of all for trucks.
@@ -323,7 +342,7 @@
     if (G.up.boots) s *= 1.25;
     if (u.carry > 0 || u.load) s *= 0.85;
     if (road) s *= 1.3; else if (trail) s *= 1.15;
-    return s;
+    return s * rankOf(u).speed;
   }
 
   function stepPath(u, dt, speed) {
@@ -496,6 +515,7 @@
       if (t && Math.hypot(t.x - u.x, t.y - u.y) < 2 * TS) {
         const qty = Math.min(u.carry, capOf(t) - t.carry);
         t.carry += qty; u.carry -= qty;
+        gainXP(u, qty / 4);
         if (qty) LJ.float(u.x, u.y - 18, '+' + qty + ' wood loaded', '');
       }
       u.dropId = null;
@@ -509,6 +529,7 @@
     if (wd + lum + st <= 0) return;
     const gain = Math.round((wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone) * TIERS[G.tier].sellMul);
     G.money += gain; G.earned += gain; G.sold += wd + lum + st;
+    gainXP(u, (wd + lum + st) / 2);
     LJ.float(u.x + 6, u.y - 18, '+$' + gain, 'money');
     LJ.sfx('coin');
     const o = G.order;
@@ -524,6 +545,7 @@
   function deposit(u) {
     if (u.carry <= 0) return;
     G.wood += u.carry;
+    gainXP(u, u.carry / 4);
     LJ.float(u.x, u.y - 18, '+' + u.carry + ' wood', '');
     u.carry = 0;
   }
@@ -533,6 +555,7 @@
     G.falls.push({ sp: w.obj[t], v: w.variant[t], t: 0, dir: u.x <= bx ? 1 : -1, x: bx, y: by });
     u.carry += SPECIES[w.obj[t]].y + (w.variant[t] === 2 ? 1 : 0);
     w.obj[t] = STUMP; w.claim[t] = 0; G.cleared++; G.worldVer++;
+    gainXP(u, 4);
     if (u.task && u.task.type === 'work') { u.task.ax = tx; u.task.ay = ty; } // the work spot follows the forest edge
     // The land around a felled tree loses some of its lushness - cut enough and it turns to wasteland.
     for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
@@ -794,7 +817,7 @@
         break;
       case 'shuttleDrop': deposit(u); think(u); break;
       case 'toSaw': {
-        if (u.carry) { G.wood += u.carry; u.carry = 0; }
+        deposit(u);
         u.state = 'saw'; u.sawT = 0;
         const mill = atSawmill(u);
         if (mill) face(u, (mill.tx + 1.5) * TS);
@@ -807,10 +830,11 @@
           break;
         }
         if (G.wood < 2) { u.swing = 0; break; }
-        u.swing += dt; u.sawT += dt * effort(u);
+        u.swing += dt; u.sawT += dt * effort(u) * rankOf(u).work;
         if (u.swing > 0.5) { u.swing = 0; LJ.sfx('saw'); chip(u.x + u.dir * 6, u.y - 6, '#e6c88a'); }
         if (u.sawT >= SAW_TIME) {
           u.sawT = 0; G.wood -= 2; G.lumber++;
+          gainXP(u, 2);
           LJ.float(u.x, u.y - 18, '+1 lumber', '');
         }
         break;

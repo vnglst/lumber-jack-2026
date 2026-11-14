@@ -365,6 +365,7 @@
       '<li>Select jacks and <b>tap anywhere</b> to send them there. Keep tapping a tree being chopped to land extra whacks.</li>' +
       '<li>You arrive by <b>truck</b> and pitch your tent. Jacks carry wood back to camp; your truck sells the surplus at the market down the road west. Camp keeps 20 wood for building.</li>' +
       '<li>Upgrade your tent into a village and build houses and sawmills. Logging Trucks shuttle harvested wood from a forest clearing back to your village; market trucks sell it.</li>' +
+      '<li>Jacks learn through work. Select one to see his rank and XP: experience improves chopping, processing, carrying and walking.</li>' +
       '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
       '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection.</li>' +
       '<li>The game saves itself as you play.</li></ul>' : '') +
@@ -488,7 +489,7 @@
 
   function refreshPanel() {
     const sel = [...G.sel];
-    const sig = G.wallMode ? 'wall' : G.place ? 'place' : sel.map(u => u.id + ':' + LJ.statusOf(u) + ':' + LJ.cargoOf(u) + ':' + (u.hp | 0)).join('|') + (G.village ? 'v' : '') + (G.up.dispatch ? 'd' : '');
+    const sig = G.wallMode ? 'wall' : G.place ? 'place' : sel.map(u => u.id + ':' + LJ.statusOf(u) + ':' + LJ.cargoOf(u) + ':' + (u.hp | 0) + ':' + (u.xp | 0)).join('|') + (G.village ? 'v' : '') + (G.up.dispatch ? 'd' : '');
     if (sig === panelSig) return;
     panelSig = sig;
     const p = $('panel');
@@ -499,10 +500,17 @@
     const allJacks = sel.every(s => s.kind === 'jack');
     const title = sel.length > 1 ? sel.length + (allJacks ? ' Jacks' : ' units') : u.name + (u.hp < LJ.maxHpOf(u) ? ' · ♥ ' + Math.ceil(u.hp) : '');
     const st = sel.length > 1 ? 'Carrying ' + cargo : LJ.statusOf(u) + (u.kind === 'dozer' ? '' : ' · ' + cargo + '/' + LJ.capOf(u));
+    let experience = '';
+    if (sel.length === 1 && u.kind === 'jack') {
+      const rank = LJ.rankOf(u), next = LJ.JACK_RANKS[LJ.JACK_RANKS.indexOf(rank) + 1];
+      const bonus = Math.round((rank.work - 1) * 100);
+      experience = '<div class="experience" title="Earn XP by felling trees, processing lumber and delivering goods. Higher ranks improve work, carrying and walking.">' +
+        rank.name + ' · ' + Math.floor(u.xp || 0) + (next ? '/' + next.xp + ' XP' : ' XP · max') + (bonus ? ' · +' + bonus + '% work' : '') + '</div>';
+    }
     let btn = '';
     if (has('jack') && G.count.sawmill) btn += '<button data-act="saw">Saw lumber</button>';
     if (has('jack') || has('truck')) btn += '<button data-act="sell">' + (has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market') + '</button>';
-    p.innerHTML = '<div><div>' + title + '</div><div class="st">' + st + '</div></div>' + btn + '<button data-act="stop">Stop</button><button data-act="desel">✕</button>';
+    p.innerHTML = '<div><div>' + title + '</div><div class="st">' + st + '</div>' + experience + '</div>' + btn + '<button data-act="stop">Stop</button><button data-act="desel">✕</button>';
     const pic = iconCanvas(S.icons[ICON_OF[u.kind]], 12);
     pic.title = 'Show on the map (F)'; pic.style.cursor = 'pointer'; pic.onclick = () => ui.centerOnSelection();
     p.prepend(pic);

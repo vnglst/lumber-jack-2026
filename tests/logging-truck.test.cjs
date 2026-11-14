@@ -34,11 +34,13 @@ test('jacks load a nearby logging truck; it physically delivers and returns', ()
   until(lj, () => truck.carry === 8, 2);
   lj.cmd.stop([jack]);
   assert.equal(jack.carry, 0);
+  assert.equal(jack.xp, 2);
   assert.equal(g.wood, wood);
   step(lj, 2);
   assert.equal(truck.carry, 8); // Partial loads wait briefly for more jacks.
   until(lj, () => g.wood === wood + 8, 40);
   assert.equal(truck.carry, 0);
+  assert.equal(truck.xp, 0);
   assert.notEqual(truck.tile, at);
   until(lj, () => truck.tile === at && !truck.path.length, 30);
 });

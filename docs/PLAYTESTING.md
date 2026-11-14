@@ -33,8 +33,25 @@ The scripted player hires once, buys early upgrades when affordable, and reassig
 - One remaining tree does not trigger the ending.
 - A real chop order for the last tree triggers the visitor, dialogue, construction and whole-map spread.
 - The bonus is awarded once, and the ending reaches its final screen.
+- A controlled browser fixture also reached the real “Game over.” screen, with the full spread complete and no trigger before the last tree.
 - No early UI or tutorial text was changed to reveal the surprise.
 
 ## Repeatable regression checks
 
 `node --test tests/*.test.cjs` covers these fixes alongside transport, combat, saving, terrain and the intro. Repeat the browser checklist in [TESTING.md](TESTING.md) after UI changes.
+
+## Experience tuning
+
+The first XP prototype capped both workers at Master (480 XP) within ten minutes on every seed. That left no further worker progression for the middle of the game. Revised ranks use Expert at 480 and Master at 1,200, without raising the final power cap.
+
+Repeating the same scripted opening with the revised XP system:
+
+| Seed | Trees before XP | Trees with XP | Crew XP after 10 min | Ranks | Level |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 236 | 287 | 778 / 758 | Expert / Expert | 4 |
+| 42 | 306 | 392 | 981 / 962 | Expert / Expert | 4 |
+| 12345 | 249 | 311 | 865 / 789 | Expert / Expert | 4 |
+
+First sales remain at 38–42 seconds. Equipment purchases can occur in a different order as income and level timing change. The roughly 22–28% increase in trees cut is a combined outcome of experience and the scripted player's purchase timing, not an isolated laboratory speed multiplier.
+
+Checks cover real tree work, processing, storage and market deliveries, capped benefits, fresh recruits, nonproductive actions earning no XP, machines not earning XP, and version-2/3/4 save compatibility. Browser checks confirm the promotion float and rank/XP panel; a 390-pixel-wide layout also accommodates the longer Expert progress label.

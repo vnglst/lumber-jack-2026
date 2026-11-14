@@ -138,6 +138,8 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 
 .float { position: absolute; left: 0; top: 0; font-size: 15px; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; white-space: nowrap; will-change: transform; }
 .float.money { color: #ffd84a; }
+.float.xp { color: #a9ed72; }
+#panel .experience { color: #c6df91; font-size: 11px; line-height: 1.4; margin-top: 3px; }
 .bubble {
   position: absolute; left: 0; top: 0; background: #fff; color: #24150a; font-size: 13px; padding: 4px 8px; border-radius: 8px;
   border: 2px solid #24150a; white-space: nowrap; will-change: transform;

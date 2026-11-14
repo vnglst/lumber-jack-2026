@@ -38,6 +38,7 @@ How to read it:
 | 25 | 14 Nov | Slow narrated arrival tutorial | Active |
 | 26 | 14 Nov | Quieter recorded voices | Active |
 | 27 | 14 Nov | Playtest and improve the full gameplay loop | Active |
+| 28 | 14 Nov | Jacks learn through work | Active |
 
 ---
 
@@ -345,3 +346,13 @@ How to read it:
 - *Decision: workers stop using a destroyed sawmill or relocate to a surviving one.*
 - *Decision: keep the first local warning at 50 seconds. Later waves vary in size and recovery time, with at least 60 seconds between waves and a visible countdown. Small late-game skirmishes replace the previous blanket ceasefire; no new wave is scheduled with fewer than four trees left.*
 - Automated simulation and browser checks can find pacing and correctness problems, but do not substitute for human judgments about fun.
+
+## 28. Jacks learn through work (14 Nov 2026)
+
+> Jacks should gain experience through their work and become more effective over time.
+
+- Each Jack earns persistent, individual experience from productive work; new hires start fresh.
+- Show the selected Jack's rank and XP, and make promotions visible.
+- *Decision: Greenhorn (0 XP), Woodsman (40), Veteran (160), Expert (480), Master (1,200). Playtests found the first 480-XP Master cap was reached within ten minutes, so the final rank now takes longer. Rank bonuses cap at 50% faster chopping/processing, six extra carrying slots and 10% faster walking. Bonuses stack with equipment; machines do not gain experience.*
+- *Decision: award 4 XP per felled tree, 2 per lumber processed, 1 per four wood delivered to storage or a Logging Truck, and 1 per two goods sold on a Jack's own market run. No XP for idling, empty trips, partial whacks or combat.*
+- *Decision: cap XP at 1,200 and persist it in save format 4. Versions 2 and 3 still load; Jacks without XP start at zero.*
