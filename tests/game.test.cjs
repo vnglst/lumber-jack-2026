@@ -10,7 +10,7 @@ test('truck arrives before Jack pitches camp, across several maps', () => {
     const truck = g.arrival, x = truck.x;
     step(lj, 1);
     assert.ok(truck.x > x);
-    until(lj, () => !g.arrival, 30);
+    until(lj, () => !g.arrival, 180);
     assert.equal(g.base.pending, false);
     assert.equal(lj.jackCount(), 1);
     assert.equal(lj.countKind('truck'), 1);
@@ -21,7 +21,7 @@ test('truck arrives before Jack pitches camp, across several maps', () => {
   }
 });
 
-test('the slow arrival tells its tutorial over 25 seconds, not at hauling speed', () => {
+test('the story plays on the road, followed by the tutorial at camp, before gameplay timers start', () => {
   for (const seed of [1, 42, 12345]) {
     const lj = game(seed, false), g = lj.G, lines = [];
     lj.ui.introLine = text => lines.push(text);
@@ -30,12 +30,28 @@ test('the slow arrival tells its tutorial over 25 seconds, not at hauling speed'
     assert.equal(g.arrival, truck);
     assert.equal(g.base.pending, true);
     assert.equal(g.time, 0); // No wages, enemies or work while the tutorial is playing.
-    step(lj, 14.5);
-    assert.equal(g.arrival, truck);
-    until(lj, () => !g.arrival, 1);
-    assert.deepEqual(lines, [...lj.LINES.intro, null]);
-    assert.ok(truck.introT >= 25 && truck.introT < 25.1);
+    until(lj, () => !g.arrival, 180);
+    assert.deepEqual(lines, [...lj.LINES.intro, ...lj.LINES.camp, null]);
+    assert.equal(g.time, 0);
     assert.equal(lj.jackCount(), 1);
+  }
+});
+
+test('intro trucks uncover the same radius and remembered terrain as normal trucks', () => {
+  for (const seed of [1, 42, 12345]) {
+    const intro = game(seed, false), g = intro.G, initial = g.fogLeft;
+    step(intro, 5);
+    assert.ok(g.fogLeft < initial);
+    const truck = g.arrival, normal = game(seed), other = normal.G.units.find(u => u.kind === 'truck');
+    Object.assign(other, { x: truck.x, y: truck.y, tile: truck.tile, path: [], task: null, state: 'idle', hold: true });
+    normal.G.units = [other];
+    for (const state of [g, normal.G]) { state.fog.fill(0); state.fogLeft = state.world.N; state.fogT = 0; }
+    intro.update(0); normal.update(0);
+    assert.deepEqual(Array.from(g.fog), Array.from(normal.G.fog));
+    const revealed = Array.from(g.fog, (v, n) => v ? n : -1).filter(n => n >= 0);
+    step(intro, 2);
+    assert.ok(revealed.every(n => g.fog[n]));
+    assert.equal(g.time, 0);
   }
 });
 

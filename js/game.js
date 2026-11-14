@@ -1328,6 +1328,7 @@
         addUnit(w.start.x + 1, w.start.y, 'Jack', 'jack', 0);
         LJ.sfx('build');
       }
+      updFog(dt);
       return;
     }
     G.time += dt;

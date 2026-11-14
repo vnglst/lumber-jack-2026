@@ -46,6 +46,7 @@ How to read it:
 | 33 | 14 Nov | Smoother, faster opening drive | Active |
 | 34 | 14 Nov | Ground the cottage on the opening screen | Active |
 | 35 | 14 Nov | Tapping through the story does not move the truck | Active |
+| 36 | 14 Nov | Normal fog reveal during the opening drive | Active |
 
 ---
 
@@ -441,3 +442,11 @@ How to read it:
 
 - A tap during the opening only moves the story to the next line. The truck must not jump ahead.
 - *Decision: the story and the drive now run on separate clocks. Untouched, the last story line still ends as the truck arrives. If the story is tapped through early, the text box closes and the truck drives the rest of the road in silence, picking up speed smoothly to 120 pixels a second, with no jump. The how-to-play lines start once it has parked. This replaces the jump-ahead described in entries 31 and 33.*
+
+## 36. Normal fog reveal during the opening drive (14 Nov 2026)
+
+> Fog of war in truck intro should be as in normal game. It’s too narrow now.
+
+- Intro vehicles reveal nearby terrain using the same radius and update cadence as normal gameplay.
+- Keep explored terrain revealed behind the truck instead of showing only the narrow pre-explored road.
+- *Decision: run the existing unit fog update during the intro, without starting gameplay, wages or enemy timers. Story and tutorial timing are unchanged.*

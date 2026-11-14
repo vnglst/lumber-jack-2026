@@ -36,11 +36,11 @@ function game(seed = 42, arrive = true) {
   lj.sfx = () => {};
   lj.voice = { say() {}, cue() {} };
   lj.ui = {
-    toast() {}, follow() {}, levelUp() {}, gameOver() {}, introLine() {},
+    toast() {}, follow() {}, lockOn() {}, levelUp() {}, gameOver() {}, introLine() {}, introQuiet() {},
     cineStart() {}, cineLine() {}, endScreen() {}, centerOn() {}, zoomTo() {}, zoom: () => 3, fitZoom: () => 0.5
   };
   lj.newGame(seed);
-  if (arrive) until(lj, () => !lj.G.arrival, 30);
+  if (arrive) until(lj, () => !lj.G.arrival, 180);
   return lj;
 }
 
