@@ -91,3 +91,27 @@ test('resin recipe accelerates real chopping and saw recipe accelerates real pro
   assert.equal(saw([]), 0);
   assert.equal(saw(['saw']), 1);
 });
+
+test('a nearly cleared version 7 save gains the original twelve finds without restoring trees', () => {
+  const lj = game(), g = lj.G, w = g.world;
+  const original = JSON.stringify(g.finds);
+  let remaining = -1;
+  for (let i = 0; i < w.N; i++) if (lj.isTree(i)) {
+    if (remaining < 0) remaining = i;
+    else w.obj[i] = lj.STUMP;
+  }
+  g.cleared = g.total - 1;
+  g.level = 10;
+  const objects = Array.from(w.obj);
+  lj.saveGame();
+  const saved = JSON.parse(storage(lj).getItem('lumberjack-save'));
+  saved.v = 7; delete saved.g.finds; delete saved.g.recipes;
+  storage(lj).setItem('lumberjack-save', JSON.stringify(saved));
+  assert.ok(lj.loadGame());
+  assert.equal(JSON.stringify(g.finds), original, 'migration uses original forest locations and includes every reward');
+  assert.equal(g.recipes.length, 0);
+  assert.deepEqual(Array.from(g.world.obj), objects, 'migration does not restore any felled trees');
+  assert.equal(g.cleared, g.total - 1);
+  assert.equal(g.level, 10);
+  assert.ok(lj.isTree(remaining));
+});
