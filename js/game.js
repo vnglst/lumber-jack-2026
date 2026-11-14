@@ -217,13 +217,17 @@
   LJ.restoreGame = function (d) {
     const nw = LJ.genWorld(d.seed, d.g.hutLimit || 7);
     if (nw.seed !== d.seed) return false;
+    // Seed discoveries from the intact forest before saved tree removals are applied.
+    begin(nw);
     for (const k in d.world) nw[k].set(d.world[k]);
     for (const [i, v] of d.chopping) nw.hp[i] = v; // trees half chopped when the game was saved
     for (let i = 0; i < nw.N; i++) if (nw.bld[i]) { nw.deco[i] = 0; nw.flower[i] = 0; } // buildings cleared what grew there
     for (let i = 0; i < nw.N; i++) if (nw.wear[i] >= 6) {
       nw.flower[i] = 0; if (nw.deco[i] !== 8) nw.deco[i] = 0;
     }
-    begin(nw);
+    // Legacy saves have no hut state: derive living huts from the restored terrain/decor.
+    // Newer saves replace this default with their explicit damage and destruction state.
+    LJ.combat.reset();
     Object.assign(G, d.g);
     for (const h of G.huts) if (!h.alive) w.deco[h.tile] = 0;
     G.fog = d.fog; G.fogLeft = G.fog.reduce((n, f) => n + (f ? 0 : 1), 0);

@@ -181,3 +181,28 @@ test('format 6 saves retain the original seven-hut map, trees and progression', 
   assert.equal(g.total, old.totalTrees);
   assert.deepEqual(Array.from(g.world.obj), Array.from(old.obj));
 });
+
+test('a legacy building-covered hut never becomes an invisible defender source', () => {
+  const lj = game(), g = lj.G, old = lj.genWorld(42), tile = old.huts[0];
+  lj.saveGame();
+  const save = JSON.parse(storage(lj).getItem('lumberjack-save'));
+  save.v = 6;
+  for (const key of ['huts', 'hutLimit', 'finds', 'recipes']) delete save.g[key];
+  save.seed = old.seed;
+  old.bld[tile] = 2;
+  for (const key of Object.keys(save.world)) save.world[key] = Buffer.from(old[key].buffer).toString('base64');
+  save.lush = Buffer.from(Uint8Array.from(old.lush, v => Math.round(v * 255))).toString('base64');
+  save.chopping = []; save.critters = [];
+  const tx = tile % old.W, ty = Math.floor(tile / old.W);
+  save.buildings.push({ kind: 'bunk', tx, ty, w: 1, h: 1, hp: 160, max: 160, queue: [] });
+  const jack = save.units.find(u => u.kind === 'jack');
+  jack.tile = tile - 1; jack.x = tx * 16 - 8; jack.y = ty * 16 + 10; jack.task = null; jack.hold = true;
+  storage(lj).setItem('lumberjack-save', JSON.stringify(save));
+  assert.ok(lj.loadGame());
+  assert.equal(g.world.deco[tile], 0);
+  assert.equal(g.huts.find(h => h.tile === tile).alive, false);
+  assert.equal(lj.combat.hutAt(tile), null);
+  step(lj, 21);
+  assert.ok(!g.animals.some(a => a.alive && a.home === tile));
+  assert.ok(!g.critters.some(c => !c.gone && c.kind === 'native' && c.home === tile));
+});
