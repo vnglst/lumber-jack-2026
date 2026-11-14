@@ -208,7 +208,7 @@
       });
     }
     wv.active = { size, start: G.time, retreating: false };
-    LJ.sfx('drum');
+    LJ.sfx('drum'); LJ.voice.cue('folk_warcry');
     LJ.ui.toast('War drums! ' + size + ' forest folk are coming from the ' + compass(x0, y0) + '!');
   }
 
@@ -218,7 +218,7 @@
       if (G.level < HOSTILE_LEVEL) return;
       wv.hostile = true; wv.next = G.time + 50;
       for (const c of G.critters) if (c.kind === 'native') c.gone = true;
-      LJ.sfx('drum');
+      LJ.sfx('drum'); LJ.voice.cue('folk_warcry');
       LJ.ui.toast('The forest folk have had enough of your logging. They are taking up their bows.');
       return;
     }
@@ -230,6 +230,7 @@
       if (!wv.active.retreating && (alive < wv.active.size * 0.4 || G.time - wv.active.start > 120 || nearlyGone)) {
         wv.active.retreating = true;
         for (const a of G.animals) if (a.kind === 'native' && a.wave === wv.n) { a.retreat = true; a.repath = 0; }
+        LJ.voice.cue('folk_retreat');
         LJ.ui.toast('The forest folk fall back into the trees.');
       }
       return;
@@ -244,7 +245,7 @@
     const take = k => { const n = Math.floor(G[k] * 0.3); G[k] -= n; return n; };
     const wd = take('wood'), lm = take('lumber');
     LJ.ui.toast('The forest folk raided the village and carried off ' + wd + ' wood' + (lm ? ' and ' + lm + ' lumber' : '') + '!');
-    LJ.sfx('no');
+    LJ.sfx('no'); LJ.voice.cue('folk_raid');
     for (const a of G.animals) if (a.kind === 'native') { a.retreat = true; a.repath = 0; }
     if (G.wave.active) G.wave.active.retreating = true;
   };

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumberjack — recording booth</title>
+  <link rel="stylesheet" href="css/studio.css">
+  <link rel="stylesheet" href="css/voices.css">
+</head>
+<body>
+  <header class="top">
+    <h1><span class="lumber">Lumber</span><span class="jack">Jack</span> <small>recording booth</small></h1>
+    <div class="progress" title="Lines with a recording in the game"><b id="progressTxt"></b><div class="bar"><i id="progressBar"></i></div></div>
+    <div class="spacer"></div>
+    <div class="mic">
+      <label for="device">🎙</label>
+      <select id="device" title="Which microphone to record with"><option value="">Choose a microphone…</option></select>
+      <div class="meter" title="Input level"><i id="level"></i></div>
+      <button id="micBtn" class="on">Enable microphone</button>
+    </div>
+    <a class="btn" href="sounds.html" title="The synthesized sound effects">Sound effects ↗</a>
+  </header>
+
+  <div class="layout">
+    <nav id="side"></nav>
+    <main id="main"></main>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="js/util.js"></script>
+  <script src="js/lines.js"></script>
+  <script src="js/sfx-defs.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/voice.js"></script>
+  <script src="js/voices-studio.js"></script>
+</body>
+</html>

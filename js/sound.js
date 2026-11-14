@@ -155,6 +155,9 @@
 
   LJ.toggleMute = function () { muted = !muted; return muted; };
 
+  // Where other sound code (voice.js) plays: the game's context and master gain, or null while muted or not yet unlocked.
+  LJ.synth.live = () => (ac && !muted ? { ctx: ac, dest: master } : null);
+
   // Play a definition directly (used by the studio); ignores mute and throttling.
   LJ.synth.play = function (def) {
     LJ.audioInit();

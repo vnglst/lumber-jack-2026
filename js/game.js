@@ -82,19 +82,9 @@
     { id: 'mega', name: 'Mega Haulers', desc: 'Trucks carry 120, harvesters 60.', icon: 'truck', level: 9, need: 'truck', cost: () => ({ m: 1500 }) }
   ]);
 
-  const Q_NORMAL = ['Yes, boss?', 'Ready to chop!', 'Timber?', 'Axe me anything.', "What'll it be?", 'Wood you like something?'];
-  const Q_ANNOYED = ["I'm working here!", 'Stop poking me.', 'Do I poke YOU?', 'That flannel was clean.', "Trees don't cut themselves, you know."];
-  const Q_FUNNY = ["I'm a lumberjack and I'm NOT okay.", 'Poke me again and I unionize.', "Fun fact: I'm allergic to pollen.",
-    'I wanted to be a florist, you know.', "My therapist says I have a lot of 'bark'.", "One more click and I'm becoming a barista.",
-    'HR will hear about this. HR is a squirrel.'];
-  const Q_ACK = ['On it!', 'Timber!', 'Chop chop.', 'Right away.', 'Consider it mulch.'];
-  const Q_BROKE = ['No pay, no hurry.', 'My axe feels heavy today.', 'I work for money, not exposure.', "I'll chop when the cheque clears."];
-  const Q_NONE = ['No trees in sight, boss.', 'Nothing left around here.', 'Where to next?', 'All done here.'];
-  const Q_VEH = {
-    truck: ['Honk honk!', 'Beep beep.', '*diesel noises*', 'Loading zone, buddy.'],
-    dozer: ['Rrrrumble.', 'I move mountains. Small ones.', 'Rocks fear me.', '*grinding*'],
-    harv: ['*mechanical whirring*', 'TREE DETECTED.', 'I replace eleven jacks.', 'Efficiency is beautiful.']
-  };
+  // What everyone says lives in lines.js, so the recording booth can list it.
+  const LN = LJ.LINES, M = LN.misc;
+  const Q_NORMAL = LN.normal, Q_ANNOYED = LN.annoyed, Q_FUNNY = LN.funny, Q_ACK = LN.ack, Q_BROKE = LN.broke, Q_NONE = LN.none, Q_VEH = LN.veh;
 
   const isTree = i => w.obj[i] >= 1 && w.obj[i] <= 3;
   const pass = i => { const t = w.type[i]; return t !== T.WATER && t !== T.ROCK && !isTree(i) && w.bld[i] === 0; };
@@ -108,9 +98,9 @@
   LJ.isTree = isTree; LJ.pass = pass; LJ.blocked = blocked; LJ.wildPass = wildPass;
   // Everything that attacks the operation. wild: roams as wildlife (the forest folk come in waves instead).
   const FOE = (LJ.FOE = {
-    wolf: { pelt: 15, wild: true, wallDmg: 6, hit: ['WOLF!', 'Ow!', 'Bad dog!', 'Get off me!'], death: n => n + ' was eaten by a wolf.' },
-    bear: { pelt: 40, wild: true, wallDmg: 6, hit: ['BEAR!', 'Nice bear. NICE BEAR.'], death: n => n + ' was eaten by a bear.' },
-    native: { pelt: 0, wild: false, wallDmg: 9, hit: ['Arrows!', 'Ouch!', 'We come in peace! Mostly.', 'Tiny archers!'], death: n => n + ' was shot by the forest folk.' }
+    wolf: { pelt: 15, wild: true, wallDmg: 6, hit: LN.hit.wolf, cry: 'wolf_snarl', die: 'wolf_yelp', death: n => n + ' was eaten by a wolf.' },
+    bear: { pelt: 40, wild: true, wallDmg: 6, hit: LN.hit.bear, cry: 'bear_roar', die: 'bear_groan', death: n => n + ' was eaten by a bear.' },
+    native: { pelt: 0, wild: false, wallDmg: 9, hit: LN.hit.native, cry: 'folk_shout', die: 'folk_hurt', death: n => n + ' was shot by the forest folk.' }
   });
   // Enemies go round palisades when they can, and through them (hacking) when they must.
   LJ.enemyPath = (from, goal) => bfs(from, goal, i => wildPass(i) && !w.wall[i]) || bfs(from, goal, wildPass);
@@ -339,6 +329,7 @@
   function say(u, text) {
     G.bubbles = G.bubbles.filter(b => { if (b.u === u) { if (b.el) b.el.remove(); return false; } return true; });
     G.bubbles.push({ u, text, t: 2.6 });
+    LJ.voice.say(text, u.kind);
   }
   LJ.say = say;
   LJ.float = (x, y, text, cls) => G.floats.push({ x, y, text, cls: cls || '', t: 0 });
@@ -404,9 +395,9 @@
       if (!walkTo(u, c => Math.abs((c % W) - ax) <= 1 && Math.abs(((c / W) | 0) - ay) <= 1, 'hunt')) { u.wait = 0.4; u.state = 'think'; }
       return;
     }
-    if (t.type === 'saw') { if (!walkTo(u, c => G.sawMask[c] === 1, 'toSaw', "Can't reach a sawmill.")) endTask(u); return; }
+    if (t.type === 'saw') { if (!walkTo(u, c => G.sawMask[c] === 1, 'toSaw', M.noSawmill)) endTask(u); return; }
     if (t.type === 'haul') {
-      const ok = u.load ? walkTo(u, exitGoal, 'haulExit', "Can't reach the road.") : walkTo(u, storeGoal, 'haulStore', "Can't reach storage.");
+      const ok = u.load ? walkTo(u, exitGoal, 'haulExit', M.noRoad) : walkTo(u, storeGoal, 'haulStore', M.noStore);
       if (!ok) endTask(u);
       return;
     }
@@ -415,12 +406,12 @@
       for (const c of job.tiles) if (!blocked(c)) job.tiles.delete(c);
       if (!job.tiles.size) { // like the jacks: carry on with any rocks in sight of the work spot
         for (const c of rocksNear(t.ax, t.ay, sightOf(u))) job.tiles.add(c);
-        if (!job.tiles.size) { endTask(u); u.idleVer = G.worldVer; if (Math.random() < 0.5) say(u, 'All clear!'); return; }
+        if (!job.tiles.size) { endTask(u); u.idleVer = G.worldVer; if (Math.random() < 0.5) say(u, M.allClear); return; }
       }
       const r = nearestAdj(u, n => job.tiles.has(n) && blocked(n), true);
       if (r.path) { w.claim[r.found] = u.id; u.target = r.found; u.path = r.path; u.state = 'toDoze'; }
       else if (r.sawClaimed) { u.wait = 0.6; u.state = 'think'; }
-      else { say(u, "Can't get at it from here."); endTask(u); }
+      else { say(u, M.cantReach); endTask(u); }
       return;
     }
     // Work: keep cutting the nearest visible tree within sight of the work spot, carrying wood off when full.
@@ -437,7 +428,7 @@
   // Where does chopped wood go? Nearest storage if the settlement has any, else the camp pile (stockpiling) or the market road.
   function goDrop(u) {
     const goal = G.village ? storeGoal : G.stockpile ? c => G.villMask[c] === 1 : exitGoal;
-    if (!walkTo(u, goal, 'toDrop', "I'm lost!")) { u.wait = 2; u.state = 'think'; }
+    if (!walkTo(u, goal, 'toDrop', M.lost)) { u.wait = 2; u.state = 'think'; }
   }
 
   function sell(u, wd, lum, st) {
@@ -520,6 +511,7 @@
     a.hp -= dmg; blood(a.x, a.y);
     if (a.hp <= 0 && a.alive) {
       a.alive = false;
+      LJ.voice.cue(FOE[a.kind].die);
       const pelt = FOE[a.kind].pelt;
       if (!pelt) { G.folkKilled++; return; }
       G.kills++;
@@ -532,6 +524,7 @@
   function hurtJack(u, dmg, a) {
     if (u.dead) return;
     if (u.hp >= 100 || Math.random() < 0.25) say(u, LJ.pick(FOE[a.kind].hit));
+    if (Math.random() < 0.3) LJ.voice.cue(FOE[a.kind].cry);
     u.hp -= dmg; blood(u.x, u.y); LJ.sfx('hurt');
     // Jacks nearby drop what they're doing and come to help, then go back to work.
     for (const v of G.units) {
@@ -634,7 +627,7 @@
           speed: cfg.speed * (bear ? 0.85 : 1) * (1 - k * 0.06), repath: k * 0.3, atkCd: 0, dir: 1, walkT: 0, alive: true, flee: false
         });
       }
-      LJ.sfx('howl');
+      LJ.sfx('howl'); LJ.voice.cue(bear ? 'bear_roar' : 'wolf_howl');
       LJ.ui.toast(bear ? 'A bear is coming for ' + tgt.name + '!' : n > 1 ? 'A wolf pack is on the prowl!' : 'A wolf is on the prowl!');
       return;
     }
@@ -737,7 +730,7 @@
       case 'haulStore':
         if (u.carry) { G.wood += u.carry; u.carry = 0; }
         if (loadUp(u)) think(u);
-        else if (u.task && u.task.once) { say(u, 'Nothing to haul yet.'); endTask(u); }
+        else if (u.task && u.task.once) { say(u, M.noHaul); endTask(u); }
         else if (u.kind === 'jack') { // a jack goes back to chopping once storage is empty
           const back = u.task && u.task.resume;
           if (back) { setTask(u, back); think(u); } else endTask(u);
@@ -795,7 +788,7 @@
       const dz = units.filter(u => u.kind === 'dozer');
       if (!dz.length) return false;
       const path = bfs(dz[0].tile, c => c === idx, dozePass, true);
-      if (!path) { say(dz[0], "Can't get there."); return false; }
+      if (!path) { say(dz[0], M.cantGet); return false; }
       const tiles = path.filter(blocked);
       if (!tiles.length) { LJ.cmd.move(dz, idx); return true; }
       const job = { tiles: new Set(tiles) };
@@ -808,7 +801,7 @@
       for (const u of units) {
         const path = bfs(u.tile, c => c === idx);
         if (path) { setTask(u, { type: 'move' }); u.path = path; u.state = 'move'; }
-        else say(u, "Can't get there.");
+        else say(u, M.cantGet);
       }
     },
     // Without storage: walk whatever you carry to the market. With storage: become a hauler.
@@ -819,20 +812,20 @@
           const back = u.task && u.task.type === 'work' ? workTask(u.task.ax, u.task.ay) : null;
           setTask(u, { type: 'haul', once: u.kind === 'truck' && !G.up.dispatch, resume: back });
         }
-        else if (u.carry > 0) { setTask(u, null); if (!walkTo(u, exitGoal, 'sellRun', "I'm lost!")) u.state = 'idle'; }
+        else if (u.carry > 0) { setTask(u, null); if (!walkTo(u, exitGoal, 'sellRun', M.lost)) u.state = 'idle'; }
       }
-      if (G.village && units.length) say(units[0], units[0].kind === 'truck' ? 'Honk honk!' : 'To market!');
+      if (G.village && units.length) say(units[0], units[0].kind === 'truck' ? Q_VEH.truck[0] : M.market);
     },
     hunt(units, a) {
       units = units.filter(u => u.kind === 'jack');
       for (const u of units) setTask(u, { type: 'hunt', a });
-      if (units.length) say(units[0], LJ.pick(['Here, doggy...', "It's flannel time.", 'For the forest! Wait.']));
+      if (units.length) say(units[0], LJ.pick(LN.hunt));
     },
     saw(units) {
       if (!G.count.sawmill) return;
       units = units.filter(u => u.kind === 'jack');
       for (const u of units) setTask(u, { type: 'saw' });
-      if (units.length) say(units[0], 'Sawdust time.');
+      if (units.length) say(units[0], M.sawdust);
     },
     // Stop means stop: the unit stays put, even with automation upgrades, until it gets a new order.
     stop(units) { for (const u of units) { setTask(u, null); u.state = 'idle'; u.hold = true; } }
@@ -1005,7 +998,7 @@
         for (let i = 0; i < w.N && spot < 0; i++) if (G.villMask[i] && pass(i) && i > (v.ty + v.h) * W) spot = i;
         if (spot < 0) spot = G.villMask.findIndex((m, i) => m && pass(i));
         const u = addUnit(spot % W, (spot / W) | 0, NAMES[G.jackN++ % NAMES.length], 'jack', WAGE);
-        say(u, 'Reporting for duty!');
+        say(u, M.duty);
         LJ.sfx('build');
       }
     }

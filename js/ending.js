@@ -7,17 +7,7 @@
   const SITE_W = 7, SITE_H = 5, BONUS = 1000000, SPREAD = 16;
   const BLOCK = S.dcFrame.width / TS; // tiles per data-center module
 
-  function lines() {
-    return [
-      'Ah, there you are! You must be the boss of this little operation.',
-      G.cleared.toLocaleString('en-US') + ' trees. Not one left standing. Magnificent work, truly.',
-      'Allow me to introduce myself. I represent the people who bought this land.',
-      'You see, we needed it empty. Completely empty. And you delivered.',
-      "Because all of this is going to be the largest AI data center in the country.",
-      "Don't worry about the river. It'll make excellent cooling water.",
-      'Your bonus: one million dollars. Plus shares in the company. Welcome aboard!'
-    ];
-  }
+  const lines = () => LJ.LINES.ending.map(t => t.replace('{n}', G.cleared.toLocaleString('en-US')));
 
   // Flood fill from the market road: which tiles can someone walking in actually reach?
   function reachable() {
@@ -140,7 +130,7 @@
       if (!G.suit.path.length) {
         c.phase = 'talk';
         const near = LJ.jacks().sort((a, b) => Math.hypot(a.x - G.suit.x, a.y - G.suit.y) - Math.hypot(b.x - G.suit.x, b.y - G.suit.y))[0];
-        if (near) { G.suit.dir = near.x > G.suit.x ? 1 : -1; LJ.say(near, '…Who are you?'); }
+        if (near) { G.suit.dir = near.x > G.suit.x ? 1 : -1; LJ.say(near, LJ.LINES.misc.who); }
         LJ.ui.cineLine(c.lines[0]);
       }
     } else if (c.phase === 'build') {

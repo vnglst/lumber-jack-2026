@@ -1,17 +1,40 @@
 #!/usr/bin/env python3
 """Local dev server for Lumberjack: serves the repo root with caching disabled, so edits show up on reload.
 
-It also accepts POST /api/sfx-defs from this machine only, so the sound studio (sounds.html) can save js/sfx-defs.js.
+It also accepts writes from this machine only, so the studios can save their work:
+  POST   /api/sfx-defs     sound studio (sounds.html) rewrites js/sfx-defs.js
+  POST   /api/voice/<key>  recording booth (voices.html) saves audio/voice/<key>.wav
+  DELETE /api/voice/<key>  removes that recording
+audio/voice/manifest.json ({key: version}) is rebuilt after every change; the game reads it to know what can be played.
 """
 import functools
 import http.server
 import os
+import json
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SFX_FILE = ROOT / "js" / "sfx-defs.js"
 SFX_PREFIX = "'use strict';"
+VOICE_DIR = ROOT / "audio" / "voice"
+VOICE_KEY = re.compile(r"^[a-z0-9_-]{1,100}$")
+MAX_WAV = 4 * 1024 * 1024
+LOCAL = ("127.0.0.1", "::1", "::ffff:127.0.0.1")
+
+
+def write_atomic(path, data):
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)  # atomic: the game never reads a half-written file
+
+
+def write_manifest():
+    """List every recording with its modified time, which the game uses to bust its cache."""
+    VOICE_DIR.mkdir(parents=True, exist_ok=True)
+    m = {f.stem: int(f.stat().st_mtime) for f in sorted(VOICE_DIR.glob("*.wav"))}
+    write_atomic(VOICE_DIR / "manifest.json", json.dumps(m, indent=1).encode())
 
 
 class NoCache(http.server.SimpleHTTPRequestHandler):
@@ -19,27 +42,66 @@ class NoCache(http.server.SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
-    def do_POST(self):
-        if self.path != "/api/sfx-defs":
-            return self.send_error(404)
-        if self.client_address[0] not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
-            return self.send_error(403, "Saving is only allowed from this machine")
+    def body(self, limit):
         length = int(self.headers.get("Content-Length") or 0)
-        if length <= 0 or length > 512 * 1024:
-            return self.send_error(413)
-        text = self.rfile.read(length).decode("utf-8")
-        if not text.startswith(SFX_PREFIX) or "LJ.SFX_DEFAULTS = {" not in text:
-            return self.send_error(400, "Not a sound definitions file")
-        tmp = SFX_FILE.with_suffix(".js.tmp")
-        tmp.write_text(text, encoding="utf-8")
-        os.replace(tmp, SFX_FILE)  # atomic: the game never reads a half-written file
+        if length <= 0 or length > limit:
+            self.send_error(413)
+            return None
+        return self.rfile.read(length)
+
+    def local_only(self):
+        if self.client_address[0] in LOCAL:
+            return True
+        self.send_error(403, "Saving is only allowed from this machine")
+        return False
+
+    def voice_key(self):
+        key = self.path.removeprefix("/api/voice/")
+        return key if self.path.startswith("/api/voice/") and VOICE_KEY.match(key) else None
+
+    def done(self):
         self.send_response(204)
         self.end_headers()
+
+    def do_POST(self):
+        if not self.local_only():
+            return
+        if self.path == "/api/sfx-defs":
+            data = self.body(512 * 1024)
+            if data is None:
+                return
+            text = data.decode("utf-8")
+            if not text.startswith(SFX_PREFIX) or "LJ.SFX_DEFAULTS = {" not in text:
+                return self.send_error(400, "Not a sound definitions file")
+            write_atomic(SFX_FILE, data)
+            return self.done()
+        key = self.voice_key()
+        if key is None:
+            return self.send_error(404)
+        data = self.body(MAX_WAV)
+        if data is None:
+            return
+        if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+            return self.send_error(400, "Not a WAV file")
+        VOICE_DIR.mkdir(parents=True, exist_ok=True)
+        write_atomic(VOICE_DIR / (key + ".wav"), data)
+        write_manifest()
+        self.done()
+
+    def do_DELETE(self):
+        if not self.local_only():
+            return
+        key = self.voice_key()
+        if key is None:
+            return self.send_error(404)
+        (VOICE_DIR / (key + ".wav")).unlink(missing_ok=True)
+        write_manifest()
+        self.done()
 
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5173
     handler = functools.partial(NoCache, directory=str(ROOT))
     print(f"Lumberjack: http://localhost:{port}  (Ctrl+C to stop)")
-    print(f"Sound studio: http://localhost:{port}/sounds.html")
+    print(f"Sound studio: http://localhost:{port}/sounds.html   Recording booth: http://localhost:{port}/voices.html")
     http.server.ThreadingHTTPServer(("", port), handler).serve_forever()

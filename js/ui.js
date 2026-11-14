@@ -404,6 +404,7 @@
     el.innerHTML = '<div class="who"></div><div><div class="nm">Mr. Grant, Development</div><div class="tx"></div><div class="more">tap to continue ▸</div></div>';
     el.querySelector('.who').appendChild(iconCanvas(S.suit.idle.r, 22));
     el.querySelector('.tx').textContent = text;
+    LJ.voice.say(text, 'suit');
   };
 
   ui.endScreen = function () {
