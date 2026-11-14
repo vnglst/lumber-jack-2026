@@ -2,6 +2,8 @@
 
 A 2D pixel-art browser game about cutting down a forest, building a logging village and automating it, until the land is cleared. What it was cleared for is revealed at the end.
 
+The design is in [docs/GAME-PLAN.md](docs/GAME-PLAN.md), the original brief, and [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), a decision log of every request made since.
+
 ![Concept art](docs/concept-art.png)
 
 ## Play
@@ -38,6 +40,6 @@ sounds.html    sound studio for synthesized effects
 css/           styles
 js/            game code (loaded in order by index.html)
 audio/voice/   voice recordings made in the booth
-docs/          game plan and concept art
+docs/          game plan, requirements and concept art
 tools/         dev server (also saves sounds from the studio)
 ```

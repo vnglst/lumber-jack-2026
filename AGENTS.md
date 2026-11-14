@@ -1,6 +1,6 @@
 # Notes for coding agents
 
-Lumberjack is a browser game in plain JavaScript: no build step, no dependencies, no modules. The design brief is `docs/GAME-PLAN.md`.
+Lumberjack is a browser game in plain JavaScript: no build step, no dependencies, no modules. The design brief is `docs/GAME-PLAN.md`; `docs/REQUIREMENTS.md` is the decision log of every later request, in order, and where it differs from the game plan, the later entry wins. Read both before changing gameplay. Keep it up to date as you work: whenever the user asks for a feature or a change, or makes a design decision, add an entry at the end of `REQUIREMENTS.md` as part of the same change, with the user's words quoted, the requirements as bullets and any *Decision:* notes, and add a row to its index table. Never rewrite an old entry; only give it a **Status** line saying which entry superseded it. Leave out requests that only ask to commit or merge.
 
 ## Running and checking
 
