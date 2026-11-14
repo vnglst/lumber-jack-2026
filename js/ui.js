@@ -51,6 +51,9 @@
     G.cam.y = mh <= vh ? (mh - vh) / 2 : LJ.clamp(G.cam.y, 0, mh - vh);
   }
 
+  // Moves the camera by a distance in screen pixels.
+  function panBy(dx, dy) { G.cam.x += dx / zoom; G.cam.y += dy / zoom; clampCam(); }
+
   function setZoom(i, ax, ay) {
     i = LJ.clamp(i, 0, ZOOMS.length - 1);
     if (i === zi) return;
@@ -225,7 +228,7 @@
       if (p.mode === 'cmd') p.mode = 'pan'; // dragging with the right button pans the map
       if (p.mode === 'pan' || p.mode === 'pinch') {
         const k = p.mode === 'pinch' ? 2 : 1;
-        G.cam.x -= dx / zoom / k; G.cam.y -= dy / zoom / k; clampCam();
+        panBy(-dx / k, -dy / k);
         if (p.mode === 'pinch' && ptrs.size === 2) {
           const d = pdist();
           if (d / pinchD > 1.3) { setZoom(zi + 1); pinchD = d; }
@@ -252,7 +255,27 @@
     cv.addEventListener('pointerup', up);
     cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); G.drag = null; });
     cv.addEventListener('contextmenu', e => e.preventDefault());
-    cv.addEventListener('wheel', e => { e.preventDefault(); setZoom(zi + (e.deltaY < 0 ? 1 : -1), e.clientX, e.clientY); }, { passive: false });
+    // Two-finger scrolling (trackpad) or the mouse wheel moves the map. A trackpad pinch arrives as a wheel event
+    // with ctrlKey set and zooms; so do the zoom buttons and the + / - keys.
+    let pinch = 0;
+    cv.addEventListener('wheel', e => {
+      e.preventDefault();
+      if (e.ctrlKey) {
+        pinch += e.deltaY;
+        if (Math.abs(pinch) > 30) { setZoom(zi + (pinch < 0 ? 1 : -1), e.clientX, e.clientY); pinch = 0; }
+        return;
+      }
+      const k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1; // lines or pages, from some mice
+      panBy(e.deltaX * k, e.deltaY * k);
+    }, { passive: false });
+    // Safari reports trackpad pinches as gesture events instead.
+    let gScale = 1;
+    cv.addEventListener('gesturestart', e => { e.preventDefault(); gScale = 1; });
+    cv.addEventListener('gesturechange', e => {
+      e.preventDefault();
+      if (e.scale / gScale > 1.25) { setZoom(zi + 1, e.clientX, e.clientY); gScale = e.scale; }
+      else if (e.scale / gScale < 0.8) { setZoom(zi - 1, e.clientX, e.clientY); gScale = e.scale; }
+    });
   }
 
   function bindMini() {
@@ -271,6 +294,8 @@
       keys[e.key.toLowerCase()] = true;
       if (G.cine) { if ((e.key === ' ' || e.key === 'Enter') && G.cine.phase === 'talk') LJ.ending.next(); return; }
       if (e.key === 'f' || e.key === 'F' || e.key === ' ') { e.preventDefault(); ui.centerOnSelection(); }
+      if (e.key === '+' || e.key === '=') setZoom(zi + 1);
+      if (e.key === '-' || e.key === '_') setZoom(zi - 1);
       if (e.key === 'Escape') { G.sel.clear(); G.place = null; G.wallMode = false; G.wallDrag = null; $('shop').classList.remove('open'); }
     });
     addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
@@ -330,6 +355,7 @@
   }
 
   ui.showTitle = function (help) {
+    const canContinue = !help && LJ.hasSave();
     modal(
       '<div class="logo"><span class="lumber">Lumber</span><span class="jack">Jack</span></div>' +
       '<p>One jack. One axe. An awful lot of trees.</p>' +
@@ -338,8 +364,19 @@
       '<li>Wood sells at the <b>market</b>, at the end of the long road west. It is a long walk: stockpile at the tent, and buy trucks as soon as you can.</li>' +
       '<li>Upgrade your tent into a village and build houses, sawmills and depots around it.</li>' +
       '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
-      '<li>Scroll by moving the mouse to a screen edge, dragging with the right mouse button, WASD/arrow keys or the minimap. F jumps to your selection. Wheel zooms. Touch: drag scrolls, pinch zooms.</li></ul>' +
-      '<button>' + (help ? 'Back to work' : 'Start chopping') + '</button>');
+      '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection.</li>' +
+      '<li>The game saves itself as you play.</li></ul>' +
+      (canContinue
+        ? '<div class="row"><button data-a="continue">Continue</button><button data-a="new" class="ghost">New game</button></div>'
+        : '<button>' + (help ? 'Back to work' : 'Start chopping') + '</button>'));
+    if (!canContinue) return;
+    const m = $('modal');
+    m.querySelector('[data-a="continue"]').onclick = () => {
+      LJ.audioInit(); LJ.sfx('click'); m.classList.remove('open');
+      if (LJ.loadGame()) { ui.reset(); resize(); } else { ui.restart(); ui.toast('The saved game could not be loaded, so here is a fresh forest.'); }
+      G.paused = false;
+    };
+    m.querySelector('[data-a="new"]').onclick = () => { LJ.audioInit(); LJ.sfx('click'); m.classList.remove('open'); ui.restart(); };
   };
 
   ui.levelUp = function (items) {
@@ -387,6 +424,7 @@
   ui.zoomTo = z => { if (Math.abs(z - zoom) > 0.001) { zoom = z; resize(); } };
 
   ui.restart = function () {
+    LJ.clearSave();
     resetZoom();
     $('game').classList.remove('cine');
     $('again').classList.remove('open');
@@ -536,7 +574,7 @@
       if (mouse[0] < E) mx--; else if (mouse[0] > innerWidth - E) mx++;
       if (mouse[1] < E) my--; else if (mouse[1] > innerHeight - E) my++;
     }
-    if ((mx || my) && !G.cine) { G.cam.x += mx * sp; G.cam.y += my * sp; clampCam(); }
+    if ((mx || my) && !G.cine) panBy(mx * sp * zoom, my * sp * zoom);
     if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.remove('show');
     if ((miniT -= dt) <= 0) { miniT = 0.25; drawMini(); }
 

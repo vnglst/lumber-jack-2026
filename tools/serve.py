@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
-"""Local dev server for Lumberjack: serves this folder with caching disabled, so edits show up on reload.
+"""Local dev server for Lumberjack: serves the repo root with caching disabled, so edits show up on reload.
 
 It also accepts POST /api/sfx-defs from this machine only, so the sound studio (sounds.html) can save js/sfx-defs.js.
 """
+import functools
 import http.server
 import os
+import pathlib
 import sys
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-SFX_FILE = os.path.join(ROOT, "js", "sfx-defs.js")
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+SFX_FILE = ROOT / "js" / "sfx-defs.js"
 SFX_PREFIX = "'use strict';"
 
 
 class NoCache(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=ROOT, **kwargs)
-
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
@@ -31,9 +30,8 @@ class NoCache(http.server.SimpleHTTPRequestHandler):
         text = self.rfile.read(length).decode("utf-8")
         if not text.startswith(SFX_PREFIX) or "LJ.SFX_DEFAULTS = {" not in text:
             return self.send_error(400, "Not a sound definitions file")
-        tmp = SFX_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(text)
+        tmp = SFX_FILE.with_suffix(".js.tmp")
+        tmp.write_text(text, encoding="utf-8")
         os.replace(tmp, SFX_FILE)  # atomic: the game never reads a half-written file
         self.send_response(204)
         self.end_headers()
@@ -41,4 +39,7 @@ class NoCache(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5173
-    http.server.ThreadingHTTPServer(("", port), NoCache).serve_forever()
+    handler = functools.partial(NoCache, directory=str(ROOT))
+    print(f"Lumberjack: http://localhost:{port}  (Ctrl+C to stop)")
+    print(f"Sound studio: http://localhost:{port}/sounds.html")
+    http.server.ThreadingHTTPServer(("", port), handler).serve_forever()

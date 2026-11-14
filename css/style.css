@@ -1,5 +1,5 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; background: #0c1a0d; }
+html, body { height: 100%; overflow: hidden; background: #0c1a0d; overscroll-behavior: none; } /* no swipe-back while scrolling the map */
 body {
   font-family: ui-rounded, "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
   color: #ffe9b8; font-weight: 700;
