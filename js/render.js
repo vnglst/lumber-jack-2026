@@ -70,7 +70,7 @@
     if (!w) return;
     const vw = cv.width, vh = cv.height, W = w.W, H = w.H, s = w.seed;
     const cx = Math.round(G.cam.x), cy = Math.round(G.cam.y);
-    ctx.fillStyle = '#0c1a0d'; ctx.fillRect(0, 0, vw, vh);
+    ctx.fillStyle = '#080b09'; ctx.fillRect(0, 0, vw, vh);
     ctx.drawImage(G.ground.cv, -cx, -cy);
 
     // Trees are up to 3 tiles tall, so look a little beyond the screen edges for things that poke into view.
@@ -352,22 +352,28 @@
     }
   }
 
-  // Fog of war: a tile-sized mask, scaled up with smoothing so its edges fade softly.
+  // Extend edge fog into the margin: unexplored canopies can overhang the map.
+  // A tile-sized mask is scaled up with smoothing so its edges fade softly.
   let fogCv = null, fogCtx = null, fogImg = null;
   function drawFog(ctx, G, w, cx, cy) {
     if (!G.fogLeft) return; // everything explored
-    if (!fogCv || fogCv.width !== w.W || fogCv.height !== w.H) {
-      fogCv = document.createElement('canvas'); fogCv.width = w.W; fogCv.height = w.H;
-      fogCtx = fogCv.getContext('2d'); fogImg = fogCtx.createImageData(w.W, w.H); G.fogDirty = true;
+    const pad = LJ.TREE_ROWS, fw = w.W + pad * 2, fh = w.H + pad * 2;
+    if (!fogCv || fogCv.width !== fw || fogCv.height !== fh) {
+      fogCv = document.createElement('canvas'); fogCv.width = fw; fogCv.height = fh;
+      fogCtx = fogCv.getContext('2d'); fogImg = fogCtx.createImageData(fw, fh); G.fogDirty = true;
     }
     if (G.fogDirty) {
       const d = fogImg.data;
-      for (let i = 0; i < w.N; i++) { d[i * 4] = 10; d[i * 4 + 1] = 16; d[i * 4 + 2] = 11; d[i * 4 + 3] = G.fog[i] ? 0 : 255; }
+      for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+        const i = (y * fw + x) * 4;
+        const tile = LJ.clamp(y - pad, 0, w.H - 1) * w.W + LJ.clamp(x - pad, 0, w.W - 1);
+        d[i] = 10; d[i + 1] = 16; d[i + 2] = 11; d[i + 3] = G.fog[tile] ? 0 : 255;
+      }
       fogCtx.putImageData(fogImg, 0, 0);
       G.fogDirty = false;
     }
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(fogCv, -cx, -cy, w.W * TS, w.H * TS);
+    ctx.drawImage(fogCv, -cx - pad * TS, -cy - pad * TS, fw * TS, fh * TS);
     ctx.imageSmoothingEnabled = false;
   }
 

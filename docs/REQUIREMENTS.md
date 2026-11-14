@@ -54,6 +54,7 @@ How to read it:
 | 41 | 14 Nov | Intro truck follows the road | Active |
 | 42 | 14 Nov | Start fully hidden and explore during the intro | Active |
 | 43 | 14 Nov | Truck speed is independent of direction | Active |
+| 47 | 14 Nov | Map-edge navigation and black padding | Active |
 
 ---
 
@@ -531,3 +532,14 @@ How to read it:
 - *Decision: measure speed as world pixels traveled per second; diagonal X/Y components are normalized rather than each receiving the full horizontal speed.*
 - *Decision: retain §37's terrain differences: roads/bridges 96 pixels/second, dirt/gravel 60, open ground 36. Direction alone must not change these speeds.*
 - The existing movement already normalizes distance. Added regression coverage for both truck types in all eight directions on each surface; no production movement change was needed.
+
+
+## 47. Map-edge navigation and black padding (14 Nov 2026)
+
+> Fullsize map is not easy to navigate, some pieces are hidden behind the UI. Add more black padding?
+
+- Let players pan beyond every map edge so edge tiles can be brought clear of the HUD, minimap and selection controls.
+- Show a dark, nearly black margin outside the forest.
+- Keep unexplored tree overhang hidden by fog at the map boundary.
+- *Decision: allow half a viewport of overscroll on all four sides at every zoom, including when the entire map fits onscreen. Existing minimap, wheel, touch and keyboard controls share these bounds. Mention the margin in Help.*
+- *Decision: extend the fog mask four tiles beyond the map using the nearest edge tile's exploration state, preserving explored canopy overhang while covering hidden trees.*
