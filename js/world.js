@@ -2,7 +2,7 @@
 // Tile world generation + the per-pixel ground renderer.
 (function () {
   const TS = (LJ.TS = 16);
-  const T = (LJ.T = { GRASS: 0, DIRT: 1, WATER: 2, ROCK: 3, GRAVEL: 4, ROAD: 5, BRIDGE: 6 });
+  const T = (LJ.T = { GRASS: 0, DIRT: 1, WATER: 2, ROCK: 3, GRAVEL: 4, ROAD: 5, BRIDGE: 6, MUD: 7 });
   const isRoad = (LJ.isRoad = t => t === T.ROAD || t === T.BRIDGE); // the pre-built road to market, bridges included
   LJ.STUMP = 9;
   // How many tile rows a tree's canopy reaches above its base: used for tap targets and view culling.
@@ -164,6 +164,7 @@
   const TRACK = P(['#302721', '#251f1c', '#19191a', '#393029', '#44372b']);
   const PLANK = P(['#7a4d26', '#8a5a30', '#9a6838', '#b07a44']), RAIL = rgb('#4a2f1a');
   const WA = P(['#1d5ca6', '#2470bd', '#3388cf', '#57a6e0', '#9fd2f2', '#e4f4fb']), MUD = P(['#5f4c32', '#77613f', '#8f7a52']);
+  const BARE_MUD = P(['#382d24', '#49392a', '#5c4631', '#705438', '#816343']), PUDDLE = rgb('#302f2b'), MUD_GLINT = rgb('#77756a');
   const FLOWERS = [[255, 255, 255], [255, 150, 190], [240, 70, 70], [190, 130, 255], [255, 220, 80]];
 
   LJ.Ground = function (w) {
@@ -220,6 +221,9 @@
         const rp = vnoise(px * 0.11, py * 0.75, s + 4);
         c = rp > 0.8 ? WA[4] : rp > 0.72 ? WA[3] : WA[step(vnoise(px * 0.06, py * 0.06, s + 5), 3, px, py)];
       }
+    } else if (t === T.MUD) {
+      const pool = vnoise(px * 0.14, py * 0.14, s + 221);
+      c = pool > 0.7 ? (h < 0.06 ? MUD_GLINT : PUDDLE) : BARE_MUD[step(vnoise(px * 0.22, py * 0.22, s + 222), 5, px, py)];
     } else if (wet && t !== T.ROCK && this.near(px, py, 3, isW)) {
       c = h < 0.06 ? PEB : MUD[step(vnoise(px * 0.3, py * 0.3, s + 6), 3, px, py)];
     } else if (isRoad(t)) {

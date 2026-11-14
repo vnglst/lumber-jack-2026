@@ -144,8 +144,9 @@
       return;
     }
     const tr = treeAt(wx, wy), idx = tileAt(wx, wy);
-    if (tr >= 0 && LJ.whack(tr)) return;
     let sel = [...G.sel];
+    const doze = LJ.canDoze(idx) && G.fog[idx] && sel.some(s => s.kind === 'dozer');
+    if (tr >= 0 && !doze && LJ.whack(tr)) return;
     const beast = pickAnimal(wx, wy, slack);
     if (beast && LJ.seenPx(beast.x, beast.y)) {
       if (!sel.some(s => s.kind === 'jack')) sel = LJ.jacks();
@@ -153,7 +154,7 @@
       LJ.cmd.hunt(sel, beast); LJ.sfx('click');
       return;
     }
-    if (LJ.blocked(idx) && G.fog[idx] && sel.some(s => s.kind === 'dozer')) { LJ.cmd.dozeTo(sel, idx); LJ.sfx('click'); return; }
+    if (doze) { LJ.cmd.dozeTo(sel, idx); LJ.sfx('click'); return; }
     if (!sel.length) {
       if (tr < 0) return;
       // Nothing selected: grab the nearest jack so a single tap is enough to get going.
@@ -463,7 +464,7 @@
     if (G.stockpile) return 'Stockpiling: automatic market loading is paused. Jacks and Logging Trucks still deliver to camp. Tap “Stockpiling” to resume selling.';
     const tasks = t => G.units.some(u => u.task && u.task.type === t), sel = [...G.sel];
     if (G.cleared >= G.thr[G.level - 1]) return 'Trees done! Now earn the rest of the quota: sell wood and lumber at the market.';
-    if (sel.length && sel.every(u => u.kind === 'dozer')) return 'Tap a rock or river tile to bulldoze a way to it.';
+    if (sel.length && sel.every(u => u.kind === 'dozer')) return 'Tap a stump, rock or river tile. Nearby roots and rocks are cleared automatically; recovered root wood is delivered to camp.';
     if (sel.length && sel.every(u => u.kind === 'shuttle')) return 'Tap a clearing near your jacks to set a logging route. This truck collects wood there, delivers it to the village, and returns.';
     if (sel.length && sel.every(u => u.kind === 'truck') && !G.up.dispatch) return 'Tap the market sign (or “Haul run”) to send the truck on a trip.';
     if (!G.village && LJ.jackCount() < LJ.popCap() && G.money >= LJ.SHOP.find(it => it.id === 'jack').cost().m) return 'Hire an extra Jack in the Shop — he starts walking to your tent right away.';
@@ -499,7 +500,7 @@
     const u = sel[0], cargo = sel.reduce((a, b) => a + LJ.cargoOf(b), 0), has = k => sel.some(s => s.kind === k);
     const allJacks = sel.every(s => s.kind === 'jack');
     const title = sel.length > 1 ? sel.length + (allJacks ? ' Jacks' : ' units') : u.name + (u.hp < LJ.maxHpOf(u) ? ' · ♥ ' + Math.ceil(u.hp) : '');
-    const st = sel.length > 1 ? 'Carrying ' + cargo : LJ.statusOf(u) + (u.kind === 'dozer' ? '' : ' · ' + cargo + '/' + LJ.capOf(u));
+    const st = sel.length > 1 ? 'Carrying ' + cargo : LJ.statusOf(u) + ' · ' + cargo + '/' + LJ.capOf(u);
     let experience = '';
     if (sel.length === 1 && u.kind === 'jack') {
       const rank = LJ.rankOf(u), next = LJ.JACK_RANKS[LJ.JACK_RANKS.indexOf(rank) + 1];
@@ -568,6 +569,7 @@
       else if (t === T.ROCK) { r = 128; g = 126; b = 122; }
       else if (t === T.ROAD) { r = 196; g = 160; b = 108; }
       else if (t === T.BRIDGE) { r = 120; g = 80; b = 44; }
+      else if (t === T.MUD) { r = 92; g = 70; b = 47; }
       else if (t === T.DIRT || t === T.GRAVEL) { r = 150; g = 118; b = 80; }
       else { const L = w.lush[i]; r = 150 - 70 * L; g = 130 + 32 * L; b = 80 - 20 * L; }
       if (t !== T.WATER && t !== T.ROCK && t !== T.BRIDGE && !w.bld[i] && !(o >= 1 && o <= 3)) {

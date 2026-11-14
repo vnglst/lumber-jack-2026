@@ -136,11 +136,11 @@ test('XP survives current saves; older saves without XP remain compatible', () =
   jack.xp = 175;
   lj.saveGame();
   const store = storage(lj), saved = JSON.parse(store.getItem('lumberjack-save'));
-  assert.equal(saved.v, 5);
+  assert.equal(saved.v, 6);
   assert.ok(lj.loadGame());
   assert.equal(lj.jacks()[0].xp, 175);
   assert.equal(lj.rankOf(lj.jacks()[0]).name, 'Veteran');
-  for (const version of [2, 3, 4]) {
+  for (const version of [2, 3, 4, 5]) {
     const old = JSON.parse(JSON.stringify(saved));
     old.v = version; old.units.forEach(u => delete u.xp);
     store.setItem('lumberjack-save', JSON.stringify(old));

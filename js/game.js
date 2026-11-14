@@ -9,6 +9,11 @@
   const FR = [0.005, 0.03, 0.07, 0.12, 0.19, 0.28, 0.4, 0.55, 0.74, 1];
   // Per species: seconds to chop with a plain axe, and wood yield. Oaks are slow but rich.
   const SPECIES = [null, { t: 3.6, y: 3 }, { t: 6, y: 6 }, { t: 4.5, y: 4 }];
+  const DOZE = {
+    rock: { time: 2.5, ground: T.GRAVEL, resource: 'stone', amount: 2 },
+    water: { time: 4, ground: T.GRAVEL },
+    roots: { time: 3, ground: T.MUD, resource: 'wood', amount: 2, muddy: true }
+  };
   const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
   const NAMES = ['Jacques', 'Jackie', 'Big Jack', 'Jack Jr.', 'Jaq', 'Old Jack', 'Jax', 'Jacko', 'Lil Jack', 'Jackson', 'Jacqueline', 'Jock'];
   const JACK_RANKS = (LJ.JACK_RANKS = [
@@ -33,7 +38,7 @@
   const VEH = (LJ.VEH = {
     truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, cap: () => (G.up.mega ? 120 : 60), max: 3 },
     shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, cap: () => 40, max: 4, sprite: 'truck', voice: 'truck' },
-    dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, cap: () => 0, max: 2 },
+    dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, cap: () => 16, max: 2 },
     harv: { name: 'Harvester', wage: 30, hp: 240, wear: 8, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
   // The starting tent grows into the village, one upgrade at a time.
@@ -99,7 +104,7 @@
     vehItem('shuttle', 3, 150, 'Tap a forest clearing to set a route. Jacks load it there; it shuttles up to 40 wood back to the village automatically.', 'truck'),
     bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Fires laser bursts at forest folk and wild animals. Sees far, and jacks nearby heal quickly.', 'tower'),
     { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Takes ' + WALL_BUILD_TIME + ' seconds per section. Your people use the gates; enemies break through. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
-    vehItem('dozer', 4, 600, 'Clears rocks (for stone) and fills in rivers so you can reach new forest.', 'dozer'),
+    vehItem('dozer', 4, 600, 'Uproots stumps for extra wood, clears rocks for stone and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
     { id: 'foreman', name: 'Keen-eyed Foreman', desc: 'Jacks spot trees from 50% further away.', icon: 'hat', level: 5, cost: () => ({ m: 500 }) },
     { id: 'dispatch', name: 'Dispatcher', desc: 'Trucks keep hauling on their own whenever there are goods.', icon: 'clip', level: 5, need: 'truck', cost: () => ({ m: 450 }) },
     vehItem('harv', 6, 900, 'A machine that fells and carries trees by itself. Wolves ignore it.', 'harv'),
@@ -116,6 +121,8 @@
   const isTree = i => w.obj[i] >= 1 && w.obj[i] <= 3;
   const pass = i => { const t = w.type[i]; return t !== T.WATER && t !== T.ROCK && !isTree(i) && w.bld[i] === 0; };
   const blocked = i => w.type[i] === T.WATER || w.type[i] === T.ROCK;
+  const isRoot = i => w.obj[i] === STUMP && !w.bld[i];
+  const canDoze = (LJ.canDoze = i => !w.bld[i] && (blocked(i) || isRoot(i)));
   // Animals slip between the trees; only water, rock and buildings stop them.
   const wildPass = i => !blocked(i) && w.bld[i] === 0;
   // A bulldozer plans its route straight through rock and water.
@@ -447,10 +454,10 @@
   }
   // Cheap check before a full search: is there any visible tree within R tiles of (ax, ay)?
   const anyTreeNear = (ax, ay, R) => someNear(ax, ay, R, isTree);
-  // Explored rock tiles within R tiles of (ax, ay): what an idle bulldozer clears on its own. Water only on orders.
-  function rocksNear(ax, ay, R) {
+  // Idle bulldozers clear explored rocks and stumps nearby. Water still needs an explicit order.
+  function dozeTargetsNear(ax, ay, R) {
     const out = [];
-    someNear(ax, ay, R, i => { if (w.type[i] === T.ROCK) out.push(i); });
+    someNear(ax, ay, R, i => { if (canDoze(i) && w.type[i] !== T.WATER) out.push(i); });
     return out;
   }
 
@@ -479,15 +486,18 @@
     }
     if (t.type === 'doze') {
       const job = t.job;
-      for (const c of job.tiles) if (!blocked(c)) job.tiles.delete(c);
-      if (!job.tiles.size) { // like the jacks: carry on with any rocks in sight of the work spot
-        for (const c of rocksNear(t.ax, t.ay, sightOf(u))) job.tiles.add(c);
+      for (const c of job.tiles) if (!canDoze(c)) job.tiles.delete(c);
+      // Batch nearby roots, but don't carry a small load through a whole rock-clearing expedition.
+      if (u.carry >= capOf(u) || (u.carry > 0 && !someNear(t.ax, t.ay, sightOf(u), isRoot))) { goDrop(u); return; }
+      if (!job.tiles.size) {
+        for (const c of dozeTargetsNear(t.ax, t.ay, sightOf(u))) job.tiles.add(c);
         if (!job.tiles.size) { endTask(u); u.idleVer = G.worldVer; if (Math.random() < 0.5) say(u, M.allClear); return; }
       }
-      const r = nearestAdj(u, n => job.tiles.has(n) && blocked(n), true);
+      const r = nearestAdj(u, n => job.tiles.has(n) && canDoze(n), true);
       if (r.path) { w.claim[r.found] = u.id; u.target = r.found; u.path = r.path; u.state = 'toDoze'; }
       else if (r.sawClaimed) { u.wait = 0.6; u.state = 'think'; }
-      else { say(u, M.cantReach); endTask(u); }
+      else if (u.carry > 0) { job.tiles.clear(); goDrop(u); }
+      else { say(u, M.cantReach); endTask(u); u.idleVer = G.worldVer; }
       return;
     }
     // Work: keep cutting the nearest visible tree within sight of the work spot, carrying wood off when full.
@@ -672,7 +682,7 @@
   LJ.canWall = i => {
     if (i < 0 || i >= w.N || w.wall[i] || w.bld[i] || isTree(i) || !G.fog[i]) return false;
     const t = w.type[i], x = i % W, y = (i / W) | 0;
-    return (t === T.GRASS || t === T.DIRT || t === T.GRAVEL || t === T.ROAD) && !nearMarket(x, y);
+    return (t === T.GRASS || t === T.DIRT || t === T.MUD || t === T.GRAVEL || t === T.ROAD) && !nearMarket(x, y);
   };
   LJ.buildWalls = function (tiles) {
     let n = 0;
@@ -861,18 +871,24 @@
         break;
       case 'return': u.state = 'idle'; break;
       case 'toDoze':
-        if (blocked(u.target)) { u.state = 'doze'; u.sawT = 0; face(u, (u.target % W) * TS + 8); }
+        if (canDoze(u.target)) { u.state = 'doze'; u.sawT = 0; face(u, (u.target % W) * TS + 8); }
         else { release(u); think(u); }
         break;
       case 'doze': {
         const t = u.target;
-        if (!blocked(t)) { release(u); think(u); break; }
-        const rock = w.type[t] === T.ROCK;
+        if (!canDoze(t)) { release(u); think(u); break; }
+        const rule = isRoot(t) ? DOZE.roots : w.type[t] === T.ROCK ? DOZE.rock : DOZE.water;
         u.sawT += dt * effort(u); u.swing += dt;
         if (u.swing > 0.15) { u.swing = 0; dust(u.x + u.dir * 12, u.y - 2); }
-        if (u.sawT >= (rock ? 2.5 : 4)) {
-          w.type[t] = T.GRAVEL; w.obj[t] = 0; markAround(t, 2); G.worldVer++;
-          if (rock) { G.stone += 2; LJ.float(u.x, u.y - 18, '+2 stone', ''); }
+        if (u.sawT >= rule.time) {
+          w.type[t] = rule.ground; w.obj[t] = 0;
+          if (rule.muddy) { w.lush[t] = 0; w.wear[t] = Math.max(80, w.wear[t]); w.flower[t] = w.deco[t] = 0; }
+          markAround(t, 2); G.worldVer++;
+          if (rule.resource) {
+            if (rule.resource === 'wood') u.carry += rule.amount;
+            else G[rule.resource] += rule.amount;
+            LJ.float(u.x, u.y - 18, '+' + rule.amount + ' ' + rule.resource + (rule.muddy ? ' from roots' : ''), '');
+          }
           LJ.sfx('rock');
           if (u.task && u.task.job) { u.task.job.tiles.delete(t); u.task.ax = t % W; u.task.ay = (t / W) | 0; } // the work spot follows the clearing
           release(u); think(u);
@@ -900,13 +916,13 @@
       units.forEach((u, k) => workAt(u, tree % W, (tree / W) | 0, k === 0 ? tree : -1));
       if (Math.random() < 0.5) say(units[0], LJ.pick(units[0].kind === 'jack' ? Q_ACK : Q_VEH[units[0].kind]));
     },
-    // Bulldoze a straight-ish line of rock/water to reach a target tile.
+    // Clear roots and bulldoze rock/water along the route to a target.
     dozeTo(units, idx) {
       const dz = units.filter(u => u.kind === 'dozer');
       if (!dz.length) return false;
       const path = bfs(dz[0].tile, c => c === idx, dozePass, true);
       if (!path) { say(dz[0], M.cantGet); return false; }
-      const tiles = path.filter(blocked);
+      const tiles = [...path, idx].filter(canDoze);
       if (!tiles.length) { LJ.cmd.move(dz, idx); return true; }
       const job = { tiles: new Set(tiles) };
       for (const u of dz) setTask(u, { type: 'doze', job, ax: idx % W, ay: (idx / W) | 0 });
@@ -1082,7 +1098,7 @@
       return { haulStore: moving ? 'Driving to storage' : 'Loading', haulExit: 'Driving to market', return: 'Returning to storage', move: 'Driving' }[u.state] ||
         (u.hold ? 'Stopped' : G.up.dispatch ? 'Waiting for goods' : 'Parked');
     }
-    if (u.kind === 'dozer') return { toDoze: 'Driving to the rocks', doze: 'Bulldozing', move: 'Driving', return: 'Driving' }[u.state] || 'Parked';
+    if (u.kind === 'dozer') return { toDoze: isRoot(u.target) ? 'Driving to roots' : 'Driving to obstacles', doze: isRoot(u.target) ? 'Uprooting roots' : 'Bulldozing', toDrop: 'Delivering root wood', move: 'Driving', return: 'Driving' }[u.state] || (u.hold ? 'Stopped' : 'Parked');
     if (u.kind === 'harv') return { chop: 'Harvesting', toTree: 'Driving to the trees', toDrop: 'Unloading', move: 'Driving', return: 'Driving' }[u.state] || (u.hold ? 'Stopped' : 'No trees in sight');
     switch (u.state) {
       case 'chop': return 'Chopping';
@@ -1191,8 +1207,8 @@
         const tx = u.tile % W, ty = (u.tile / W) | 0;
         if (anyTreeNear(tx, ty, sightOf(u))) { workAt(u, tx, ty); think(u); }
       } else if (u.kind === 'dozer') {
-        const tx = u.tile % W, ty = (u.tile / W) | 0, rocks = rocksNear(tx, ty, sightOf(u));
-        if (rocks.length) { setTask(u, { type: 'doze', job: { tiles: new Set(rocks) }, ax: tx, ay: ty }); think(u); }
+        const tx = u.tile % W, ty = (u.tile / W) | 0, targets = dozeTargetsNear(tx, ty, sightOf(u));
+        if (targets.length) { setTask(u, { type: 'doze', job: { tiles: new Set(targets) }, ax: tx, ay: ty }); think(u); }
         else u.idleVer = G.worldVer;
       }
     }

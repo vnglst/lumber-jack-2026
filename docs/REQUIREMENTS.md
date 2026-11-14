@@ -40,6 +40,7 @@ How to read it:
 | 27 | 14 Nov | Playtest and improve the full gameplay loop | Active |
 | 28 | 14 Nov | Jacks learn through work | Active |
 | 29 | 14 Nov | Construction takes time | Active |
+| 30 | 14 Nov | Bulldozers uproot stumps for more wood | Active |
 
 ---
 
@@ -370,3 +371,14 @@ How to read it:
 - *Decision: Bunkhouse 12 seconds, Sawmill 18, Guard Tower 20; Cabin upgrade 15, Lodge 25, Town Hall 35; palisade sections 3 seconds each. Construction is automatic at normal game time and pauses with the game.*
 - *Decision: palisades start as fragile 1-HP stakes and reach full strength only when finished. The starting tent remains part of the narrated arrival; equipment purchases, worker training and road deliveries keep their existing behavior.*
 - *Decision: save format 5 preserves construction progress; formats 2–4 remain loadable as completed structures.*
+
+## 30. Bulldozers uproot stumps for more wood (14 Nov 2026)
+
+> Bulldozers can clear roots from the land as well. Leaving the land barren and muddy, but still extracting more wood.
+
+- Bulldozers can uproot the stumps left by harvested trees, manually or automatically within their nearby work area.
+- Each stump can yield extra wood only once. Uprooting leaves plant-free, barren mud without counting as another felled tree.
+- *Decision: roots take three seconds and yield two wood. Bulldozers carry up to 16 recovered wood and deliver it to camp or a waiting Logging Truck; wood enters village stock only on delivery.*
+- Bulldozers continue clearing nearby rocks and filling rivers on explicit orders. Stop orders still hold them in place with their cargo.
+- Show muddy ground on the map/minimap, a roots-specific work status, and the bulldozer's cargo.
+- *Decision: save format 6 adds the muddy terrain value while retaining existing job/cargo fields; formats 2–5 still load.*

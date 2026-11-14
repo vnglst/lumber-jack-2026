@@ -2,7 +2,7 @@
 // Saving: the game goes to localStorage every 15 seconds and whenever the tab is hidden or closed.
 // The map itself is regenerated from its seed on load, so only what changed is stored.
 (function () {
-  const G = LJ.G, KEY = 'lumberjack-save', VERSION = 5;
+  const G = LJ.G, KEY = 'lumberjack-save', VERSION = 6;
   // World layers that change during play. Grass dryness (lush) is stored as a byte; tree health only for trees
   // being chopped; flowers and decor are rebuilt from the buildings on load.
   const LAYERS = { type: Uint8Array, obj: Uint8Array, wear: Uint8Array, bld: Int16Array, wall: Uint8Array };
@@ -76,7 +76,7 @@
   };
 
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } };
-  const compatible = s => s && (s.v === VERSION || s.v === 4 || s.v === 3 || s.v === 2);
+  const compatible = s => s && (s.v === VERSION || s.v === 5 || s.v === 4 || s.v === 3 || s.v === 2);
   LJ.hasSave = () => !!compatible(read());
   LJ.clearSave = () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } };
 
