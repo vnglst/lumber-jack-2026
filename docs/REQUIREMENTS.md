@@ -49,6 +49,7 @@ How to read it:
 | 36 | 14 Nov | Normal fog reveal during the opening drive | Active |
 | 37 | 14 Nov | Slower working trucks | Active |
 | 38 | 14 Nov | Audible market deal notifications | Active |
+| 39 | 14 Nov | Move orders let Jacks retreat from combat | Active |
 
 ---
 
@@ -468,3 +469,11 @@ How to read it:
 - Play a noticeable, distinct sound when a new wood or lumber market offer appears.
 - *Decision: replace the ordinary button click with a short rising market chime. Play it once per new offer, not on every update, acceptance, dismissal or save restoration.*
 - Respect the existing mute and audio-unlock controls; prices, payouts and recorded voice volumes are unchanged.
+
+## 39. Move orders let Jacks retreat from combat (14 Nov 2026)
+
+> You can abort an attack by jacks (attacking wolves) if they’re attacked by moving them out.
+
+- A valid move order immediately cancels a Jack's attack and takes priority over automatic retaliation, including after further hits.
+- Enemies can still chase and damage retreating Jacks; normal self-defense resumes at the destination or after a new attack order.
+- *Decision: cancel the retreating Jack's unfired laser-burst shots, but keep bolts already in flight and other units' bursts. Unreachable move orders leave the current task unchanged.*

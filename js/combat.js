@@ -24,6 +24,7 @@
   C.burst = function (src, target, o) {
     G.bursts.push({ src, target, left: o.n, t: 0, dmg: o.dmg, col: o.col, spread: o.spread || 5 });
   };
+  C.cancelBurst = function (src) { G.bursts = G.bursts.filter(b => b.src !== src); };
   function fireBolt(b) {
     const s = b.src, tg = b.target;
     const sx = s.x + (s.dir || 0) * 8, sy = s.y - (s.muzzleY === undefined ? 9 : s.muzzleY);

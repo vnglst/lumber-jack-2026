@@ -649,8 +649,9 @@
       if (vt === 'hunt' || vt === 'move') continue;
       setTask(v, { type: 'hunt', a, resume: v.task });
     }
-    // Shot from out of reach: go after the attacker, then back to work.
-    if (u.hp > 0 && a.alive && u.kind === 'jack' && !u.fighting && !(u.task && u.task.type === 'hunt')) setTask(u, { type: 'hunt', a, resume: u.task });
+    // Shot from out of reach: go after the attacker, unless explicitly retreating.
+    const task = u.task && u.task.type;
+    if (u.hp > 0 && a.alive && jack && !u.fighting && task !== 'hunt' && task !== 'move') setTask(u, { type: 'hunt', a, resume: u.task });
     if (u.hp > 0) return;
     u.dead = true; release(u);
     G.sel.delete(u);
@@ -938,7 +939,10 @@
       for (const u of units) {
         const path = bfs(u.tile, c => c === idx);
         if (path && u.kind === 'shuttle') { setTask(u, { type: 'shuttle', ax: idx % W, ay: (idx / W) | 0 }); think(u); }
-        else if (path) { setTask(u, { type: 'move' }); u.path = path; u.state = 'move'; }
+        else if (path) {
+          setTask(u, { type: 'move' }); u.path = path; u.state = 'move';
+          if (u.kind === 'jack') { u.fighting = false; LJ.combat.cancelBurst(u); }
+        }
         else say(u, M.cantGet);
       }
     },

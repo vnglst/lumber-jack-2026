@@ -33,5 +33,6 @@ Chromium desktop and mobile-sized viewports. Touch-pointer events were simulated
 - Roots: browser-checked a right-click work order, the muddy ground shader and the “Delivering root wood · 2/16” status before wood entered village stock. Regression checks cover one-time yields, shared jobs, full/partial deliveries, Stop, saved orders/cargo/mud, and unchanged rock/water clearing.
 - Direct review caught and fixed an overflow after saving a partial Logging Truck handoff: a bulldozer carrying 15 wood now unloads before digging another two.
 - Market deal alert: regression-checked new wood/lumber offers, expiry, dismissal, acceptance and save restoration. Rendered the new chime through real Web Audio: about 0.89 seconds of nonzero audio with no clipping; mute and audio-unlock gates are covered by the sound-engine test.
+- Combat retreat: simulation regressions reproduce a wolf bite replacing a move order, then verify retreat persists after damage, defense resumes at the destination or on a new attack order, and unreachable moves leave combat unchanged. Laser checks preserve in-flight bolts and other units' bursts while canceling the retreating Jack's queued shots.
 
 Before release, repeat on physical iOS Safari and Android Chrome, including two-finger pinch and orientation changes.
