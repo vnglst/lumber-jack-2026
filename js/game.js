@@ -13,6 +13,7 @@
   const NAMES = ['Jacques', 'Jackie', 'Big Jack', 'Jack Jr.', 'Jaq', 'Old Jack', 'Jax', 'Jacko', 'Lil Jack', 'Jackson', 'Jacqueline', 'Jock'];
   const VEH = (LJ.VEH = {
     truck: { name: 'Truck', wage: 10, hp: 180, cap: () => (G.up.mega ? 120 : 60), max: 3 },
+    shuttle: { name: 'Logging Truck', wage: 8, hp: 180, cap: () => 40, max: 4, sprite: 'truck', voice: 'truck' },
     dozer: { name: 'Bulldozer', wage: 15, hp: 260, cap: () => 0, max: 2 },
     harv: { name: 'Harvester', wage: 30, hp: 240, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
@@ -29,7 +30,6 @@
     base: { name: 'Village', sight: 5, heals: true, hp: 500, raid: true }, // raid: raided at 0 HP instead of destroyed
     bunk: { name: 'Bunkhouse', size: [2, 2], max: 4, sight: 5 },
     sawmill: { name: 'Sawmill', size: [3, 2], max: 3, sight: 5, mask: 'sawMask' },
-    depot: { name: 'Log Depot', size: [2, 2], max: 4, sight: 5, mask: 'storeMask' },
     tower: { name: 'Guard Tower', size: [2, 2], max: 6, sight: 13, heals: true, hp: 320 }
   });
   let w, W, H, vis, par, q, stamp = 0;
@@ -70,7 +70,7 @@
     { id: 'barrow', name: 'Wheelbarrows', desc: 'Jacks carry 24.', icon: 'barrow', level: 2, need: 'sling', cost: () => ({ m: 160, w: 20 }) },
     { id: 'chainsaw', name: 'Chainsaws', desc: 'Chop twice as fast. Loud.', icon: 'chainsaw', level: 3, need: 'sharpaxe', cost: () => ({ m: 300 }) },
     vehItem('truck', 2, 250, 'Hauls 60 goods per trip down the road to market, much faster than walking.', 'truck'),
-    bldItem('depot', 3, () => ({ m: 150, l: 10 }), 'Extra drop-off point for wood. Place it out by the forest.', 'depot'),
+    vehItem('shuttle', 3, 150, 'Tap a forest clearing to set a route. Jacks load it there; it shuttles up to 40 wood back to the village automatically.', 'truck'),
     bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Fires laser bursts at forest folk and wild animals. Sees far, and jacks nearby heal quickly.', 'tower'),
     { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Forest folk and wolves must break through them; your own people use the gates. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
     vehItem('dozer', 4, 600, 'Clears rocks (for stone) and fills in rivers so you can reach new forest.', 'dozer'),
@@ -128,7 +128,7 @@
       money: 0, wood: 0, lumber: 0, stone: 0, cleared: 0, total: w.totalTrees, level: 1, levelDone: false, up: {},
       time: 0, paused: true, sel: new Set(), floats: [], parts: [], falls: [], bubbles: [], bflies: [],
       nextId: 1, drag: null, exitIdx: w.roadY * W, sold: 0, cam: { x: 0, y: 0 },
-      stockpile: false, village: null, base: null, tier: 0, count: { bunk: 0, sawmill: 0, depot: 0, tower: 0 },
+      stockpile: false, village: null, base: null, tier: 0, count: { bunk: 0, sawmill: 0, tower: 0 },
       place: null, hover: null, order: null, orderCd: 25, payT: PAY_EVERY,
       villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), sawMask: new Uint8Array(w.N), smokeT: 0,
       fog: new Uint8Array(w.N), fogDirty: true, fogT: 0, fogLeft: w.N, worldVer: 0,
@@ -178,12 +178,23 @@
     Object.assign(G, d.g);
     G.fog = d.fog; G.fogLeft = G.fog.reduce((n, f) => n + (f ? 0 : 1), 0);
     Object.assign(G.wave, d.wave, { active: null });
-    G.buildings = d.buildings.map(b => Object.assign({ queue: [] }, b));
+    const oldDepots = d.buildings.filter(b => b.kind === 'depot' && !b.dead);
+    G.buildings = d.buildings.filter(b => b.kind !== 'depot').map(b => Object.assign({ queue: [] }, b));
+    // Old saves turn their fixed depots into logging trucks, keeping the same collection spots.
+    w.bld.fill(0);
+    G.buildings.forEach((b, n) => {
+      if (!b.dead) for (let y = b.ty; y < b.ty + b.h; y++) for (let x = b.tx; x < b.tx + b.w; x++) w.bld[y * W + x] = n + 1;
+    });
     G.base = G.buildings.find(b => b.kind === 'base');
     G.village = G.tier >= 1 ? G.base : null;
     for (const b of G.buildings) if (!b.dead && b.kind in G.count) G.count[b.kind]++;
     rebuildMasks();
     G.units = d.units.map(u => Object.assign(makeUnit(0, 0, u.name, u.kind, u.wage), u, { state: 'think' }));
+    for (const b of oldDepots) {
+      const tile = b.ty * W + b.tx;
+      const u = addUnit(b.tx, b.ty, 'Logging Truck ' + (countKind('shuttle') + 1), 'shuttle', VEH.shuttle.wage);
+      u.task = { type: 'shuttle', ax: tile % W, ay: (tile / W) | 0 }; u.state = 'think';
+    }
     G.critters = d.critters.map(c => makeCritter(c.kind, c.x, c.y, c.dir, Math.random() * 4));
     spawnButterflies(d.seed);
     G.ground.renderAll();
@@ -289,7 +300,7 @@
   function speedOf(u) {
     // Trails (worn dirt, gravel) help a little; the road to market helps a lot, most of all for trucks.
     const t = w.type[u.tile], road = LJ.isRoad(t), trail = t === T.DIRT || t === T.GRAVEL;
-    if (u.kind === 'truck') return (road ? 160 : trail ? 100 : 55) * effort(u);
+    if (u.kind === 'truck' || u.kind === 'shuttle') return (road ? 160 : trail ? 100 : 55) * effort(u);
     if (u.kind === 'dozer') return 36 * effort(u);
     if (u.kind === 'harv') return (G.up.turbo ? 54 : 38) * (road ? 1.5 : trail ? 1.2 : 1) * effort(u);
     let s = 50 * effort(u);
@@ -406,6 +417,12 @@
       if (!ok) endTask(u);
       return;
     }
+    if (t.type === 'shuttle') {
+      u.loadT = 0;
+      const goal = u.carry ? storeGoal : c => c === t.ay * W + t.ax;
+      if (!walkTo(u, goal, u.carry ? 'shuttleDrop' : 'shuttleLoad', M.cantReach)) { u.wait = 2; u.state = 'think'; }
+      return;
+    }
     if (t.type === 'doze') {
       const job = t.job;
       for (const c of job.tiles) if (!blocked(c)) job.tiles.delete(c);
@@ -432,7 +449,28 @@
 
   // All harvested wood goes through the settlement before it can be sold.
   function goDrop(u) {
-    if (!walkTo(u, storeGoal, 'toDrop', M.lost)) { u.wait = 2; u.state = 'think'; }
+    u.dropId = null;
+    const trucks = G.units.filter(t => !t.dead && !t.hold && t.kind === 'shuttle' && t.state === 'shuttleLoad' && !t.path.length && t.carry < capOf(t) && Math.hypot(t.x - u.x, t.y - u.y) <= 8 * TS);
+    const goal = c => {
+      if (storeGoal(c)) return true;
+      const t = trucks.find(t => Math.abs(c % W - t.tile % W) <= 1 && Math.abs(((c / W) | 0) - ((t.tile / W) | 0)) <= 1);
+      if (!t) return false;
+      u.dropId = t.id; return true;
+    };
+    if (!walkTo(u, goal, 'toDrop', M.lost)) { u.wait = 2; u.state = 'think'; }
+  }
+  function dropWood(u) {
+    if (u.dropId !== null && u.dropId !== undefined) {
+      const t = G.units.find(t => t.id === u.dropId && !t.dead && !t.hold && t.state === 'shuttleLoad' && !t.path.length);
+      if (t && Math.hypot(t.x - u.x, t.y - u.y) < 2 * TS) {
+        const qty = Math.min(u.carry, capOf(t) - t.carry);
+        t.carry += qty; u.carry -= qty;
+        if (qty) LJ.float(u.x, u.y - 18, '+' + qty + ' wood loaded', '');
+      }
+      u.dropId = null;
+      if (u.carry) { goDrop(u); return; }
+    } else deposit(u);
+    think(u);
   }
 
   function sell(u, wd, lum, st) {
@@ -717,7 +755,13 @@
         if (w.hp[t] <= 0) { fell(t, u); u.target = -1; think(u); }
         break;
       }
-      case 'toDrop': deposit(u); think(u); break;
+      case 'toDrop': dropWood(u); break;
+      case 'shuttleLoad':
+        if (u.carry >= capOf(u) || (u.carry > 0 && (u.loadT += dt) >= 8)) {
+          if (!walkTo(u, storeGoal, 'shuttleDrop', M.noStore)) { u.wait = 2; u.state = 'think'; }
+        }
+        break;
+      case 'shuttleDrop': deposit(u); think(u); break;
       case 'toSaw': {
         if (u.carry) { G.wood += u.carry; u.carry = 0; }
         u.state = 'saw'; u.sawT = 0;
@@ -807,7 +851,8 @@
     move(units, idx) {
       for (const u of units) {
         const path = bfs(u.tile, c => c === idx);
-        if (path) { setTask(u, { type: 'move' }); u.path = path; u.state = 'move'; }
+        if (path && u.kind === 'shuttle') { setTask(u, { type: 'shuttle', ax: idx % W, ay: (idx / W) | 0 }); think(u); }
+        else if (path) { setTask(u, { type: 'move' }); u.path = path; u.state = 'move'; }
         else say(u, M.cantGet);
       }
     },
@@ -851,7 +896,7 @@
   LJ.poke = function (u) {
     u.clicks = G.time - u.lastClick < 4 ? u.clicks + 1 : 0;
     u.lastClick = G.time;
-    if (u.kind !== 'jack') { say(u, LJ.pick(Q_VEH[u.kind])); return; }
+    if (u.kind !== 'jack') { say(u, LJ.pick(Q_VEH[VEH[u.kind].voice || u.kind])); return; }
     say(u, LJ.pick(G.money < 0 && u.hired ? Q_BROKE : u.clicks < 3 ? Q_NORMAL : u.clicks < 6 ? Q_ANNOYED : Q_FUNNY));
   };
 
@@ -881,7 +926,7 @@
     const u = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, VEH[kind].name + (VEH[kind].max > 1 ? ' ' + n : ''), kind, VEH[kind].wage);
     // Delivered by road; drives up to storage to park.
     walkTo(u, storeGoal, 'return');
-    say(u, LJ.pick(Q_VEH[kind]));
+    say(u, LJ.pick(Q_VEH[VEH[kind].voice || kind]));
     return u;
   }
 
@@ -967,6 +1012,7 @@
 
   LJ.statusOf = function (u) {
     const moving = u.path.length > 0;
+    if (u.kind === 'shuttle') return { shuttleLoad: moving ? 'Driving to forest' : 'Collecting wood', shuttleDrop: 'Delivering to village', return: 'Driving to village' }[u.state] || (u.hold ? 'Stopped' : 'Tap a clearing to set a route');
     if (u.kind === 'truck') {
       return { haulStore: moving ? 'Driving to storage' : 'Loading', haulExit: 'Driving to market', return: 'Returning to storage', move: 'Driving' }[u.state] ||
         (u.hold ? 'Stopped' : G.up.dispatch ? 'Waiting for goods' : 'Parked');
@@ -976,7 +1022,7 @@
     switch (u.state) {
       case 'chop': return 'Chopping';
       case 'toTree': return 'Walking to a tree';
-      case 'toDrop': return G.village ? 'Carrying wood to storage' : G.stockpile ? 'Carrying wood to camp' : 'Hauling wood to market';
+      case 'toDrop': return u.dropId != null ? 'Carrying wood to logging truck' : 'Carrying wood to camp';
       case 'sellRun': case 'haulExit': return 'Hauling to market';
       case 'haulStore': return moving ? 'Fetching goods' : 'Waiting for goods';
       case 'toSaw': return 'Walking to the sawmill';

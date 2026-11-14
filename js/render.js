@@ -28,7 +28,8 @@
   }
 
   function drawVehicle(ctx, u, cx, cy, G, ghost) {
-    const set = u.kind === 'truck' ? (LJ.cargoOf(u) > 0 ? S.truck.full : S.truck.empty) : u.kind === 'dozer' ? S.dozer : S.harv;
+    const kind = LJ.VEH[u.kind].sprite || u.kind;
+    const set = kind === 'truck' ? (LJ.cargoOf(u) > 0 ? S.truck.full : S.truck.empty) : S[kind];
     const img = u.dir > 0 ? set.r : set.l;
     const busy = u.state === 'doze' || (u.state === 'chop' && !u.path.length);
     const bob = (u.path.length && Math.floor(u.walkT * 10) % 2) || (busy && Math.floor(G.time * 16) % 2) ? 1 : 0;

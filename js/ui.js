@@ -5,7 +5,7 @@
   const $ = id => document.getElementById(id);
   const ui = (LJ.ui = {});
   const ZOOMS = [1, 1.5, 2, 3, 4];
-  const ICON_OF = { jack: 'jack', truck: 'truck', dozer: 'dozer', harv: 'harv' };
+  const ICON_OF = { jack: 'jack', truck: 'truck', shuttle: 'truck', dozer: 'dozer', harv: 'harv' };
   let cv, zi = 3, zoom = 3, keys = {}, lastClickU = null, lastClickT = 0, toastT = 0, panelSig = '', shopSig = '', orderSig = '';
   let mini, mctx, mimg, miniT = 0, mouse = null; // mouse: last pointer position in window pixels, null when outside
 
@@ -362,7 +362,7 @@
       '<ul><li><b>Tap a tree</b> to send your jack. Jacks keep cutting the nearest trees they can see; when none are left in sight, they wait.</li>' +
       '<li>Select jacks and <b>tap anywhere</b> to send them there. Keep tapping a tree being chopped to land extra whacks.</li>' +
       '<li>You arrive by <b>truck</b> and pitch your tent. Jacks carry wood back to camp; your truck sells the surplus at the market down the road west. Camp keeps 20 wood for building.</li>' +
-      '<li>Upgrade your tent into a village and build houses, sawmills and depots around it.</li>' +
+      '<li>Upgrade your tent into a village and build houses and sawmills. Logging Trucks shuttle harvested wood from a forest clearing back to your village; market trucks sell it.</li>' +
       '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
       '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection.</li>' +
       '<li>The game saves itself as you play.</li></ul>' +
@@ -449,6 +449,7 @@
     const tasks = t => G.units.some(u => u.task && u.task.type === t), sel = [...G.sel];
     if (G.cleared >= G.thr[G.level - 1]) return 'Trees done! Now earn the rest of the quota: sell wood and lumber at the market.';
     if (sel.length && sel.every(u => u.kind === 'dozer')) return 'Tap a rock or river tile to bulldoze a way to it.';
+    if (sel.length && sel.every(u => u.kind === 'shuttle')) return 'Tap a clearing near your jacks to set a logging route. This truck collects wood there, delivers it to the village, and returns.';
     if (sel.length && sel.every(u => u.kind === 'truck') && !G.up.dispatch) return 'Tap the market sign (or “Haul run”) to send the truck on a trip.';
     if (!G.village && LJ.jackCount() < LJ.popCap() && G.money >= LJ.SHOP.find(it => it.id === 'jack').cost().m) return 'Hire an extra Jack in the Shop — he starts walking to your tent right away.';
     if (G.cleared === 0 && !tasks('work')) return 'Tap a tree to send your jack to work.';

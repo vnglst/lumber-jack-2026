@@ -2,7 +2,7 @@
 // Saving: the game goes to localStorage every 15 seconds and whenever the tab is hidden or closed.
 // The map itself is regenerated from its seed on load, so only what changed is stored.
 (function () {
-  const G = LJ.G, KEY = 'lumberjack-save', VERSION = 2;
+  const G = LJ.G, KEY = 'lumberjack-save', VERSION = 3;
   // World layers that change during play. Grass dryness (lush) is stored as a byte; tree health only for trees
   // being chopped; flowers and decor are rebuilt from the buildings on load.
   const LAYERS = { type: Uint8Array, obj: Uint8Array, wear: Uint8Array, bld: Int16Array, wall: Uint8Array };
@@ -31,6 +31,7 @@
     switch (t.type) {
       case 'work': return { type: 'work', ax: t.ax, ay: t.ay };
       case 'saw': return { type: 'saw' };
+      case 'shuttle': return { type: 'shuttle', ax: t.ax, ay: t.ay };
       case 'haul': return { type: 'haul', once: t.once, resume: taskOut(t.resume, jobs) };
       case 'doze': {
         if (!jobs.has(t.job)) jobs.set(t.job, jobs.size);
@@ -43,6 +44,7 @@
   function taskIn(t, jobs) {
     if (!t) return null;
     if (t.type === 'work') return Object.assign(t, { first: -1 });
+    if (t.type === 'shuttle') return t;
     if (t.type === 'haul') return Object.assign(t, { resume: taskIn(t.resume, jobs) });
     if (t.type === 'doze') return Object.assign(t, { job: jobs[t.job] });
     return t;
@@ -74,13 +76,14 @@
   };
 
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } };
-  LJ.hasSave = () => { const s = read(); return !!s && s.v === VERSION; };
+  const compatible = s => s && (s.v === VERSION || s.v === 2);
+  LJ.hasSave = () => !!compatible(read());
   LJ.clearSave = () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } };
 
   LJ.loadGame = function () {
     try {
       const s = read();
-      if (!s || s.v !== VERSION) return false;
+      if (!compatible(s)) return false;
       const world = {};
       for (const k in LAYERS) world[k] = dec(s.world[k], LAYERS[k]);
       world.lush = Float32Array.from(dec(s.lush, Uint8Array), v => v / 255);

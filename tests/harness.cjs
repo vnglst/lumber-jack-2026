@@ -2,11 +2,21 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const contexts = new WeakMap();
 
 function game(seed = 42, arrive = true) {
-  const ctx = vm.createContext({ console, Math });
+  const store = new Map();
+  let now = 2000;
+  const ctx = vm.createContext({
+    console, Math,
+    performance: { now: () => now += 2000 },
+    localStorage: { getItem: k => store.get(k) || null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k) },
+    btoa: s => Buffer.from(s, 'binary').toString('base64'),
+    atob: s => Buffer.from(s, 'base64').toString('binary'),
+    setInterval() {}, addEventListener() {}, document: { addEventListener() {} }
+  });
   ctx.window = ctx;
-  for (const name of ['util', 'lines', 'world', 'game', 'combat']) {
+  for (const name of ['util', 'lines', 'world', 'game', 'combat', 'save']) {
     if (name === 'world') {
       ctx.LJ.sprites = { trees: [[{ ay: 64 }]], base: Array.from({ length: 4 }, () => ({ width: 48, height: 48 })) };
       ctx.LJ.spr = { rgb: hex => hex.match(/[a-f0-9]{2}/gi).map(v => parseInt(v, 16)) };
@@ -14,6 +24,7 @@ function game(seed = 42, arrive = true) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/' + name + '.js'), 'utf8'), ctx);
   }
   const lj = ctx.LJ;
+  contexts.set(lj, ctx);
   lj.Ground = function () {};
   lj.Ground.prototype = { mark() {}, flush() {}, renderAll() {} };
   lj.sfx = () => {};
@@ -36,4 +47,4 @@ function until(lj, predicate, seconds = 60) {
   if (!predicate()) throw new Error('Simulation condition timed out after ' + seconds + ' seconds');
 }
 
-module.exports = { game, step, until };
+module.exports = { game, step, until, storage: lj => contexts.get(lj).localStorage };

@@ -32,6 +32,7 @@ How to read it:
 | 19 | 14 Nov | Arrive by truck and store wood at camp | Active |
 | 20 | 14 Nov | Mobile and desktop testing | Active |
 | 21 | 14 Nov | Locals attack every unit type | Active |
+| 22 | 14 Nov | Logging trucks replace log depots | Active |
 
 ---
 
@@ -97,6 +98,8 @@ How to read it:
 - Approved: redo the full sprite set in the reviewed style.
 
 ## 7. Trucks, fog of war, ending, village, buildings and logging (13 Nov 2026)
+
+**Status:** the depot implementation of extra forest drop-off points is superseded by §22; the other requirements remain active.
 
 > - Trucks must be able to stop when commanded.
 > - Implement fog of war. Parts of the map remain hidden until the player discovers them.
@@ -267,3 +270,16 @@ How to read it:
 - Arrows damage vehicles; destroyed vehicles and their cargo are lost.
 - Show damaged vehicle health in the world and selection panel.
 - *Decision: trucks have 180 HP, bulldozers 260 HP and harvesters 240 HP. Nearby jacks defend vehicles too. Wildlife still hunts people, not vehicles.*
+
+## 22. Logging trucks replace log depots (14 Nov 2026)
+
+> Replace the log depot with trucks that travel back and forth between the forest and the village, transporting harvested wood.
+
+- Remove Log Depot purchases; offer Logging Trucks instead.
+- Select a Logging Truck and tap a clearing to establish its forest-to-village route.
+- Nearby jacks deliver wood to a waiting truck; wood becomes village stock only after the truck returns and unloads.
+- Trucks return to the collection point automatically. A full load departs immediately; a partial load waits up to eight seconds.
+- Stopped, moving, destroyed or full trucks cannot receive wood. Jacks fall back to village storage.
+- *Decision: Logging Trucks unlock at level 3, cost $150 initially, carry 40 wood, and cost $8 per payday. Market trucks retain their separate village-to-market job.*
+- *Decision: save format 3 stores logging routes; format 2 remains loadable and existing depots become Logging Trucks at their former locations.*
+- **Supersedes** the fixed log depot implementation, and qualifies §19: forest Logging Trucks may collect harvested wood, but market trucks still load only at the tent/village.

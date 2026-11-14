@@ -12,7 +12,7 @@ function folkNear(lj, u) {
   return a;
 }
 
-for (const kind of ['jack', 'truck', 'dozer', 'harv']) {
+for (const kind of ['jack', 'truck', 'dozer', 'harv', 'shuttle']) {
   test('locals target and damage ' + kind, () => {
     const lj = game(), g = lj.G;
     const u = { ...g.units[0], kind, id: 99, path: [], task: null, dead: false };
