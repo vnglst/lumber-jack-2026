@@ -34,6 +34,7 @@ How to read it:
 | 21 | 14 Nov | Locals attack every unit type | Active |
 | 22 | 14 Nov | Logging trucks replace log depots | Active |
 | 23 | 14 Nov | Peaceful locals before later attacks | Active |
+| 24 | 14 Nov | Heavy vehicles scar the terrain | Active |
 
 ---
 
@@ -294,3 +295,14 @@ How to read it:
 - *Decision: local hostility starts at level 5, with a warning and 50-second preparation period before the first wave. Bears remain a level-4 wildlife threat.*
 - *Decision: loading an older save below level 5 resets premature local hostility and restores peaceful inhabitants where their habitat remains.*
 - Level-up messaging must not announce local hostility earlier than level 5.
+
+## 24. Heavy vehicles scar the terrain (14 Nov 2026)
+
+> Driving trucks and bulldozers should damage the terrain, gradually turning the ground brown, black, and dirty.
+
+- Vehicle movement permanently wears the ground it crosses, removes ground plants and reduces lushness.
+- Repeated traffic progresses from brown soil to dark, dirty ruts; the minimap also reflects this.
+- Stationary vehicles cause no additional wear.
+- *Decision: market and Logging Trucks add 6 wear per tile crossing, bulldozers 10, and harvesters 8. Wear saturates at 255, never wrapping back to clean ground.*
+- *Decision: road tiles retain their road behavior while becoming dirty. Wooden bridges, water and rock are not painted as soil. Foot traffic still makes ordinary brown trails rather than black vehicle scars.*
+- Existing saved wear and lushness fields persist the damage; the save format does not change.

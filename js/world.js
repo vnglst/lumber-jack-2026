@@ -161,6 +161,7 @@
   const DT = P(['#6e4a2c', '#835a36', '#986b42', '#ad7e50', '#c39461']), PEB = rgb('#dcb47e'), PEB_D = rgb('#55361f');
   const GV = P(['#5e5a54', '#76726a', '#8e8a80', '#a6a196', '#bdb8ab']);
   const RD = P(['#8a6a44', '#9c7a50', '#ae8a5c', '#bf9a68', '#cfab78']), RUT = rgb('#76583a');
+  const TRACK = P(['#302721', '#251f1c', '#19191a', '#393029', '#44372b']);
   const PLANK = P(['#7a4d26', '#8a5a30', '#9a6838', '#b07a44']), RAIL = rgb('#4a2f1a');
   const WA = P(['#1d5ca6', '#2470bd', '#3388cf', '#57a6e0', '#9fd2f2', '#e4f4fb']), MUD = P(['#5f4c32', '#77613f', '#8f7a52']);
   const FLOWERS = [[255, 255, 255], [255, 150, 190], [240, 70, 70], [190, 130, 255], [255, 220, 80]];
@@ -242,6 +243,17 @@
       if (wet && this.near(px, py, 5, isW)) k = Math.max(0, k - 1); // damp grass by the water
       const hb = hash(px, py, s + 14) < 0.05, ht = hash(px, py + 1, s + 14) < 0.05;
       c = hb ? blade : ht ? (k >= 3 ? tip : pal[Math.min(4, k + 1)]) : pal[k];
+    }
+    const damage = Math.min(1, Math.max(0, (w.wear[i] - 10) / 180));
+    if (damage && t !== T.WATER && t !== T.ROCK && t !== T.BRIDGE) {
+      const horizontal = (w.wear[i - 1] || 0) + (w.wear[i + 1] || 0) >= (w.wear[i - w.W] || 0) + (w.wear[i + w.W] || 0);
+      const lane = (horizontal ? py : px) & 15, rut = lane === 5 || lane === 6 || lane === 10 || lane === 11;
+      const mud = TRACK[Math.floor(h * TRACK.length)], mix = damage * (rut ? 0.95 : 0.8);
+      d[o] = c[0] + (mud[0] - c[0]) * mix;
+      d[o + 1] = c[1] + (mud[1] - c[1]) * mix;
+      d[o + 2] = c[2] + (mud[2] - c[2]) * mix;
+      d[o + 3] = 255;
+      return;
     }
     d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
   };

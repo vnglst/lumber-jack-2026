@@ -20,5 +20,7 @@ Chromium desktop and mobile-sized viewports. Touch-pointer events were simulated
 - Found and fixed landscape dialogs overflowing the screen: dialogs now scroll within the viewport.
 - Landscape dialog scrolling and button reachability passed after the fix.
 - Desktop wheel/keyboard controls, Shop/Help, and reload/Continue passed, with saved money, wood and crew restored.
+- Simulation coverage also checks all-unit local attacks, Logging Truck routes and save migration, level-5 hostility, and persistent terrain wear.
+- Actual ground-renderer samples progressed from green `(80,151,58)` to brown `(146,103,64)` to dark ruts `(63,50,39)` with increasing wear.
 
 Before release, repeat on physical iOS Safari and Android Chrome, including two-finger pinch and orientation changes.

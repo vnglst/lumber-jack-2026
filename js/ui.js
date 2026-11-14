@@ -548,6 +548,10 @@
       else if (t === T.BRIDGE) { r = 120; g = 80; b = 44; }
       else if (t === T.DIRT || t === T.GRAVEL) { r = 150; g = 118; b = 80; }
       else { const L = w.lush[i]; r = 150 - 70 * L; g = 130 + 32 * L; b = 80 - 20 * L; }
+      if (t !== T.WATER && t !== T.ROCK && t !== T.BRIDGE && !w.bld[i] && !(o >= 1 && o <= 3)) {
+        const damage = Math.min(1, Math.max(0, (w.wear[i] - 10) / 180)) * 0.8;
+        r += (35 - r) * damage; g += (29 - g) * damage; b += (25 - b) * damage;
+      }
       if (!G.fog[i]) { r = 12; g = 18; b = 13; }
       d[i * 4] = r; d[i * 4 + 1] = g; d[i * 4 + 2] = b; d[i * 4 + 3] = 255;
     }

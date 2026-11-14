@@ -12,10 +12,10 @@
   const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
   const NAMES = ['Jacques', 'Jackie', 'Big Jack', 'Jack Jr.', 'Jaq', 'Old Jack', 'Jax', 'Jacko', 'Lil Jack', 'Jackson', 'Jacqueline', 'Jock'];
   const VEH = (LJ.VEH = {
-    truck: { name: 'Truck', wage: 10, hp: 180, cap: () => (G.up.mega ? 120 : 60), max: 3 },
-    shuttle: { name: 'Logging Truck', wage: 8, hp: 180, cap: () => 40, max: 4, sprite: 'truck', voice: 'truck' },
-    dozer: { name: 'Bulldozer', wage: 15, hp: 260, cap: () => 0, max: 2 },
-    harv: { name: 'Harvester', wage: 30, hp: 240, cap: () => (G.up.mega ? 60 : 40), max: 3 }
+    truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, cap: () => (G.up.mega ? 120 : 60), max: 3 },
+    shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, cap: () => 40, max: 4, sprite: 'truck', voice: 'truck' },
+    dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, cap: () => 0, max: 2 },
+    harv: { name: 'Harvester', wage: 30, hp: 240, wear: 8, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
   // The starting tent grows into the village, one upgrade at a time.
   const TIERS = (LJ.TIERS = [
@@ -174,6 +174,9 @@
     for (const k in d.world) nw[k].set(d.world[k]);
     for (const [i, v] of d.chopping) nw.hp[i] = v; // trees half chopped when the game was saved
     for (let i = 0; i < nw.N; i++) if (nw.bld[i]) { nw.deco[i] = 0; nw.flower[i] = 0; } // buildings cleared what grew there
+    for (let i = 0; i < nw.N; i++) if (nw.wear[i] >= 6) {
+      nw.flower[i] = 0; if (nw.deco[i] !== 8) nw.deco[i] = 0;
+    }
     begin(nw);
     Object.assign(G, d.g);
     G.fog = d.fog; G.fogLeft = G.fog.reduce((n, f) => n + (f ? 0 : 1), 0);
@@ -321,11 +324,26 @@
       if (Math.abs(dx) > 0.01) u.dir = dx > 0 ? 1 : -1;
       if (d <= dist) {
         u.x = tx; u.y = ty; dist -= d; u.path.pop(); u.tile = n;
-        // Feet (and tyres, much faster) wear the grass down into trails.
-        if (w.type[n] === T.GRASS && (w.wear[n] += u.kind === 'jack' ? 1 : 4) >= 10) { w.type[n] = T.DIRT; markAround(n, 1); }
+        wearGround(u, n);
       } else { u.x += (dx / d) * dist; u.y += (dy / d) * dist; dist = 0; }
     }
     u.walkT += dt;
+  }
+
+  function wearGround(u, n) {
+    const t = w.type[n];
+    if (t === T.BRIDGE || t === T.WATER || t === T.ROCK) return;
+    if (u.kind === 'jack') {
+      if (t === T.GRASS && ++w.wear[n] >= 10) { w.type[n] = T.DIRT; markAround(n, 1); }
+      return;
+    }
+    // Repeated heavy traffic compacts soil, kills plants and leaves increasingly dark ruts.
+    // Saturate instead of wrapping the saved byte back to fresh ground.
+    w.wear[n] = Math.min(255, w.wear[n] + VEH[u.kind].wear);
+    w.lush[n] = Math.max(0, w.lush[n] - VEH[u.kind].wear / 180);
+    w.flower[n] = 0; if (w.deco[n] !== 8) w.deco[n] = 0;
+    if (t === T.GRASS && w.wear[n] >= 10) w.type[n] = T.DIRT;
+    markAround(n, 1);
   }
 
   function markAround(i, r) {
