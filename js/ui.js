@@ -5,7 +5,7 @@
   const $ = id => document.getElementById(id);
   const ui = (LJ.ui = {});
   const ZOOMS = [1, 1.5, 2, 3, 4];
-  const ICON_OF = { jack: 'jack', truck: 'truck', shuttle: 'truck', dozer: 'dozer', harv: 'harv' };
+  const ICON_OF = { jack: 'jack', truck: 'truck', shuttle: 'shuttle', dozer: 'dozer', harv: 'harv' };
   let cv, zi = 3, zoom = 3, keys = {}, lastClickU = null, lastClickT = 0, toastT = 0, panelSig = '', shopSig = '', orderSig = '';
   let mini, mctx, mimg, miniT = 0, mouse = null; // mouse: last pointer position in window pixels, null when outside
 

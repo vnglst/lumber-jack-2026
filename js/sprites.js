@@ -137,6 +137,29 @@
   }
   S.truck = { empty: truck(false), full: truck(true) };
 
+  // Forest forwarder: green cab, open steel stakes and a folded loading crane.
+  // Market trucks keep their red cab and wooden cargo bed.
+  function loggingTruck(full) {
+    const c = mk(40, 28), x = cx2(c);
+    shadow(x, 20, 25, 18, 2.5);
+    box(x, 2, 18, 25, 3, '#4f5962', '#94a1a5', '#303842');
+    if (full) { logSide(x, 3, 15, 22); logSide(x, 3, 12, 22); logSide(x, 5, 9, 18); }
+    for (const px of [3, 13, 24]) {
+      R(x, px, 8, 2, 11, '#38454c'); R(x, px, 8, 1, 10, '#9eacb0');
+    }
+    box(x, 27, 10, 10, 11, '#348555', '#64b878', '#235439');
+    glass(x, 29, 11, 6, 5);
+    R(x, 30, 17, 2, 1, '#192b25'); R(x, 37, 18, 1, 2, '#ffe27a');
+    R(x, 28, 7, 6, 2, '#f2b81e'); R(x, 29, 6, 4, 1, '#ffe066');
+    // Yellow hydraulic arm folds above the logs, with a dark grapple at its end.
+    box(x, 25, 3, 3, 15, '#d5a326', '#ffe066', '#91641a');
+    box(x, 11, 3, 15, 3, '#d5a326', '#ffe066', '#91641a');
+    R(x, 11, 6, 1, 3, '#38454c'); R(x, 9, 8, 2, 2, '#38454c'); R(x, 12, 8, 2, 2, '#38454c');
+    wheel(x, 7, 23, 3.5); wheel(x, 17, 23, 3.5); wheel(x, 32, 23, 3.5);
+    return both(outline(c));
+  }
+  S.shuttle = { empty: loggingTruck(false), full: loggingTruck(true) };
+
   S.dozer = (function () {
     const c = mk(34, 24), x = cx2(c);
     shadow(x, 17, 21, 16, 2.5);
@@ -417,5 +440,5 @@
   });
   I.wall = icon(x => { for (let i = 0; i < 3; i++) { R(x, 1 + i * 4, 3, 3, 8, '#8a5a30'); R(x, 2 + i * 4, 1, 1, 2, '#8a5a30'); R(x, 1 + i * 4, 3, 1, 8, '#b07a44'); } R(x, 0, 5, 12, 1, '#4a2f1a'); R(x, 0, 9, 12, 1, '#4a2f1a'); });
   I.tower = S.tower;
-  I.truck = S.truck.full.r; I.dozer = S.dozer.r; I.harv = S.harv.r; I.village = S.village; I.depot = S.depot;
+  I.truck = S.truck.full.r; I.shuttle = S.shuttle.full.r; I.dozer = S.dozer.r; I.harv = S.harv.r; I.village = S.village; I.depot = S.depot;
 })();

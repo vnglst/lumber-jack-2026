@@ -54,6 +54,7 @@ How to read it:
 | 41 | 14 Nov | Intro truck follows the road | Active |
 | 42 | 14 Nov | Start fully hidden and explore during the intro | Active |
 | 43 | 14 Nov | Truck speed is independent of direction | Active |
+| 44 | 14 Nov | Useful and distinct forest collection trucks | Active |
 
 ---
 
@@ -298,6 +299,8 @@ How to read it:
 
 ## 22. Logging trucks replace log depots (14 Nov 2026)
 
+**Status:** §44 refines partial-load waiting and collection reach; the forest-to-village route remains active.
+
 > Replace the log depot with trucks that travel back and forth between the forest and the village, transporting harvested wood.
 
 - Remove Log Depot purchases; offer Logging Trucks instead.
@@ -531,3 +534,16 @@ How to read it:
 - *Decision: measure speed as world pixels traveled per second; diagonal X/Y components are normalized rather than each receiving the full horizontal speed.*
 - *Decision: retain §37's terrain differences: roads/bridges 96 pixels/second, dirt/gravel 60, open ground 36. Direction alone must not change these speeds.*
 - The existing movement already normalizes distance. Added regression coverage for both truck types in all eight directions on each surface; no production movement change was needed.
+
+
+## 44. Useful and distinct forest collection trucks (14 Nov 2026)
+
+> Jacks are not bringing wood to loading trucks, loading trucks are not useful right now.
+> Trucks that collect wood should look different than trucks that go to the market.
+
+- Jacks must deliver harvested wood to a nearer reachable waiting Logging Truck, including as their work moves deeper into the forest.
+- Forest collection trucks and market trucks must be visibly distinguishable in the world and shop/selection icons.
+- *Decision: remove the arbitrary eight-tile collection cutoff; the existing path search chooses the nearest reachable collection point or camp. Stopped, moving, destroyed and full trucks remain unavailable.*
+- *Decision: a partial load waits eight seconds after its last delivery, and waits for carriers already approaching it. A full truck still departs immediately; partial loads leave when no carrier is approaching. Wood becomes village stock only after the truck physically returns and unloads.*
+- *Decision: Logging Trucks are green forest forwarders with open steel stakes and a folded yellow loading crane. Red market trucks retain their wooden bed; both display their load.*
+- Saves remain compatible; no saved fields or format change.

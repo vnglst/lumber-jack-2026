@@ -39,7 +39,7 @@
   const TRUCK_SPEED = { road: 96, trail: 60, ground: 36 };
   const VEH = (LJ.VEH = {
     truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => (G.up.mega ? 120 : 60), max: 3 },
-    shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => 40, max: 4, sprite: 'truck', voice: 'truck' },
+    shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => 40, max: 4, sprite: 'shuttle', voice: 'truck' },
     dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, cap: () => 16, max: 2 },
     harv: { name: 'Harvester', wage: 30, hp: 240, wear: 8, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
@@ -103,7 +103,7 @@
     { id: 'barrow', name: 'Wheelbarrows', desc: 'Jacks carry 24.', icon: 'barrow', level: 2, need: 'sling', cost: () => ({ m: 160, w: 20 }) },
     { id: 'chainsaw', name: 'Chainsaws', desc: 'Chop twice as fast. Loud.', icon: 'chainsaw', level: 3, need: 'sharpaxe', cost: () => ({ m: 300 }) },
     vehItem('truck', 2, 250, 'Hauls 60 goods per trip down the road to market, much faster than walking.', 'truck'),
-    vehItem('shuttle', 3, 150, 'Tap a forest clearing to set a route. Jacks load it there; it shuttles up to 40 wood back to the village automatically.', 'truck'),
+    vehItem('shuttle', 3, 150, 'Tap a forest clearing to set a route. Jacks load it there; it shuttles up to 40 wood back to the village automatically.', 'shuttle'),
     bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Fires laser bursts at forest folk and wild animals. Sees far, and jacks nearby heal quickly.', 'tower'),
     { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Takes ' + WALL_BUILD_TIME + ' seconds per section. Your people use the gates; enemies break through. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
     vehItem('dozer', 4, 600, 'Uproots stumps for extra wood, clears rocks for stone and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
@@ -523,7 +523,7 @@
   // All harvested wood goes through the settlement before it can be sold.
   function goDrop(u) {
     u.dropId = null;
-    const trucks = G.units.filter(t => !t.dead && !t.hold && t.kind === 'shuttle' && t.state === 'shuttleLoad' && !t.path.length && t.carry < capOf(t) && Math.hypot(t.x - u.x, t.y - u.y) <= 8 * TS);
+    const trucks = G.units.filter(t => !t.dead && !t.hold && t.kind === 'shuttle' && t.state === 'shuttleLoad' && !t.path.length && t.carry < capOf(t));
     const goal = c => {
       if (storeGoal(c)) return true;
       const t = trucks.find(t => Math.abs(c % W - t.tile % W) <= 1 && Math.abs(((c / W) | 0) - ((t.tile / W) | 0)) <= 1);
@@ -538,6 +538,7 @@
       if (t && Math.hypot(t.x - u.x, t.y - u.y) < 2 * TS) {
         const qty = Math.min(u.carry, capOf(t) - t.carry);
         t.carry += qty; u.carry -= qty;
+        if (qty) t.loadT = 0;
         gainXP(u, qty / 4);
         if (qty) LJ.float(u.x, u.y - 18, '+' + qty + ' wood loaded', '');
       }
@@ -840,6 +841,8 @@
       }
       case 'toDrop': dropWood(u); break;
       case 'shuttleLoad':
+        // Let workers already walking here finish loading before a partial trip leaves.
+        if (G.units.some(j => !j.dead && !j.hold && j.carry > 0 && j.state === 'toDrop' && j.dropId === u.id)) u.loadT = 0;
         if (u.carry >= capOf(u) || (u.carry > 0 && (u.loadT += dt) >= 8)) {
           if (!walkTo(u, storeGoal, 'shuttleDrop', M.noStore)) { u.wait = 2; u.state = 'think'; }
         }

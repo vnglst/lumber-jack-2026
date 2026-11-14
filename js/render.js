@@ -35,7 +35,7 @@
   }
   function drawVehicle(ctx, u, cx, cy, G, ghost) {
     const kind = LJ.VEH[u.kind].sprite || u.kind;
-    const set = kind === 'truck' ? (LJ.cargoOf(u) > 0 ? S.truck.full : S.truck.empty) : S[kind];
+    const set = S[kind].empty ? (LJ.cargoOf(u) > 0 ? S[kind].full : S[kind].empty) : S[kind];
     const img = u.dir > 0 ? set.r : set.l;
     const busy = u.state === 'doze' || (u.state === 'chop' && !u.path.length);
     const bob = u.path.length ? jolt(u, 0) : busy && Math.floor(G.time * 16) % 2 ? 1 : 0;
