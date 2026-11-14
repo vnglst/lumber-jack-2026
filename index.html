@@ -58,7 +58,8 @@
       <div class="spacer"></div>
       <button class="hbtn" id="soundBtn" title="Sound">♪</button>
       <button class="hbtn" id="findsBtn" title="Forest finds and recipes" aria-label="Forest finds and recipes">✦</button>
-      <button class="hbtn" id="helpBtn" title="Help">?</button>
+      <button class="hbtn" id="helpBtn" title="How to play">?</button>
+      <button class="hbtn" id="menuBtn" title="Menu (Esc)" aria-label="Menu">≡</button>
     </header>
 
     <div id="hint"></div>
@@ -72,15 +73,18 @@
     <div id="bottom">
       <div id="panel"></div>
       <div id="toolbar">
-        <button data-act="stop" title="Stop">
-          <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></button>
+        <button data-act="stop" id="stopBtn" title="Stop the selected units (X)" aria-label="Stop">
+          <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" fill="currentColor"/></svg></button>
+        <button data-act="idle" id="idleBtn" title="Next idle jack (Tab)" aria-label="Next idle jack"><i data-ic="jack"></i><span id="idleN" class="count"></span></button>
         <span class="sep"></span>
-        <button data-act="zoomout" title="Zoom out">
+        <button data-act="zoomout" title="Zoom out (−)" aria-label="Zoom out">
           <svg viewBox="0 0 24 24"><path d="M5 12h14" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></button>
-        <button data-act="zoomin" title="Zoom in">
+        <button data-act="zoomin" title="Zoom in (+)" aria-label="Zoom in">
           <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></button>
+        <button data-act="map" id="mapBtn" title="Map (M)" aria-label="Map">
+          <svg viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2zM9 4v14M15 6v14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></button>
         <span class="sep"></span>
-        <button data-act="shop" id="shopBtn" class="wide" title="Shop">Shop<span id="shopDot"></span></button>
+        <button data-act="shop" id="shopBtn" class="wide" title="Shop (B)">Shop<span id="shopDot"></span></button>
       </div>
     </div>
 

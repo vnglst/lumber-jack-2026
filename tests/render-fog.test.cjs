@@ -20,7 +20,7 @@ function scene(tx, ty) {
     fog: new Uint8Array(N), fogLeft: N, fogDirty: true, up: {}, sel: new Set()
   };
   for (const key of ['units', 'buildings', 'critters', 'falls', 'animals', 'graves', 'props', 'bolts', 'arrows', 'parts', 'bflies']) G[key] = [];
-  const LJ = {
+  const LJ = { ui: { pings: [], PING: 0.45 },
     TS: 16, T: { WATER: 2, ROCK: 3 }, TREE_ROWS: 4, STUMP: 9, G, ctx,
     cv: { width: (W + 8) * 16, height: (H + 8) * 16 },
     sprites: { trees: [[tree]], sign: { width: 12, height: 24 } },
