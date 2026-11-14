@@ -4,10 +4,10 @@
   const TS = LJ.TS, T = LJ.T, STUMP = LJ.STUMP;
   const G = (LJ.G = {});
   const PRICE = (LJ.PRICE = { wood: 3, lumber: 10, stone: 6 });
-  const MAX_LEVEL = 10, WAGE = 20, PAY_EVERY = 60, SAW_TIME = 3.5, INTRO_BEAT_TIME = 5, WALL_BUILD_TIME = 3;
+  const MAX_LEVEL = 10, WAGE = 20, PAY_EVERY = 60, SAW_TIME = 3.5, INTRO_BEAT_TIME = 4.5, WALL_BUILD_TIME = 3;
   // Share of the forest that must be cleared to complete each of the 10 levels. The last level needs every single tree.
   const FR = [0.005, 0.03, 0.07, 0.12, 0.19, 0.28, 0.4, 0.55, 0.74, 1];
-  // Per species: seconds to chop with a plain axe, and wood yield. Oaks are slow but rich.
+  // Per species: seconds to chop with a plain axe, and wood yield. Old pines are slow but rich.
   const SPECIES = [null, { t: 3.6, y: 3 }, { t: 6, y: 6 }, { t: 4.5, y: 4 }];
   const DOZE = {
     rock: { time: 2.5, ground: T.GRAVEL, resource: 'stone', amount: 2 },
@@ -15,7 +15,8 @@
     roots: { time: 3, ground: T.MUD, resource: 'wood', amount: 2, muddy: true }
   };
   const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
-  const NAMES = ['Jacques', 'Jackie', 'Big Jack', 'Jack Jr.', 'Jaq', 'Old Jack', 'Jax', 'Jacko', 'Lil Jack', 'Jackson', 'Jacqueline', 'Jock'];
+  // The hired hands are locals. Jaakko is the Finnish Jack, and Finland has no shortage of J-names.
+  const NAMES = ['Jaakko', 'Jukka', 'Jussi', 'Johanna', 'Jari', 'Juha', 'Janne', 'Jouni', 'Jaana', 'Jorma', 'Joonas', 'Jyrki'];
   const JACK_RANKS = (LJ.JACK_RANKS = [
     { name: 'Greenhorn', xp: 0, work: 1, carry: 0, speed: 1 },
     { name: 'Woodsman', xp: 40, work: 1.15, carry: 2, speed: 1.03 },
@@ -76,7 +77,7 @@
   LJ.jackCount = jackCount; LJ.popCap = popCap; LJ.WAGE = WAGE; LJ.jacks = jacks; LJ.countKind = countKind; LJ.sightOf = sightOf;
 
   const vehItem = (id, level, m, desc, icon) => ({
-    id, name: VEH[id].name, desc: desc + ' Upkeep $' + VEH[id].wage + ' per payday.', icon, level, need: 'cabin', repeat: true,
+    id, name: VEH[id].name, desc: desc + ' Upkeep €' + VEH[id].wage + ' per payday.', icon, level, need: 'cabin', repeat: true,
     cost: () => ({ m: m + Math.round(m * 0.5) * countKind(id) }), can: () => countKind(id) < VEH[id].max, full: 'Max ' + VEH[id].max
   });
   const bldItem = (id, level, cost, desc, icon) => ({
@@ -93,10 +94,10 @@
     { id: 'sharpaxe', name: 'Sharper Axes', desc: 'Chop 35% faster.', icon: 'axe', level: 1, cost: () => ({ m: 40 }) },
     { id: 'sling', name: 'Log Sling', desc: 'Carry 14 instead of 8.', icon: 'bag', level: 1, cost: () => ({ m: 50 }) },
     { id: 'boots', name: 'Sturdy Boots', desc: 'Walk 25% faster.', icon: 'boot', level: 1, cost: () => ({ m: 70 }) },
-    { id: 'jack', name: 'Hire a Jack', desc: 'Another pair of hands. Walks in by road at the tent; trains at the Cabin. Wants $' + WAGE + ' every payday.', icon: 'jack', level: 1, repeat: true,
+    { id: 'jack', name: 'Hire a Jack', desc: 'Another pair of hands. Walks in by road at the tent; trains at the Cabin. Wants €' + WAGE + ' every payday.', icon: 'jack', level: 1, repeat: true,
       cost: () => ({ m: 80 + 40 * (jackCount() - 1) }), can: () => jackCount() < popCap(), full: 'No room: build a bunkhouse' },
     bldItem('bunk', 2, () => ({ m: 150 + 100 * buildingCount('bunk'), w: 20 }), 'A house with room for 3 more jacks.', 'bunk'),
-    bldItem('sawmill', 2, () => ({ m: 150 + 150 * buildingCount('sawmill'), w: 20 }), 'Jacks turn 2 wood into 1 lumber here. Lumber sells for $' + PRICE.lumber + '.', 'blade'),
+    bldItem('sawmill', 2, () => ({ m: 150 + 150 * buildingCount('sawmill'), w: 20 }), 'Jacks turn 2 wood into 1 lumber here. Lumber sells for €' + PRICE.lumber + '.', 'blade'),
     { id: 'rifles', name: 'Laser Pistols', desc: 'Jacks fire bursts of laser bolts at anything that attacks them.', icon: 'rifle', level: 2, cost: () => ({ m: 150 }) },
     { id: 'barrow', name: 'Wheelbarrows', desc: 'Jacks carry 24.', icon: 'barrow', level: 2, need: 'sling', cost: () => ({ m: 160, w: 20 }) },
     { id: 'chainsaw', name: 'Chainsaws', desc: 'Chop twice as fast. Loud.', icon: 'chainsaw', level: 3, need: 'sharpaxe', cost: () => ({ m: 300 }) },
@@ -198,9 +199,10 @@
       const x = (n % W) * TS + 8, y = ((n / W) | 0) * TS + 10;
       distance += Math.hypot(x - px, y - py); px = x; py = y;
     }
-    // Give each short tutorial line five seconds, regardless of the map's road length.
-    G.arrival.introSpeed = distance / (LN.intro.length * INTRO_BEAT_TIME);
-    G.arrival.introT = 0; G.arrival.introBeat = -1;
+    // Each line gets reading time for its length. The story is told on the road, so the truck's speed is set to make
+    // the ride last as long as the story; the how-to-play lines follow at camp, with the truck parked.
+    const story = LN.intro.reduce((sum, line) => sum + beatTime(line), 0);
+    Object.assign(G.arrival, { introSpeed: distance / story, introV: 0, introBeat: -1, introLeft: 0 });
     reveal(w.start.x - 1, w.start.y - 2, 9);
     for (let i = 0; i < w.N; i++) if (LJ.isRoad(w.type[i])) reveal(i % W, (i / W) | 0, 2.5); // the road to market is known land
     spawnCritters();
@@ -544,14 +546,14 @@
     const gain = Math.round((wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone) * TIERS[G.tier].sellMul);
     G.money += gain; G.earned += gain; G.sold += wd + lum + st;
     gainXP(u, (wd + lum + st) / 2);
-    LJ.float(u.x + 6, u.y - 18, '+$' + gain, 'money');
+    LJ.float(u.x + 6, u.y - 18, '+€' + gain, 'money');
     LJ.sfx('coin');
     const o = G.order;
     if (o && o.state === 'active') {
       o.got = Math.min(o.qty, o.got + (o.kind === 'wood' ? wd : lum));
       if (o.got >= o.qty) {
         G.money += o.bonus; G.earned += o.bonus; G.order = null; G.orderCd = 45;
-        LJ.sfx('level'); LJ.ui.toast('Order delivered! Bonus +$' + o.bonus);
+        LJ.sfx('level'); LJ.ui.toast('Order delivered! Bonus +€' + o.bonus);
       }
     }
   }
@@ -624,7 +626,7 @@
       if (!pelt) { G.folkKilled++; return; }
       G.kills++;
       G.money += pelt; G.earned += pelt;
-      LJ.float(a.x, a.y - 12, '+$' + pelt + ' pelt', 'money');
+      LJ.float(a.x, a.y - 12, '+€' + pelt + ' pelt', 'money');
       LJ.sfx('coin');
     }
   }
@@ -989,7 +991,7 @@
     if (BLD[id]) return G.count[id] > 0;
     return !!G.up[id];
   }
-  const costText = c => '$' + c.m + (c.w ? ' + ' + c.w + ' wood' : '') + (c.l ? ' + ' + c.l + ' lumber' : '');
+  const costText = c => '€' + c.m + (c.w ? ' + ' + c.w + ' wood' : '') + (c.l ? ' + ' + c.l + ' lumber' : '');
   const afford = c => G.money >= c.m && G.wood >= (c.w || 0) && G.lumber >= (c.l || 0);
   LJ.shopState = function (it) {
     const c = it.cost(), ct = costText(c);
@@ -1173,7 +1175,7 @@
     if (bill > 0 && (G.payT -= dt) <= 0) {
       G.payT = PAY_EVERY;
       G.money -= bill;
-      LJ.ui.toast(G.money < 0 ? 'Payday: -$' + bill + ". You're in debt — everyone is slacking!" : 'Payday: -$' + bill);
+      LJ.ui.toast(G.money < 0 ? 'Payday: -€' + bill + ". You're in debt — everyone is slacking!" : 'Payday: -€' + bill);
       if (G.money < 0) { LJ.sfx('no'); for (const u of G.units) if (u.hired && u.kind === 'jack') say(u, LJ.pick(Q_BROKE)); }
     }
     // Market orders
@@ -1190,7 +1192,7 @@
     } else if ((o.time -= dt) <= 0) {
       const fee = Math.round(o.bonus * 0.2 / 5) * 5;
       G.money -= fee; G.order = null; G.orderCd = 45;
-      LJ.sfx('no'); LJ.ui.toast('Order missed! Late fee -$' + fee);
+      LJ.sfx('no'); LJ.ui.toast('Order missed! Late fee -€' + fee);
     }
   }
 
@@ -1214,7 +1216,7 @@
     }
   }
 
-  // ---------- Peaceful wildlife: deer and squirrels that flee from people and vanish with the forest ----------
+  // ---------- Peaceful wildlife: reindeer and squirrels that flee from people and vanish with the forest, and swans on the water ----------
   function spawnCritters() {
     const r = LJ.rng(w.seed + 9);
     spawnPeacefulFolk(r);
@@ -1225,6 +1227,14 @@
       for (let k = 0; k < 8; k++) { const n = (y + DY[k]) * W + x + DX[k]; if (n >= 0 && n < w.N && isTree(n)) trees++; }
       if (trees < 2) continue;
       G.critters.push(makeCritter(G.critters.length % 3 === 0 ? 'deer' : 'squirrel', x * TS + 8, y * TS + 10, r() < 0.5 ? 1 : -1, r() * 4));
+    }
+    // Swans, on open water away from the banks.
+    const openWater = i => w.type[i] === T.WATER && DX.every((dx, k) => { const n = i + DY[k] * W + dx; return n >= 0 && n < w.N && w.type[n] === T.WATER; });
+    for (let tries = 0, swans = 0; tries < 3000 && swans < 8; tries++) {
+      const x = 1 + ((r() * (W - 2)) | 0), y = 1 + ((r() * (H - 2)) | 0);
+      if (!openWater(y * W + x)) continue;
+      G.critters.push(makeCritter('swan', x * TS + 8, y * TS + 10, r() < 0.5 ? 1 : -1, r() * 4));
+      swans++;
     }
   }
   // Visible inhabitants, not combat targets: they live near huts until war begins.
@@ -1247,6 +1257,15 @@
     for (const c of G.critters) {
       if (c.gone) { c.alpha -= dt * 0.8; continue; }
       const tile = tileOfPx(c.x, c.y);
+      if (c.kind === 'swan') { // drifts about its water and leaves when the water is filled in
+        if (w.type[tile] !== T.WATER) { c.gone = true; continue; }
+        if (!c.moving && (c.t -= dt) <= 0) critterGo(c, c.x + (Math.random() - 0.5) * 70, c.y + (Math.random() - 0.5) * 40);
+        if (!c.moving) continue;
+        const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy), nx = c.x + (dx / d) * 7 * dt, ny = c.y + (dy / d) * 7 * dt;
+        if (d < 1.5 || w.type[tileOfPx(nx + Math.sign(dx) * 9, ny)] !== T.WATER || w.type[tileOfPx(nx, ny + Math.sign(dy) * 7)] !== T.WATER) { critterStop(c, 2 + Math.random() * 6); continue; }
+        c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1;
+        continue;
+      }
       if (w.lush[tile] < 0.4) { c.gone = true; continue; } // nothing left to live on
       const deer = c.kind !== 'squirrel';
       if (!c.flee) {
@@ -1270,23 +1289,44 @@
     if (G.critters.some(c => c.alpha <= 0)) G.critters = G.critters.filter(c => c.alpha > 0);
   }
 
+  const introLines = () => LN.intro.concat(LN.camp);
+  const beatTime = line => Math.max(INTRO_BEAT_TIME, line.length / 15); // reading time for one line
+  // A tap during the opening moves on to the next line. It never moves the truck: that keeps driving at its own pace.
+  LJ.skipIntroLine = function () {
+    if (G.arrival) G.arrival.introLeft = Math.min(G.arrival.introLeft, 0);
+  };
+
   LJ.update = function (dt) {
     if (G.arrival) {
-      const truck = G.arrival;
-      const beat = Math.min(LN.intro.length - 1, Math.floor(truck.introT / INTRO_BEAT_TIME));
-      if (beat !== truck.introBeat) { truck.introBeat = beat; LJ.ui.introLine(LN.intro[beat], beat, LN.intro.length); }
-      truck.introT += dt;
-      stepPath(truck, dt, truck.introSpeed);
-      LJ.ui.follow(truck.x, truck.y, dt);
-      if (!truck.path.length) {
-        G.arrival = null; G.base.pending = false;
-        LJ.ui.introLine(null);
+      const truck = G.arrival, lines = introLines(), driving = truck.path.length > 0;
+      truck.introLeft -= dt;
+      if (truck.introLeft <= 0) {
+        const next = truck.introBeat + 1;
+        if (next === LN.intro.length && driving) LJ.ui.introQuiet(); // the story was tapped through early: drive on in silence
+        else if (next >= lines.length) { // everything has been said: the game begins
+          G.arrival = null;
+          LJ.ui.introLine(null);
+          G.sel = new Set(LJ.jacks());
+          setTask(truck, { type: 'haul', once: false });
+          LJ.ui.toast('Camp is ready! Jacks bring wood here; your truck takes the surplus to market.');
+          return;
+        } else {
+          truck.introBeat = next; truck.introLeft = beatTime(lines[next]);
+          LJ.ui.introLine(lines[next], next, lines.length, next < LN.intro.length ? 'On the road' : 'At camp');
+        }
+      }
+      if (driving) {
+        // Story speed while Jack is talking; once he has nothing left to say, the truck picks up speed for the rest of the road.
+        const want = truck.introLeft <= 0 ? 120 : truck.introSpeed; // no time left on a line means there is no line
+        truck.introV = truck.introV ? truck.introV + (want - truck.introV) * Math.min(1, dt * 1.2) : want;
+        stepPath(truck, dt, truck.introV);
+        LJ.ui.lockOn(truck.x, truck.y);
+      }
+      if (!truck.path.length && G.base.pending) { // arrived: pitch the tent, and Jack climbs out
+        G.base.pending = false;
         levelFootprint(G.base);
-        const jack = addUnit(w.start.x + 1, w.start.y, 'Jack', 'jack', 0);
-        G.sel = new Set([jack]);
-        setTask(truck, { type: 'haul', once: false });
+        addUnit(w.start.x + 1, w.start.y, 'Jack', 'jack', 0);
         LJ.sfx('build');
-        LJ.ui.toast('Camp is ready! Jacks bring wood here; your truck takes the surplus to market.');
       }
       return;
     }

@@ -93,11 +93,11 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 #panel:empty { display: none; }
 #panel canvas { width: 36px; height: 36px; background: #24150a; border-radius: 5px; }
 #panel .st { font-weight: 600; color: #ead3a3; font-size: 13px; }
-#panel button, .dialog button, .item button {
+#panel button, .dialog button, .item button, #title button {
   font: inherit; color: #24150a; background: linear-gradient(#ffd96a, #e6a92c); border: 2px solid #24150a;
   border-radius: 6px; padding: 6px 12px; cursor: pointer; box-shadow: 0 2px 0 rgba(0, 0, 0, .4);
 }
-#panel button:active, .dialog button:active, .item button:active { transform: translateY(2px); box-shadow: none; }
+#panel button:active, .dialog button:active, .item button:active, #title button:active { transform: translateY(2px); box-shadow: none; }
 #toolbar { display: flex; gap: 6px; padding: 6px; align-items: center; }
 #toolbar button {
   width: 46px; height: 46px; border-radius: 6px; border: 2px solid #24150a; background: #33200f; color: #fff;
@@ -182,6 +182,7 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 #intro .nm { font-size: 12px; color: #f6c453; }
 #intro .nm span { margin-left: 10px; color: #c9ad7c; }
 #intro p { margin-top: 6px; font-size: 16px; line-height: 1.45; color: #fff3d6; }
+#intro .more { margin-top: 4px; font-size: 12px; color: #ead3a3; font-weight: 600; text-align: right; }
 
 /* Ending */
 .cine #bottom, .cine #order, .cine #hint, .cine #shop, .cine #mini, .cine #helpBtn { display: none !important; }
@@ -195,13 +196,33 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 #cine .who canvas { width: 66px; height: 66px; background: #24150a; border-radius: 6px; }
 #cine .nm { font-size: 13px; color: #f6c453; letter-spacing: .5px; }
 #cine .tx { font-size: 17px; line-height: 1.4; color: #fff; margin: 4px 0; }
+#cine.by-jack { background: linear-gradient(#4f5f3a, #33411f); box-shadow: inset 0 0 0 2px #7d9150, 0 3px 0 rgba(0, 0, 0, .35); } /* the jack answers in his own colour */
 #cine .more { font-size: 12px; color: #ead3a3; font-weight: 600; text-align: right; }
 .dialog .ask { font-size: 18px; color: #fff; margin-top: 16px; }
 .dialog .row { display: flex; gap: 10px; justify-content: center; }
-.dialog button.ghost { background: #33200f; color: #ead3a3; }
+.dialog button.ghost, #title button.ghost { background: #33200f; color: #ead3a3; }
 #again {
   position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: none;
   font: inherit; font-size: 18px; color: #24150a; background: linear-gradient(#ffd96a, #e6a92c); border: 2px solid #24150a;
   border-radius: 8px; padding: 10px 22px; cursor: pointer; box-shadow: 0 3px 0 rgba(0, 0, 0, .4);
 }
 #again.open { display: block; }
+
+/* Opening screen */
+#title {
+  position: absolute; inset: 0; background: #050920; z-index: 30;
+  visibility: hidden; opacity: 0; transition: opacity .8s ease, visibility 0s .8s; /* fades out into the forest */
+}
+#title.open { visibility: visible; opacity: 1; transition: none; }
+#title canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#title .tbox {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 11vh 16px calc(18px + env(safe-area-inset-bottom));
+}
+#title .logo { height: auto; padding: 0; background: none; border: 0; box-shadow: none; }
+#title .lumber { font-size: clamp(54px, 13vw, 104px); letter-spacing: 3px; text-shadow: 4px 4px 0 #24150a, 0 0 28px rgba(0, 0, 0, .5); }
+#title .jack { font-size: clamp(66px, 16vw, 128px); transform: rotate(-12deg) translate(-12px, 14px); text-shadow: 4px 4px 0 #24150a; }
+#title .tag { margin-top: 3.5vh; font-size: clamp(15px, 2.4vw, 20px); color: #fff3d6; text-shadow: 0 2px 0 rgba(0, 0, 0, .7); }
+#title .row { display: flex; gap: 12px; margin-top: 4vh; flex-wrap: wrap; justify-content: center; }
+#title button { font-size: 20px; padding: 12px 30px; }
+#title .place { margin-top: auto; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #a9c4e6; opacity: .8; }

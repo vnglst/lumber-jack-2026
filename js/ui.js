@@ -40,7 +40,7 @@
     cv.style.width = cv.width * zoom + 'px'; cv.style.height = cv.height * zoom + 'px';
     LJ.ctx.imageSmoothingEnabled = false;
     // Until the game has started, keep the jack in view however the window changes.
-    if (G.world && G.time === 0 && G.units[0]) ui.centerOn(G.units[0].x + 60, G.units[0].y);
+    if (G.world && G.time === 0 && G.units[0]) ui.centerOnStart();
     clampCam();
   }
 
@@ -64,7 +64,16 @@
     resize();
   }
 
+  const LEAD = 60;
+  ui.centerOnStart = () => ui.centerOn(G.units[0].x + LEAD, G.units[0].y); // the opening view: the truck at the edge of the map
   ui.centerOn = function (x, y) { G.cam.x = x - vwW() / 2; G.cam.y = y - vwH() / 2; clampCam(); };
+  // Holds a moving thing at a fixed spot on screen. The camera moves in the same whole pixels at the same moments as
+  // the thing itself, so it stays rock steady while the world scrolls past (an easing camera makes it shake).
+  // It sits LEAD pixels behind the centre, so more of the road ahead is in view.
+  ui.lockOn = function (x, y) {
+    G.cam.x = Math.round(x) + LEAD - Math.round(vwW() / 2); G.cam.y = Math.round(y) - Math.round(vwH() / 2);
+    clampCam();
+  };
   ui.follow = function (x, y, dt) {
     const k = Math.min(1, dt * 2.5);
     G.cam.x += (x - vwW() / 2 - G.cam.x) * k; G.cam.y += (y - vwH() / 2 - G.cam.y) * k;
@@ -204,7 +213,7 @@
 
     cv.addEventListener('pointerdown', e => {
       LJ.audioInit(); e.preventDefault();
-      if (G.arrival) return;
+      if (G.arrival) { if (!G.paused) LJ.skipIntroLine(); return; } // a tap moves the story on
       try { cv.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
       const [wx, wy] = world(e), touch = e.pointerType !== 'mouse';
       let mode;
@@ -296,6 +305,7 @@
     addEventListener('keydown', e => {
       keys[e.key.toLowerCase()] = true;
       if (G.cine) { if ((e.key === ' ' || e.key === 'Enter') && G.cine.phase === 'talk') LJ.ending.next(); return; }
+      if (G.arrival) { if ((e.key === ' ' || e.key === 'Enter') && !G.paused) { e.preventDefault(); LJ.skipIntroLine(); } return; }
       if (e.key === 'f' || e.key === 'F' || e.key === ' ') { e.preventDefault(); ui.centerOnSelection(); }
       if (e.key === '+' || e.key === '=') setZoom(zi + 1);
       if (e.key === '-' || e.key === '_') setZoom(zi - 1);
@@ -345,7 +355,7 @@
     $('again').onclick = () => ui.restart();
     $('stockBtn').onclick = () => { G.stockpile = !G.stockpile; LJ.sfx('click'); ui.toast(G.stockpile ? 'Wood is now stockpiled at the camp' : 'Wood is now sold at the market'); };
     $('soundBtn').onclick = () => { LJ.audioInit(); $('soundBtn').style.opacity = LJ.toggleMute() ? 0.4 : 1; };
-    $('helpBtn').onclick = () => { if (!G.cine) ui.showTitle(true); };
+    $('helpBtn').onclick = () => { if (!G.cine) ui.showHelp(); };
   }
 
   // ---------- Dialogs ----------
@@ -357,34 +367,37 @@
     m.querySelector('button').onclick = () => { LJ.audioInit(); LJ.sfx('click'); m.classList.remove('open'); if (onOk) onOk(); G.paused = false; };
   }
 
-  ui.showTitle = function (help) {
-    const canContinue = !help && LJ.hasSave();
+  // The how-to-play dialog behind the ? button.
+  ui.showHelp = function () {
     modal(
-      '<div class="logo"><span class="lumber">Lumber</span><span class="jack">Jack</span></div>' +
-      '<p>One jack. One axe. An awful lot of trees.</p>' +
-      (help ? '<ul><li><b>Tap a tree</b> to send your jack. Jacks keep cutting the nearest trees they can see; when none are left in sight, they wait.</li>' +
-      '<li>Select jacks and <b>tap anywhere</b> to send them there. Keep tapping a tree being chopped to land extra whacks.</li>' +
-      '<li>You arrive by <b>truck</b> and pitch your tent. Jacks carry wood back to camp; your truck sells the surplus at the market down the road west. Camp keeps 20 wood for building.</li>' +
-      '<li>Upgrade your tent into a village and build houses and sawmills. Logging Trucks shuttle harvested wood from a forest clearing back to your village; market trucks sell it.</li>' +
-      '<li>Jacks learn through work. Select one to see his rank and XP: experience improves chopping, processing, carrying and walking.</li>' +
-      '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
-      '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection.</li>' +
-      '<li>The game saves itself as you play.</li></ul>' : '') +
-      (canContinue
-        ? '<div class="row"><button data-a="continue">Continue</button><button data-a="new" class="ghost">New game</button></div>'
-        : '<button>' + (help ? 'Back to work' : 'Head to the forest') + '</button>'));
-    if (!canContinue) return;
-    const m = $('modal');
-    m.querySelector('[data-a="continue"]').onclick = () => {
-      LJ.audioInit(); LJ.sfx('click'); m.classList.remove('open');
-      if (LJ.loadGame()) { ui.reset(); resize(); } else { ui.restart(); ui.toast('The saved game could not be loaded, so here is a fresh forest.'); }
-      G.paused = false;
+    '<div class="logo"><span class="lumber">Lumber</span><span class="jack">Jack</span></div>' +
+    '<p>One jack. One axe. An awful lot of trees.</p>' +
+    '<ul><li><b>Tap a tree</b> to send your jack. Jacks keep cutting the nearest trees they can see; when none are left in sight, they wait.</li>' +
+    '<li>Select jacks and <b>tap anywhere</b> to send them there. Keep tapping a tree being chopped to land extra whacks.</li>' +
+    '<li>You arrive by <b>truck</b> and pitch your tent. Jacks carry wood back to camp; your truck sells the surplus at the market down the road west. Camp keeps 20 wood for building.</li>' +
+    '<li>Upgrade your tent into a village and build houses and sawmills. Logging Trucks shuttle harvested wood from a forest clearing back to your village; market trucks sell it.</li>' +
+    '<li>Jacks learn through work. Select one to see his rank and XP: experience improves chopping, processing, carrying and walking.</li>' +
+    '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
+    '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection.</li>' +
+    '<li>The game saves itself as you play.</li></ul><button>Back to work</button>');
+  };
+
+  // The opening screen. It is shown once, at boot, over a fresh game that is paused and waiting.
+  ui.showTitle = function () {
+    G.paused = true;
+    const saved = LJ.hasSave();
+    const fresh = { label: 'New game', ghost: saved, run: () => { LJ.clearSave(); G.paused = false; } };
+    const resume = {
+      label: 'Continue', run: () => {
+        if (LJ.loadGame()) { ui.reset(); resize(); } else { ui.restart(); ui.toast('The saved game could not be loaded, so here is a fresh forest.'); }
+        G.paused = false;
+      }
     };
-    m.querySelector('[data-a="new"]').onclick = () => { LJ.audioInit(); LJ.sfx('click'); m.classList.remove('open'); ui.restart(); };
+    LJ.title.open(saved ? [resume, fresh] : [fresh]);
   };
 
   ui.levelUp = function (items) {
-    modal('<h1>Level ' + G.level + '</h1><p>' + G.cleared + ' trees cleared and $' + G.earned.toLocaleString('en-US') + ' earned. Business is booming.</p>' +
+    modal('<h1>Level ' + G.level + '</h1><p>' + G.cleared + ' trees cleared and €' + G.earned.toLocaleString('en-US') + ' earned. Business is booming.</p>' +
       (items.length ? '<p><b>New in the Shop</b></p><ul>' + items.map(i => '<li><b>' + i.name + '</b> — ' + i.desc + '</li>').join('') + '</ul>' : '') +
       '<p>' + LJ.danger(G.level) + '</p><button>Back to work</button>');
   };
@@ -401,32 +414,39 @@
     G.paused = false;
   };
 
-  ui.introLine = function (text, beat, total) {
+  ui.introLine = function (text, beat, total, place) {
     const el = $('intro');
     $('game').classList.toggle('arriving', !!text);
     if (!text) { el.classList.remove('open'); el.innerHTML = ''; return; }
-    el.innerHTML = '<div class="portrait"></div><div><div class="nm">Jack · On the road <span>' + (beat + 1) + ' / ' + total + '</span></div><p></p></div>';
+    el.innerHTML = '<div class="portrait"></div><div><div class="nm">Jack · ' + place + ' <span>' + (beat + 1) + ' / ' + total + '</span></div><p></p><div class="more">tap to continue ▸</div></div>';
     el.querySelector('.portrait').appendChild(iconCanvas(S.jack.axe.idle.r, 24));
     el.querySelector('p').textContent = text;
     el.classList.add('open');
     LJ.voice.say(text, 'jack');
   };
 
-  ui.cineLine = function (text) {
+  // Hides the story box while the opening drive carries on in silence.
+  ui.introQuiet = () => $('intro').classList.remove('open');
+
+  // One line of the closing conversation: { who: 'suit' | 'jack', text }.
+  const SPEAKER = { suit: () => ['Mr. Grant, Development', S.suit.idle.r], jack: () => ['Jack', S.jack.axe.idle.r] };
+  ui.cineLine = function (line) {
     const el = $('cine');
-    if (!text) { el.className = ''; el.innerHTML = ''; return; }
-    el.className = 'open';
-    el.innerHTML = '<div class="who"></div><div><div class="nm">Mr. Grant, Development</div><div class="tx"></div><div class="more">tap to continue ▸</div></div>';
-    el.querySelector('.who').appendChild(iconCanvas(S.suit.idle.r, 22));
-    el.querySelector('.tx').textContent = text;
-    LJ.voice.say(text, 'suit');
+    if (!line) { el.className = ''; el.innerHTML = ''; return; }
+    const [name, face] = SPEAKER[line.who]();
+    el.className = 'open by-' + line.who;
+    el.innerHTML = '<div class="who"></div><div><div class="nm"></div><div class="tx"></div><div class="more">tap to continue ▸</div></div>';
+    el.querySelector('.who').appendChild(iconCanvas(face, 22));
+    el.querySelector('.nm').textContent = name;
+    el.querySelector('.tx').textContent = line.text;
+    LJ.voice.say(line.text, line.who);
   };
 
   ui.endScreen = function () {
     const m = $('modal');
     m.innerHTML = '<div class="dialog"><h1>Game over.</h1>' +
-      '<p>' + G.cleared.toLocaleString('en-US') + ' trees cleared · ' + G.kills + ' animals killed · ' + G.folkKilled + ' forest folk killed · $' + G.earned.toLocaleString('en-US') + ' earned</p>' +
-      '<p>You received a $1,000,000 bonus and shares in the new AI data center.</p>' +
+      '<p>' + G.cleared.toLocaleString('en-US') + ' trees cleared · ' + G.kills + ' animals killed · ' + G.folkKilled + ' forest folk killed · €' + G.earned.toLocaleString('en-US') + ' earned</p>' +
+      '<p>You received a €1,000,000 bonus and shares in the new AI data center. Your family is provided for.</p>' +
       '<p class="ask">Do you want to clear another piece of land?</p>' +
       '<div class="row"><button data-a="yes">Yes</button><button data-a="no" class="ghost">No</button></div></div>';
     m.classList.add('open');
@@ -446,7 +466,7 @@
     $('again').classList.remove('open');
     ui.cineLine(null);
     LJ.newGame(); ui.reset();
-    ui.centerOn(G.units[0].x + 60, G.units[0].y);
+    ui.centerOnStart();
     G.paused = false;
   };
 
@@ -474,14 +494,14 @@
     if (!G.village) {
       if (G.sold === 0) return 'Jacks bring wood to the tent. Your truck sells wood above the 20-wood building reserve; switch to Stockpiling to keep it all.';
       if (!Object.keys(G.up).length && G.money >= 40) return 'You can afford an upgrade — open the Shop.';
-      if (G.cleared >= 8) return 'Next: upgrade the tent to a Cabin ($' + Math.max(0, G.money) + '/120, wood ' + G.wood + '/20). ' +
+      if (G.cleared >= 8) return 'Next: upgrade the tent to a Cabin (€' + Math.max(0, G.money) + '/120, wood ' + G.wood + '/20). ' +
         (G.stockpile ? 'Wood is being stockpiled at the tent.' : 'Tap “Selling” to stockpile wood instead.');
       return '';
     }
-    if (G.level >= 2 && LJ.jackCount() < 2) return 'Hire more jacks in the Shop. Each one wants $' + LJ.WAGE + ' every payday.';
-    if (G.level >= 2 && !LJ.countKind('truck') && tasks('haul')) return 'The market is a long walk away. A Truck ($250) makes the trip in seconds, with 60 goods at a time.';
-    if (G.level >= 2 && !G.count.sawmill && G.wood >= 20) return 'Build a Sawmill: jacks there turn wood into lumber worth $' + LJ.PRICE.lumber + ' each.';
-    if (G.count.sawmill && G.wood >= 6 && G.lumber === 0 && !G.up.steam && !tasks('saw')) return 'Select a jack and tap the sawmill to saw lumber: $' + LJ.PRICE.lumber + ' each, instead of $' + LJ.PRICE.wood + ' per wood.';
+    if (G.level >= 2 && LJ.jackCount() < 2) return 'Hire more jacks in the Shop. Each one wants €' + LJ.WAGE + ' every payday.';
+    if (G.level >= 2 && !LJ.countKind('truck') && tasks('haul')) return 'The market is a long walk away. A Truck (€250) makes the trip in seconds, with 60 goods at a time.';
+    if (G.level >= 2 && !G.count.sawmill && G.wood >= 20) return 'Build a Sawmill: jacks there turn wood into lumber worth €' + LJ.PRICE.lumber + ' each.';
+    if (G.count.sawmill && G.wood >= 6 && G.lumber === 0 && !G.up.steam && !tasks('saw')) return 'Select a jack and tap the sawmill to saw lumber: €' + LJ.PRICE.lumber + ' each, instead of €' + LJ.PRICE.wood + ' per wood.';
     if (G.wood + G.lumber >= 10 && !tasks('haul') && !G.units.some(u => u.kind === 'truck' && u.state !== 'idle')) return 'Nothing sells itself: select a jack or truck and tap the market sign.';
     if (G.level >= 4 && !LJ.countKind('dozer')) return 'Rivers and rocks wall off most of the forest. A bulldozer can open a way through.';
     if (G.level === 10) { const left = G.total - G.cleared; return left + ' trees left standing. Every last one has to go — the minimap shows where.'; }
@@ -494,7 +514,7 @@
     if (sig === panelSig) return;
     panelSig = sig;
     const p = $('panel');
-    if (G.wallMode) { p.innerHTML = '<div>Palisade<div class="st">Drag to build · $' + LJ.WALL_COST.m + ' + ' + LJ.WALL_COST.w + ' wood per section</div></div><button data-act="walldone">Done</button>'; return; }
+    if (G.wallMode) { p.innerHTML = '<div>Palisade<div class="st">Drag to build · €' + LJ.WALL_COST.m + ' + ' + LJ.WALL_COST.w + ' wood per section</div></div><button data-act="walldone">Done</button>'; return; }
     if (G.place) { p.innerHTML = '<div>Place the ' + LJ.BLD[G.place.kind].name.toLowerCase() + '</div><button data-act="cancel">Cancel</button>'; return; }
     if (!sel.length) { p.innerHTML = ''; return; }
     const u = sel[0], cargo = sel.reduce((a, b) => a + LJ.cargoOf(b), 0), has = k => sel.some(s => s.kind === k);
@@ -550,9 +570,9 @@
     if (!o) { el.className = ''; el.innerHTML = ''; return; }
     el.className = 'open ' + o.state + (o.state === 'active' && o.time < 30 ? ' urgent' : '');
     el.innerHTML = o.state === 'offer'
-      ? '<div class="ot">Market order</div><div>' + o.qty + ' ' + o.kind + ' within ' + mmss(o.time) + '</div><div class="ob">Bonus $' + o.bonus + ' · late fee $' + Math.round(o.bonus * 0.2 / 5) * 5 + '</div>' +
+      ? '<div class="ot">Market order</div><div>' + o.qty + ' ' + o.kind + ' within ' + mmss(o.time) + '</div><div class="ob">Bonus €' + o.bonus + ' · late fee €' + Math.round(o.bonus * 0.2 / 5) * 5 + '</div>' +
         '<div class="obtn"><button data-act="yes">Accept</button><button data-act="no">Decline (' + Math.ceil(o.ttl) + ')</button></div>'
-      : '<div class="ot">Order: ' + o.got + ' / ' + o.qty + ' ' + o.kind + '</div><div class="otime">' + mmss(o.time) + '</div><div class="ob">Bonus $' + o.bonus + '</div>';
+      : '<div class="ot">Order: ' + o.got + ' / ' + o.qty + ' ' + o.kind + '</div><div class="otime">' + mmss(o.time) + '</div><div class="ob">Bonus €' + o.bonus + '</div>';
   }
 
   // ---------- Minimap ----------
@@ -622,12 +642,12 @@
     $('c-pop').style.display = G.village ? '' : 'none';
     const bill = G.units.reduce((a, u) => a + u.wage, 0);
     set($('c-pop').querySelector('b'), LJ.jackCount() + '/' + LJ.popCap());
-    set($('payTxt'), bill ? 'pay $' + bill + ' in ' + mmss(G.payT) : '');
+    set($('payTxt'), bill ? 'pay €' + bill + ' in ' + mmss(G.payT) : '');
     const goal = G.thr[G.level - 1];
     set($('lvl'), G.level);
     set($('lvlTxt'), G.levelDone ? G.cleared + ' trees' : Math.min(G.cleared, goal) + ' / ' + goal + ' trees');
     const quota = G.quota[G.level - 1] || 0;
-    set($('quota'), quota && !G.levelDone ? '$' + Math.min(G.earned, quota).toLocaleString('en-US') + ' / ' + quota.toLocaleString('en-US') + ' earned' : '');
+    set($('quota'), quota && !G.levelDone ? '€' + Math.min(G.earned, quota).toLocaleString('en-US') + ' / ' + quota.toLocaleString('en-US') + ' earned' : '');
     $('lvlFill').style.width = 'calc(' + Math.min(1, G.cleared / goal) * 100 + '% - 4px)';
     set($('hint'), hint());
     refreshPanel(); refreshShop(); refreshOrder();

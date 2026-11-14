@@ -25,11 +25,13 @@
   const anchor = (c, ax, ay) => { c.ax = ax; c.ay = ay; return c; };
 
   const PAL = {
-    oak: ['#10301a', '#1d4d24', '#2b6a2b', '#3e8733', '#58a33c', '#7dbd4a', '#b5dc6a'],
+    scots: ['#0d2a24', '#174438', '#215e48', '#2f7a58', '#479568', '#6aae7c', '#a4d39c'], // Scots pine: blue-green needles
     yellow: ['#2c360c', '#4f6b14', '#76921e', '#9fb52a', '#c6d33c', '#e3e66a', '#fbf6a8'],
-    pine: ['#0b261c', '#123f2d', '#1a5a3b', '#267447', '#3a9056', '#5fae67', '#93cf84'],
+    spruce: ['#081f18', '#0e3526', '#154a32', '#1f623d', '#2f7a49', '#4a9558', '#7dba74'],
     bush: ['#0f2a16', '#1a4420', '#265e28', '#367a30', '#4c9438', '#6aae45', '#9fd060'],
     bark: ['#24140b', '#4a2c17', '#6b4224', '#8c5a32'],
+    pinebark: ['#3a1a0c', '#8a4a22', '#b8672e', '#dd8e48'], // the orange upper trunk of a Scots pine
+    oldbark: ['#221812', '#4a3a2c', '#665240', '#857058'],
     birch: ['#2a2622', '#9a958a', '#cfcabd', '#f2efe6'],
     rock: ['#26252b', '#47464f', '#6a6970', '#8f8d8b', '#b4b1a6', '#d8d4c4']
   };
@@ -104,9 +106,22 @@
     return anchor(b.canvas(), 24, 52);
   }
 
-  // ---------- Pine: stacked, drooping tiers with needle strokes ----------
-  function pine(seed, sc) {
-    const W = 38, H = 60, cx = 19, b = new Buf(W, H), P = PAL.pine.map(rgb), lv = P.length - 2;
+  // ---------- Scots pine: a tall bare trunk, orange towards the top, under a high, flat crown ----------
+  function scotsPine(seed, sc) {
+    const W = 46, H = 66, b = new Buf(W, H), cy = 15 + (1 - sc) * 10;
+    shadow(b, 26, 61, 13 * sc, 4, 0.38);
+    trunk(b, 23, Math.round(cy), 62, 2.4, PAL.pinebark, seed, false);
+    trunk(b, 23, 44, 62, 2.4, PAL.oldbark, seed, false);
+    // A dead branch stub or two below the crown
+    const P = PAL.pinebark.map(rgb);
+    for (const [bx, by, d] of [[20, 34, -1], [25, 40, 1]]) { b.set(bx + d, by, P[1]); b.set(bx + d * 2, by - 1, P[1]); b.set(bx + d * 3, by - 1, P[0]); }
+    canopy(b, { cx: 23, cy, rx: 16 * sc, ry: 9.5 * sc, n: 10, rmin: 4.5 * sc, rmax: 7 * sc, pal: PAL.scots, seed });
+    return anchor(b.canvas(), 23, 62);
+  }
+
+  // ---------- Spruce: stacked, drooping tiers with needle strokes ----------
+  function spruce(seed, sc) {
+    const W = 38, H = 60, cx = 19, b = new Buf(W, H), P = PAL.spruce.map(rgb), lv = P.length - 2;
     shadow(b, 21, 54, 12 * sc, 4, 0.38);
     trunk(b, 19, 44, 55, 2, PAL.bark, seed, false);
     const tiers = 5, top = Math.round(4 + (1 - sc) * 22), bot = 49;
@@ -148,10 +163,10 @@
     return anchor(b.canvas(), 19, 55);
   }
 
-  // Index matches the world's tree species: 1 = pine, 2 = oak, 3 = birch.
+  // The three trees of a Finnish forest. Index matches the world's tree species: 1 = spruce, 2 = Scots pine, 3 = birch.
   S.trees = [
-    [[101, 1], [117, 0.86], [131, 0.93], [149, 0.8]].map(([sd, sc]) => pine(sd, sc)),
-    [[201, 1], [233, 0.88], [257, 0.94], [271, 0.82]].map(([sd, sc]) => broadleaf(sd, PAL.oak, PAL.bark, false, sc)),
+    [[101, 1], [117, 0.86], [131, 0.93], [149, 0.8]].map(([sd, sc]) => spruce(sd, sc)),
+    [[201, 1], [233, 0.88], [257, 0.94], [271, 0.82]].map(([sd, sc]) => scotsPine(sd, sc)),
     [[301, 0.92], [323, 0.8], [347, 0.86], [359, 0.76]].map(([sd, sc]) => broadleaf(sd, PAL.yellow, PAL.birch, true, sc))
   ];
 
@@ -218,7 +233,8 @@
     shadow(b, 13, 13, 10, 2.5, 0.35);
     canopy(b, { cx: 12, cy: 8.5, rx: 8, ry: 4.5, n: 6, rmin: 3.5, rmax: 4.8, pal: PAL.bush, seed });
     const c = b.canvas(), x = c.getContext('2d');
-    if (seed & 1) { x.fillStyle = '#e0303a'; [[7, 6], [14, 5], [17, 9], [10, 10]].forEach(p => x.fillRect(p[0], p[1], 1, 1)); }
+    x.fillStyle = seed & 1 ? '#e0303a' : '#4a5cc8'; // lingonberries or bilberries
+    [[7, 6], [14, 5], [17, 9], [10, 10]].forEach(p => x.fillRect(p[0], p[1], 1, 1));
     return c;
   };
   const flowerPal = (a, b) => ({ P: a, p: '#ffd84a', Y: b, y: '#e88a1c', W: '#ffffff', B: '#a98bff', b: '#ffe25a', g: '#2f6a2a', G: '#4f9a3a' });
@@ -292,18 +308,23 @@
   S.suit = { idle: person(SUIT, SP, 0, brief), walk: [person(SUIT, SP, 1, brief), person(SUIT, SP, 2, brief)] };
 
   // ---------- Peaceful wildlife ----------
+  // Reindeer: grey-brown, pale neck, wide antlers. (The sprite keeps its old name, `deer`.)
   const DEER_TOP = [
-    '.............A..A...', '.............AA.AA..', '..............AAA...', '.............dDDd...', '.............DDDDD..', '.............DDKDDD.',
+    '...........A.A...A.A', '...........AAA...AAA', '............A.....A.', '............AA...AA.', '.............AA.AA..', '..............AAA...', '.............dDDd...', '.............DDDDD..', '.............DDKDDD.',
     '..............DDDDDK', '..............DLLL..', '.............dDLL...', '..W.dDDDDDDDDDDL....', '..WdDDDLDDDDLDDL....', '...dDDDDDDDDDDDL....',
     '...dDDLLLLLLLDDd....'];
   const DEER_LEGS = [
     ['....dDd....dDDd.....', '....dD.....dD.d.....', '....dD.....dD.d.....', '....dd.....d..d.....', '....KK.....K..K.....'],
     ['....dDd....dDDd.....', '...dD.......dD.d....', '..dD.........dD.d...', '..d..........d...d..', '..K..........K...K..']];
-  const DP = { D: '#b0703c', d: '#7a4826', L: '#ecd0a6', K: '#2a1a14', A: '#dcc7a0', W: '#f6eee0' };
+  const DP = { D: '#93806c', d: '#5e4c3e', L: '#efe6d6', K: '#2a1a14', A: '#e8dcc0', W: '#f6eee0' };
   S.deer = DEER_LEGS.map(l => both(map(DEER_TOP.concat(l), DP)));
   const SQ = { O: '#cc672c', o: '#8f4218', L: '#f2cc92', K: '#1a1218' };
   const SQ_TOP = ['.OO......', 'OOOO.....', 'OOoO..O..', '.OOo.OOO.', '..OoOOKOO', '..oOOLOO.', '...OOLL..'];
   S.squirrel = [both(map(SQ_TOP.concat(['...o.o...']), SQ)), both(map(SQ_TOP.concat(['..o...o..']), SQ))];
+  // Whooper swan, Finland's national bird. It only ever swims, so it has a single frame.
+  S.swan = [both(map([
+    '.........WW.', '........WWYK', '........Ww..', '........Ww..', '..wWW...Ww..', '.WWWWWWWWw..', 'WWWWWWWWWw..', '.wWWWWWWw...', '..wwwwww....'
+  ], { W: '#f6f8fc', w: '#c3cede', Y: '#f2c230', K: '#1a1218' }))];
 
   // ---------- The forest folk: small, round, bear-like, leaf-hooded, armed with bows ----------
   const FP = { h: '#2f6a2a', H: '#4f8a3a', L: '#6aa84a', F: '#8a5a34', f: '#6b4526', M: '#e0b88a', K: '#1a1218', W: '#ffffff', B: '#d0a070', D: '#4a2f1a' };

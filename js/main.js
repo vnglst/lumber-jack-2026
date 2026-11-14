@@ -5,8 +5,8 @@
   LJ.ui.init();
   LJ.newGame();
   LJ.ui.reset();
-  LJ.ui.centerOn(G.units[0].x + 60, G.units[0].y);
-  LJ.ui.showTitle(false);
+  LJ.ui.centerOnStart();
+  LJ.ui.showTitle();
 
   let last = 0;
   function frame(ts) {
@@ -14,8 +14,7 @@
     last = ts;
     LJ.ui.tick(dt);
     if (!G.paused) LJ.update(dt);
-    LJ.render();
-    LJ.ui.sync();
+    if (!LJ.title.isOpen()) { LJ.render(); LJ.ui.sync(); } // the opening screen covers the whole game
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

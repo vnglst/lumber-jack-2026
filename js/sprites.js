@@ -185,46 +185,43 @@
       const a = x0 + inset, b = x1 - inset, row = (y - y0) >> 2, ry = (y - y0) & 3;
       for (let X = a; X < b; X++) {
         const t = (X - a) / (b - a), k = (X + (row & 1) * 3) % 6;
-        let col = t < 0.45 ? (row % 2 ? '#d9553a' : '#e0613f') : '#bf432d';
-        if (ry === 3) col = t < 0.45 ? '#8f2a1c' : '#7a2218';
-        else if (k === 0) col = '#9c2d1f';
-        else if (ry === 0 && t < 0.5) col = '#ee8560';
+        let col = t < 0.45 ? (row % 2 ? '#5b606c' : '#666b78') : '#474b56';
+        if (ry === 3) col = t < 0.45 ? '#2e3038' : '#26282f';
+        else if (k === 0) col = '#3a3d47';
+        else if (ry === 0 && t < 0.5) col = '#8a90a0';
         R(x, X, y, 1, 1, col);
       }
     }
   }
   function windowLit(x, a, b) {
-    R(x, a - 2, b, 2, 8, '#3f6f3a'); R(x, a + 7, b, 2, 8, '#3f6f3a'); R(x, a - 2, b, 2, 1, '#5e9a52'); R(x, a + 7, b, 2, 1, '#5e9a52');
-    R(x, a, b, 7, 8, '#4a2f1a'); R(x, a + 1, b + 1, 5, 6, '#ffd76a'); R(x, a + 1, b + 1, 2, 2, '#fff1a8');
-    R(x, a + 3, b + 1, 1, 6, '#4a2f1a'); R(x, a + 1, b + 4, 5, 1, '#4a2f1a'); R(x, a - 1, b + 8, 9, 1, '#7a5230');
+    R(x, a - 1, b - 1, 9, 10, '#f1ebdc'); R(x, a - 1, b + 8, 9, 1, '#cfc8b6'); // white window trim
+    R(x, a + 1, b + 1, 5, 6, '#ffd76a'); R(x, a + 1, b + 1, 2, 2, '#fff1a8');
+    R(x, a + 3, b + 1, 1, 6, '#f1ebdc'); R(x, a + 1, b + 4, 5, 1, '#f1ebdc');
   }
   S.village = (function () {
     const W = 62, H = 68, c = mk(W, H), x = cx2(c);
     shadow(x, 34, 63, 31, 4);
     stoneRow(x, 6, 55, 50, 7);
-    R(x, 7, 34, 48, 21, '#e8d6aa'); R(x, 41, 34, 14, 21, '#cdb98c');
-    for (let y = 36; y < 54; y += 3) for (let X = 8; X < 54; X += 7) R(x, X + ((y / 3) & 1) * 3, y, 1, 1, '#d6c294');
-    R(x, 7, 34, 48, 2, '#5a3a20'); R(x, 7, 53, 48, 2, '#5a3a20');
-    for (const bx of [7, 21, 40, 53]) R(x, bx, 34, 2, 21, '#5a3a20');
-    for (let i = 0; i < 9; i++) { R(x, 42 + i, 36 + i * 2, 2, 2, '#5a3a20'); }
+    R(x, 7, 34, 48, 21, '#b23a2c'); R(x, 41, 34, 14, 21, '#8e2b22');
+    for (let y = 36; y < 54; y += 3) for (let X = 8; X < 54; X += 7) R(x, X + ((y / 3) & 1) * 3, y, 1, 1, '#9d3127');
+    for (const bx of [7, 53]) R(x, bx, 34, 2, 21, '#f1ebdc');
     windowLit(x, 11, 39); windowLit(x, 44, 39);
     R(x, 25, 42, 12, 13, '#4a2f1a'); R(x, 26, 43, 10, 12, '#7a4a26'); R(x, 27, 41, 8, 2, '#4a2f1a'); R(x, 28, 42, 6, 1, '#7a4a26');
     for (let X = 28; X < 36; X += 3) R(x, X, 43, 1, 12, '#5e3820');
     R(x, 26, 43, 1, 12, '#94603a'); R(x, 33, 49, 1, 1, '#e8c25a');
     R(x, 24, 55, 14, 2, '#9a978f'); R(x, 24, 55, 14, 1, '#b4b1aa');
     roof(x, 2, 60, 8, 36, 20);
-    R(x, 2, 35, 58, 2, '#5a1711'); R(x, 13, 8, 36, 1, '#f39a74');
+    R(x, 2, 35, 58, 2, '#f1ebdc'); R(x, 13, 8, 36, 1, '#9aa0b0');
     box(x, 44, 0, 8, 14, '#8d8a86', '#b4b1aa', '#5f5c59');
     R(x, 45, 4, 3, 1, '#6f6c69'); R(x, 48, 8, 3, 1, '#6f6c69'); R(x, 43, 0, 10, 2, '#5f5c59'); R(x, 43, 0, 10, 1, '#8d8a86');
-    // Banner with crossed axes on a pole
-    R(x, 57, 26, 1, 30, '#5a3a20'); R(x, 57, 25, 1, 1, '#e8c25a');
-    R(x, 50, 27, 7, 11, '#2f6fd8'); R(x, 50, 27, 7, 1, '#5e97ee'); R(x, 50, 27, 1, 11, '#5e97ee');
-    pts(x, [[50, 38], [56, 38], [51, 37], [55, 37]], '#2f6fd8'); pts(x, [[53, 37], [53, 36]], '#1f4ea8');
-    pts(x, [[51, 29], [52, 30], [53, 31], [54, 32], [55, 33], [55, 29], [54, 30], [52, 32], [51, 33]], '#ffffff');
+    // The Finnish flag on a pole
+    banner(x, 57, 26);
     // Barrel and crate
     R(x, 1, 47, 6, 9, '#8a5a30'); R(x, 2, 47, 1, 9, '#b07a44'); R(x, 1, 49, 6, 1, '#4a4a52'); R(x, 1, 53, 6, 1, '#4a4a52'); R(x, 1, 47, 6, 1, '#5e3820');
     box(x, 0, 56, 7, 6, '#b9854a', '#d8a868', '#7a5230'); pts(x, [[1, 57], [2, 58], [3, 59], [4, 60], [5, 57], [4, 58], [2, 60]], '#7a5230');
-    return outlined(c, { x: 49, y: 1 });
+    const o = outlined(c, { x: 49, y: 1 });
+    o.windows = [[11, 39], [44, 39]]; // where windowLit put the windows; the title screen lights them
+    return o;
   })();
 
   function logEnd(x, cx, cy) {
@@ -279,9 +276,12 @@
   }
   function banner(x, px, top) {
     R(x, px, top, 1, 30, '#5a3a20'); R(x, px, top - 1, 1, 1, '#e8c25a');
-    R(x, px - 7, top + 1, 7, 11, '#2f6fd8'); R(x, px - 7, top + 1, 7, 1, '#5e97ee'); R(x, px - 7, top + 1, 1, 11, '#5e97ee');
-    pts(x, [[px - 7, top + 12], [px - 1, top + 12], [px - 6, top + 11], [px - 2, top + 11]], '#2f6fd8');
-    pts(x, [[px - 6, top + 3], [px - 5, top + 4], [px - 4, top + 5], [px - 3, top + 6], [px - 2, top + 7], [px - 2, top + 3], [px - 3, top + 4], [px - 5, top + 6], [px - 6, top + 7]], '#ffffff');
+    flag(x, px - 9, top + 1);
+  }
+  // Finland's flag, 9 x 7: a blue cross on white, flying from a pole on its right.
+  function flag(x, a, b) {
+    R(x, a, b, 9, 7, '#f6f8fc'); R(x, a, b + 6, 9, 1, '#cfd6e2');
+    R(x, a, b + 3, 9, 1, '#1f4ea8'); R(x, a + 5, b, 2, 7, '#1f4ea8');
   }
 
   // Tier 2: a two-storey lodge with a stone ground floor.
@@ -291,12 +291,12 @@
     stoneRow(x, 5, 72, 56, 7);
     stoneRow(x, 7, 52, 52, 20); R(x, 46, 52, 13, 20, 'rgba(0,0,0,0.12)');
     windowLit(x, 12, 57); windowLit(x, 47, 57); door(x, 27, 57, 12, 15);
-    R(x, 7, 32, 52, 20, '#e8d6aa'); R(x, 45, 32, 14, 20, '#cdb98c');
-    R(x, 7, 32, 52, 2, '#5a3a20'); R(x, 7, 50, 52, 2, '#5a3a20');
-    for (const bx of [7, 20, 32, 45, 57]) R(x, bx, 32, 2, 20, '#5a3a20');
+    R(x, 7, 32, 52, 20, '#b23a2c'); R(x, 45, 32, 14, 20, '#8e2b22');
+    R(x, 7, 50, 52, 2, '#f1ebdc');
+    for (const bx of [7, 57]) R(x, bx, 32, 2, 20, '#f1ebdc');
     windowLit(x, 11, 37); windowLit(x, 23, 37); windowLit(x, 48, 37);
     roof(x, 1, 65, 6, 34, 22);
-    R(x, 1, 33, 64, 2, '#5a1711'); R(x, 14, 6, 38, 1, '#f39a74');
+    R(x, 1, 33, 64, 2, '#f1ebdc'); R(x, 14, 6, 38, 1, '#9aa0b0');
     box(x, 47, 0, 8, 14, '#8d8a86', '#b4b1aa', '#5f5c59'); R(x, 46, 0, 10, 2, '#5f5c59'); R(x, 46, 0, 10, 1, '#8d8a86');
     banner(x, 63, 40);
     R(x, 0, 64, 6, 9, '#8a5a30'); R(x, 1, 64, 1, 9, '#b07a44'); R(x, 0, 66, 6, 1, '#4a4a52'); R(x, 0, 70, 6, 1, '#4a4a52');
@@ -316,12 +316,12 @@
     door(x, 31, 62, 10, 20); R(x, 31, 60, 10, 2, '#6a655c');
     R(x, 28, 82, 16, 2, '#bdb8ad'); R(x, 26, 84, 20, 2, '#a9a49a');
     roof(x, 0, 72, 30, 50, 12);
-    R(x, 0, 49, 72, 2, '#5a1711');
+    R(x, 0, 49, 72, 2, '#f1ebdc');
     // Clock tower
     box(x, 28, 14, 16, 36, '#b8b3a8', '#d8d3c6', '#8a857b');
     disc(x, 36, 26, 5.5, '#4a3a2a'); disc(x, 36, 26, 4.5, '#f4efe0'); R(x, 36, 23, 1, 4, '#222'); R(x, 36, 26, 3, 1, '#222');
     R(x, 31, 36, 2, 6, '#3a2a20'); R(x, 39, 36, 2, 6, '#3a2a20');
-    for (let y = 2; y < 14; y++) { const h = Math.round((y - 2) * 0.75); R(x, 36 - h - 1, y, h + 1, 1, '#d9553a'); R(x, 36, y, h + 1, 1, '#bf432d'); }
+    for (let y = 2; y < 14; y++) { const h = Math.round((y - 2) * 0.75); R(x, 36 - h - 1, y, h + 1, 1, '#5b606c'); R(x, 36, y, h + 1, 1, '#474b56'); }
     R(x, 35, 0, 2, 2, '#e8c25a');
     // Flags and a chimney
     banner(x, 70, 52); box(x, 8, 22, 7, 14, '#8d8a86', '#b4b1aa', '#5f5c59'); R(x, 7, 22, 9, 2, '#5f5c59');
@@ -332,10 +332,10 @@
     const W = 38, H = 42, c = mk(W, H), x = cx2(c);
     shadow(x, 20, 38, 18, 3);
     stoneRow(x, 3, 34, 32, 4);
-    R(x, 4, 20, 30, 14, '#e8d6aa'); R(x, 25, 20, 9, 14, '#cdb98c');
-    R(x, 4, 20, 30, 2, '#5a3a20'); for (const bx of [4, 18, 32]) R(x, bx, 20, 2, 14, '#5a3a20');
+    R(x, 4, 20, 30, 14, '#b23a2c'); R(x, 25, 20, 9, 14, '#8e2b22');
+    for (const bx of [4, 32]) R(x, bx, 20, 2, 14, '#f1ebdc');
     windowLit(x, 8, 23); door(x, 22, 24, 8, 10);
-    roof(x, 1, 37, 4, 22, 10); R(x, 1, 21, 36, 2, '#5a1711');
+    roof(x, 1, 37, 4, 22, 10); R(x, 1, 21, 36, 2, '#f1ebdc');
     box(x, 28, 0, 5, 9, '#8d8a86', '#b4b1aa', '#5f5c59');
     return outlined(c, { x: 31, y: 1 });
   })();

@@ -34,12 +34,12 @@
       }
     }
     const J = S.jack.axe, K = S.jack.saw, D = S.decor;
-    section('Trees', [].concat(...S.trees.map((sp, i) => sp.map((c, v) => [['pine', 'oak', 'birch'][i] + ' ' + (v + 1), c]))));
+    section('Trees', [].concat(...S.trees.map((sp, i) => sp.map((c, v) => [['spruce', 'pine', 'birch'][i] + ' ' + (v + 1), c]))));
     section('Jacks', [['idle', J.idle.r], ['walk 1', J.walk[0].r], ['walk 2', J.walk[1].r], ['axe up', J.chop[0].r], ['axe down', J.chop[1].r],
       ['carrying', J.carry[0].r], ['facing left', J.idle.l], ['chainsaw', K.chop[0].r], ['chainsaw 2', K.chop[1].r], ['laser pistol', S.jack.pistol[0].r], ['firing', S.jack.pistol[1].r]]);
     section('Rocks and stumps', S.rocks.map((c, i) => ['rock ' + (i + 1), c]).concat(S.pebbles.map((c, i) => ['pebbles ' + (i + 1), c]), S.stumps.map((c, i) => ['stump ' + (i + 1), c])));
     section('Plants', [].concat(...Object.keys(D).map(k => D[k].map((c, i) => [k + (D[k].length > 1 ? ' ' + (i + 1) : ''), c]))));
-    section('Wildlife', [['deer', S.deer[0].r], ['deer walking', S.deer[1].r], ['squirrel', S.squirrel[0].r], ['squirrel hop', S.squirrel[1].r],
+    section('Wildlife', [['reindeer', S.deer[0].r], ['reindeer walking', S.deer[1].r], ['whooper swan', S.swan[0].r], ['squirrel', S.squirrel[0].r], ['squirrel hop', S.squirrel[1].r],
       ['forest folk', S.native[0].r], ['forest folk walking', S.native[1].r], ['forest folk aiming', S.nativeAim.r], ['hut', S.hut],
       ['wolf 1', S.wolf[0].r], ['wolf 2', S.wolf[1].r], ['bear 1', S.bear[0].r], ['bear 2', S.bear[1].r], ['gravestone', S.grave]]);
     section('Settlement: the tent and its upgrades', [['tent', S.camp], ['cabin', S.village], ['lodge', S.lodge], ['town hall', S.hall]]);

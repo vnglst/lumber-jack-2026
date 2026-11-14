@@ -41,6 +41,11 @@ How to read it:
 | 28 | 14 Nov | Jacks learn through work | Active |
 | 29 | 14 Nov | Construction takes time | Active |
 | 30 | 14 Nov | Bulldozers uproot stumps for more wood | Active |
+| 31 | 14 Nov | Opening story, opening screen and Finland | Active |
+| 32 | 14 Nov | More natural truck wobble | Active |
+| 33 | 14 Nov | Smoother, faster opening drive | Active |
+| 34 | 14 Nov | Ground the cottage on the opening screen | Active |
+| 35 | 14 Nov | Tapping through the story does not move the truck | Active |
 
 ---
 
@@ -382,3 +387,57 @@ How to read it:
 - Bulldozers continue clearing nearby rocks and filling rivers on explicit orders. Stop orders still hold them in place with their cargo.
 - Show muddy ground on the map/minimap, a roots-specific work status, and the bulldozer's cargo.
 - *Decision: save format 6 adds the muddy terrain value while retaining existing job/cargo fields; formats 2–5 still load.*
+
+## 31. Opening story, opening screen and Finland (14 Nov 2026)
+
+> - There should be an opening story. You're software engineer, that lost his job because of AI. You have to provide for your young family. Then a job offer comes along: you can become a lumberjack! First assignment: clear a plot of land of trees. Destination Finland. Create a nice opening screen where you can start a new game. Then the story is told while you're in the truck in the forest. The end sequence should wrap this up, surprising both the player (main character) and the viewer that this new job was about making more AI data centers!
+> - As this is in Finland, check if we can make the design & animals more Finnish.
+
+- **Opening story**: the player is a software engineer who lost his job to AI and has a young family to provide for. A job offer arrives: become a lumberjack. First assignment: clear a plot of forest in Finland.
+- **Opening screen**: a proper title screen from which a new game is started.
+- **Telling the story**: it is told during the truck ride into the forest.
+- **Ending**: it closes the story. The main character and the viewer both find out only then that the job was about building more AI data centers.
+- **Finland**: make the design and the animals more Finnish.
+- *Decision: the opening screen is a painted night scene of a lake under the northern lights with a red cottage. It offers New game, plus Continue when a save exists. The how-to-play dialog stays behind the ? button.*
+- *Decision: the story is the first five lines of the narrated arrival ride (entry 25), told by Jack in the first person, followed by the four tutorial lines. Each line gets reading time for its length, and a tap, Space or Enter moves to the next line.*
+- *Decision: the opening says an AI took his job but never what the land is for ("I didn't ask what the land is for"), so the ending stays a surprise.*
+- *Decision: the ending is now a conversation. Jack answers Mr. Grant three times, realising he cleared the forest for the thing that replaced him. The end screen adds that his family is provided for.*
+- *Decision, Finnish design:*
+  - *Trees are spruce, Scots pine (in place of oak) and birch.*
+  - *Deer became reindeer, and whooper swans swim on open water until it is filled in. Wolves, bears and red squirrels already fit.*
+  - *Houses are red wood with white trim and dark roofs, flying the Finnish flag.*
+  - *Bushes carry lingonberries or bilberries.*
+  - *Hired jacks have Finnish J-names (Jaakko, Jukka, Johanna…).*
+  - *Prices are in euros.*
+- *Decision: map generation is unchanged (no extra lakes), so existing saves still load. Swans appear only in new games.*
+- *All new lines are in `js/lines.js`, so they show up in the recording booth. None are recorded yet.*
+
+## 32. More natural truck wobble (14 Nov 2026)
+
+> Wobbling of the truck can be more natural.
+
+- A driving truck should wobble naturally instead of bobbing up and down at a fixed beat.
+- *Decision: moving vehicles ride level most of the time and hit short bumps at irregular moments, usually one pixel and now and then two. The bumps depend on the ground covered and the time driven, so fast trucks rattle more than slow ones. The rider on the opening drive bounces a beat after the truck. Applies to all vehicles.*
+
+## 33. Smoother, faster opening drive (14 Nov 2026)
+
+> Mmmm, still not very smooth, maybe the truck is too slow?
+
+- The opening drive should look smooth, and the truck should not crawl.
+- *Decision: the camera is locked to the truck during the drive, moving in the same whole pixels at the same moments. Before, the camera eased after the truck, so the two stepped at different moments and the truck shook from side to side.*
+- *Decision: the truck drives at about 30 pixels a second, up from about 15. Only the five story lines are told on the road (about 36 seconds).*
+- *Decision: the four how-to-play lines moved to after arrival ("At camp"), with the truck parked, the tent up and Jack out of the truck. The game starts when they finish; a tap still skips a line. This changes the narrated arrival of entry 25: the tutorial is no longer given while driving.*
+
+## 34. Ground the cottage on the opening screen (14 Nov 2026)
+
+> House in intro seems to be floating in black a bit, can you integrate it more into the scene?
+
+- The cottage on the opening screen should sit in the scene, not float on black.
+- *Decision: the near shore is now moonlit grass instead of a black silhouette, rising into a low headland under the cottage. Lamplight from the windows and door pools on the grass. Bushes, ferns, flowers and a boulder stand against the cottage, and a trodden path leads from the door to a jetty with a rowing boat. On narrow screens the cottage stands further up the bank so there is grass in front of it.*
+
+## 35. Tapping through the story does not move the truck (14 Nov 2026)
+
+> Tap to continue, should not fast forward the truck.
+
+- A tap during the opening only moves the story to the next line. The truck must not jump ahead.
+- *Decision: the story and the drive now run on separate clocks. Untouched, the last story line still ends as the truck arrives. If the story is tapped through early, the text box closes and the truck drives the rest of the road in silence, picking up speed smoothly to 120 pixels a second, with no jump. The how-to-play lines start once it has parked. This replaces the jump-ahead described in entries 31 and 33.*

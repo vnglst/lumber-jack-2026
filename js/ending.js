@@ -7,7 +7,7 @@
   const SITE_W = 7, SITE_H = 5, BONUS = 1000000, SPREAD = 16;
   const BLOCK = S.dcFrame.width / TS; // tiles per data-center module
 
-  const lines = () => LJ.LINES.ending.map(t => t.replace('{n}', G.cleared.toLocaleString('en-US')));
+  const lines = () => LJ.LINES.ending.map(l => ({ who: l.who, text: l.text.replace('{n}', G.cleared.toLocaleString('en-US')) }));
 
   // Flood fill from the market road: which tiles can someone walking in actually reach?
   function reachable() {
@@ -78,9 +78,15 @@
     if (!c || c.phase !== 'talk') return;
     LJ.sfx('click');
     c.line++;
-    if (c.line < c.lines.length) { LJ.ui.cineLine(c.lines[c.line]); return; }
+    if (c.line < c.lines.length) {
+      const l = c.lines[c.line];
+      // The suit and the jack turn to face whoever is speaking.
+      if (c.jack) { G.suit.dir = c.jack.x > G.suit.x ? 1 : -1; c.jack.dir = G.suit.x > c.jack.x ? 1 : -1; }
+      LJ.ui.cineLine(l);
+      return;
+    }
     G.money += BONUS;
-    LJ.float(G.suit.x, G.suit.y - 22, '+$1,000,000', 'money');
+    LJ.float(G.suit.x, G.suit.y - 22, '+€1,000,000', 'money');
     LJ.sfx('level');
     LJ.ui.cineLine(null);
     c.phase = 'build'; c.t = 0;
@@ -130,7 +136,7 @@
       if (!G.suit.path.length) {
         c.phase = 'talk';
         const near = LJ.jacks().sort((a, b) => Math.hypot(a.x - G.suit.x, a.y - G.suit.y) - Math.hypot(b.x - G.suit.x, b.y - G.suit.y))[0];
-        if (near) { G.suit.dir = near.x > G.suit.x ? 1 : -1; LJ.say(near, LJ.LINES.misc.who); }
+        if (near) { c.jack = near; G.suit.dir = near.x > G.suit.x ? 1 : -1; LJ.say(near, LJ.LINES.misc.who); }
         LJ.ui.cineLine(c.lines[0]);
       }
     } else if (c.phase === 'build') {

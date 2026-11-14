@@ -27,17 +27,23 @@
     else if (u.state === 'chop' && u.target >= 0 && !u.path.length) bar(ctx, x + 4, y - 3, 12, 1 - G.world.hp[u.target], '#ffd84a');
   }
 
+  // How far a moving vehicle is lifted off its wheels right now, in pixels. Bumps come from the ground it drives over
+  // and from the engine, at irregular moments: mostly level, often up one pixel, now and then a pothole's worth.
+  function jolt(u, lag) {
+    const p = (u.x + u.y) * 0.09 + (u.walkT - lag) * 4.5, n = LJ.vnoise(p, u.id * 3.7, 11) * 0.7 + LJ.vnoise(p * 2.7, u.id * 1.3, 12) * 0.3;
+    return n > 0.8 ? 2 : n > 0.6 ? 1 : 0;
+  }
   function drawVehicle(ctx, u, cx, cy, G, ghost) {
     const kind = LJ.VEH[u.kind].sprite || u.kind;
     const set = kind === 'truck' ? (LJ.cargoOf(u) > 0 ? S.truck.full : S.truck.empty) : S[kind];
     const img = u.dir > 0 ? set.r : set.l;
     const busy = u.state === 'doze' || (u.state === 'chop' && !u.path.length);
-    const bob = (u.path.length && Math.floor(u.walkT * 10) % 2) || (busy && Math.floor(G.time * 16) % 2) ? 1 : 0;
+    const bob = u.path.length ? jolt(u, 0) : busy && Math.floor(G.time * 16) % 2 ? 1 : 0;
     const x = Math.round(u.x) - (img.width >> 1) - cx, y = Math.round(u.y) + 4 - img.height - cy - bob;
     if (!ghost && G.sel.has(u)) ctx.drawImage(S.ringL, Math.round(u.x) - 16 - cx, Math.round(u.y) - 4 - cy);
-    if (G.arrival === u) {
+    if (G.arrival === u && u.path.length) { // Jack rides in the truck until it parks
       const rider = S.jack.axe.idle[u.dir > 0 ? 'r' : 'l'];
-      ctx.drawImage(rider, Math.round(u.x) - 7 - rider.ax - cx, Math.round(u.y) - 7 - rider.ay - cy - bob);
+      ctx.drawImage(rider, Math.round(u.x) - 7 - rider.ax - cx, Math.round(u.y) - 7 - rider.ay - cy - jolt(u, 0.09)); // he bounces a beat after the truck
     }
     ctx.drawImage(img, x, y);
     if (!ghost && u.hp < LJ.maxHpOf(u)) bar(ctx, x + (img.width >> 1) - 7, y - 4, 12, u.hp / LJ.maxHpOf(u), u.hp > LJ.maxHpOf(u) * 0.4 ? '#5fdc3c' : '#ff4a3a');

@@ -6,12 +6,20 @@
 // "{n}" stands for a number the game fills in; it counts as the same line whatever the number is.
 // Cues are sounds with no words (war cries, howls); the game plays them by id.
 LJ.LINES = {
+  // The opening truck ride: how Jack ended up here.
   intro: [
-    "That's the market behind us. One truck, one axe. Let's see if we can make a living out here.",
-    "We'll pitch our tent at the end of this road. Every log comes back to camp before it goes to market.",
-    "I'll haul the surplus to market. We'll keep twenty wood at camp to help build our village.",
-    "You've got $80 for another Jack. Open the Shop when we arrive—an extra pair of hands goes a long way.",
-    "Once the tent is up, tap a tree to get chopping. Select a Jack and tap the ground to send him somewhere."
+    'Six months ago I was a software engineer. Then my company bought an AI that does my job for the price of a sandwich.',
+    'Three hundred applications. Zero replies. And at home: a wife, a toddler, and a baby who eats like a horse.',
+    "Then, one email. 'Lumberjacks wanted. No experience necessary.' I own a flannel shirt. I applied.",
+    "First assignment: clear one plot of forest. Destination: Finland. I didn't ask what the land is for. With two kids, you don't ask.",
+    "So here I am, somewhere north of Jyväskylä. One truck, one axe. That's the market behind us."
+  ],
+  // Parked at camp: how to play.
+  camp: [
+    "Here we are. Tent's up. Every log comes back to camp before it goes to market.",
+    "I'll haul the surplus to market in the truck. We'll keep twenty wood at camp to help build our village.",
+    "You've got €80 for another Jack. Open the Shop—an extra pair of hands goes a long way.",
+    'Tap a tree to get chopping. Select a Jack and tap the ground to send him somewhere.'
   ],
   normal: ['Yes, boss?', 'Ready to chop!', 'Timber?', 'Axe me anything.', "What'll it be?", 'Wood you like something?'],
   annoyed: ["I'm working here!", 'Stop poking me.', 'Do I poke YOU?', 'That flannel was clean.', "Trees don't cut themselves, you know."],
@@ -38,15 +46,19 @@ LJ.LINES = {
     bear: ['BEAR!', 'Nice bear. NICE BEAR.'],
     native: ['Arrows!', 'Ouch!', 'We come in peace! Mostly.', 'Tiny archers!']
   },
-  // Mr. Grant's speech at the end.
+  // The conversation at the end: Mr. Grant (suit) and the player's own jack.
   ending: [
-    'Ah, there you are! You must be the boss of this little operation.',
-    '{n} trees. Not one left standing. Magnificent work, truly.',
-    'Allow me to introduce myself. I represent the people who bought this land.',
-    'You see, we needed it empty. Completely empty. And you delivered.',
-    'Because all of this is going to be the largest AI data center in the country.',
-    "Don't worry about the river. It'll make excellent cooling water.",
-    'Your bonus: one million dollars. Plus shares in the company. Welcome aboard!'
+    { who: 'suit', text: 'Ah, there you are! You must be the boss of this little operation.' },
+    { who: 'suit', text: '{n} trees. Not one left standing. Magnificent work, truly.' },
+    { who: 'suit', text: 'Allow me to introduce myself. I represent the people who bought this land.' },
+    { who: 'suit', text: 'You see, we needed it empty. Completely empty. And you delivered.' },
+    { who: 'suit', text: 'Because all of this is going to be the largest AI data center in Europe.' },
+    { who: 'jack', text: 'A data center. For AI. …An AI took my job. That is the only reason I am standing here.' },
+    { who: 'suit', text: 'And now you have built it a home! Cold air, cheap power, nobody around to complain. Finland is perfect.' },
+    { who: 'suit', text: "Don't worry about the river. It'll make excellent cooling water." },
+    { who: 'jack', text: 'I cut down a whole forest… for the thing that fired me.' },
+    { who: 'suit', text: 'We call that synergy! Your bonus: one million euros. Plus shares in the company. Welcome aboard!' },
+    { who: 'jack', text: '…The kids will never have to know what the shares are in.' }
   ]
 };
 
@@ -84,7 +96,8 @@ LJ.voiceGroups = function () {
     }
     if (items.length) groups.push({ id, who, title, hint, items });
   };
-  add('intro', 'jack', 'Jack: arriving at the forest', 'The story and tutorial during the opening truck ride.', L.intro);
+  add('intro', 'jack', 'Jack: arriving at the forest', 'The opening truck ride: how he ended up here. Dry, tired, a little hopeful.', L.intro);
+  add('camp', 'jack', 'Jack: at camp', 'Right after arriving, parked next to the tent: how to play. Practical, getting to work.', L.camp);
   add('poke1', 'jack', 'Jack: tapped', 'Said when you tap a jack. The first three taps in a row.', L.normal);
   add('poke2', 'jack', 'Jack: tapped again', 'Taps four to six in a row. He is getting annoyed.', L.annoyed);
   add('poke3', 'jack', 'Jack: tapped too much', 'Seven or more taps in a row. He has had it.', L.funny);
@@ -100,7 +113,9 @@ LJ.voiceGroups = function () {
   add('truck', 'truck', 'Truck', 'Said when you tap a truck.', L.veh.truck);
   add('dozer', 'dozer', 'Bulldozer', 'Said when you tap or order a bulldozer.', L.veh.dozer);
   add('harv', 'harv', 'Harvester', 'Said when you tap a harvester.', L.veh.harv);
-  add('suit', 'suit', 'Mr. Grant, the visitor in the suit', 'His speech at the very end. Smooth, corporate, a little too friendly.', L.ending);
+  const endBy = who => L.ending.filter(l => l.who === who).map(l => l.text);
+  add('suit', 'suit', 'Mr. Grant, the visitor in the suit', 'His speech at the very end. Smooth, corporate, a little too friendly.', endBy('suit'));
+  add('jackend', 'jack', 'Jack: the ending', 'His replies to Mr. Grant. Stunned, then bitter, then resigned.', endBy('jack'));
   for (const [id, title, who] of [['folkcues', 'The forest folk', 'folk'], ['wildcues', 'Wolves and bears', null]]) {
     const items = LJ.CUES.filter(c => (who ? c.who === who : c.who !== 'folk')).map(c => ({ key: c.id, text: c.label, cue: c }));
     if (items.length) groups.push({ id, who: who || 'wild', title, hint: 'Sounds without words. The game plays them at the moment shown.', items });

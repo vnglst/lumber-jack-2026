@@ -1,6 +1,6 @@
 # Lumberjack
 
-A 2D pixel-art browser game about cutting down a forest, building a logging village and automating it, until the land is cleared. What it was cleared for is revealed at the end.
+A 2D pixel-art browser game about a laid-off software engineer who takes a job cutting down a forest in Finland, building a logging village and automating it, until the land is cleared. What it was cleared for is revealed at the end.
 
 The design is in [docs/GAME-PLAN.md](docs/GAME-PLAN.md), the original brief, and [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), a decision log of every request made since.
 

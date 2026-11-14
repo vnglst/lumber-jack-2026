@@ -15,7 +15,7 @@ Lumberjack is a browser game in plain JavaScript: no build step, no dependencies
   - `sprites`, `art`, `sprites2` (all art is drawn in code, nothing is loaded from image files)
   - `world` (map generation, ground shader)
   - `game` (simulation)
-  - `combat`, `render`, `ending`, `ui`
+  - `combat`, `render`, `ending`, `ui`, `title` (the opening screen)
   - `save`, `main`
 - Rules live in tables in `game.js`: `SHOP`, `TIERS` (base upgrades), `BLD` (buildings), `VEH` (vehicles) and `FOE` (enemies). Prefer adding a field to a table over special-casing a kind in code.
 - The map is 104×72 tiles of 16 px. World layers are typed arrays on `G.world`.
@@ -25,5 +25,6 @@ Lumberjack is a browser game in plain JavaScript: no build step, no dependencies
 
 ## Conventions
 
-- Keep the ending a surprise: nothing in the UI before the ending should hint at the data center.
+- Keep the ending a surprise: nothing in the UI before the ending should hint at the data center. The opening story says an AI took the player's job; it must not say what the land is for.
+- The game is set in Finland: spruce, Scots pine and birch; reindeer, swans, wolves and bears; red wooden houses with white trim; prices in euros.
 - Match the existing pixel-art style: light from the top-left, dark outlines, small palettes.
