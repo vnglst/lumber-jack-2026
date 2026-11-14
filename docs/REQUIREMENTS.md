@@ -47,6 +47,7 @@ How to read it:
 | 34 | 14 Nov | Ground the cottage on the opening screen | Active |
 | 35 | 14 Nov | Tapping through the story does not move the truck | Active |
 | 36 | 14 Nov | Normal fog reveal during the opening drive | Active |
+| 37 | 14 Nov | Slower working trucks | Active |
 
 ---
 
@@ -450,3 +451,11 @@ How to read it:
 - Intro vehicles reveal nearby terrain using the same radius and update cadence as normal gameplay.
 - Keep explored terrain revealed behind the truck instead of showing only the narrow pre-explored road.
 - *Decision: run the existing unit fog update during the intro, without starting gameplay, wages or enemy timers. Story and tutorial timing are unchanged.*
+
+## 37. Slower working trucks (14 Nov 2026)
+
+> Truck is too fast when going back and forth.
+
+- Slow ordinary market and Logging Truck journeys, both loaded and returning empty.
+- *Decision: use 96 pixels/second on roads (previously 160), 60 on trails (100), and 36 on open ground (55). Trucks retain their carrying capacities, and roads remain the fastest route.*
+- The narrated arrival and its separate story/skip pacing are unchanged.

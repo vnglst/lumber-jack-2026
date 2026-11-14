@@ -36,9 +36,10 @@
     const after = rankOf(u);
     if (after !== before) LJ.float(u.x, u.y - 22, after.name + '!', 'xp');
   }
+  const TRUCK_SPEED = { road: 96, trail: 60, ground: 36 };
   const VEH = (LJ.VEH = {
-    truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, cap: () => (G.up.mega ? 120 : 60), max: 3 },
-    shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, cap: () => 40, max: 4, sprite: 'truck', voice: 'truck' },
+    truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => (G.up.mega ? 120 : 60), max: 3 },
+    shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => 40, max: 4, sprite: 'truck', voice: 'truck' },
     dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, cap: () => 16, max: 2 },
     harv: { name: 'Harvester', wage: 30, hp: 240, wear: 8, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
@@ -348,7 +349,8 @@
   function speedOf(u) {
     // Trails (worn dirt, gravel) help a little; the road to market helps a lot, most of all for trucks.
     const t = w.type[u.tile], road = LJ.isRoad(t), trail = t === T.DIRT || t === T.GRAVEL;
-    if (u.kind === 'truck' || u.kind === 'shuttle') return (road ? 160 : trail ? 100 : 55) * effort(u);
+    const speeds = VEH[u.kind] && VEH[u.kind].speed;
+    if (speeds) return (road ? speeds.road : trail ? speeds.trail : speeds.ground) * effort(u);
     if (u.kind === 'dozer') return 36 * effort(u);
     if (u.kind === 'harv') return (G.up.turbo ? 54 : 38) * (road ? 1.5 : trail ? 1.2 : 1) * effort(u);
     let s = 50 * effort(u);
