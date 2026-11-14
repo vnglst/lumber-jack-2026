@@ -170,7 +170,7 @@
       villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), sawMask: new Uint8Array(w.N), smokeT: 0,
       fog: new Uint8Array(w.N), fogDirty: true, fogT: 0, fogLeft: w.N, worldVer: 0,
       animals: [], graves: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
-      cine: null, suit: null, props: [], critters: [], dc: null, folkKilled: 0, wallMode: false, wallDrag: null, wallSites: {}, arrival: null
+      cine: null, suit: null, props: [], critters: [], wildlifeT: 8, dc: null, folkKilled: 0, wallMode: false, wallDrag: null, wallSites: {}, arrival: null
     });
     LJ.discoveries.init();
     LJ.combat.reset();
@@ -764,7 +764,7 @@
           speed: cfg.speed * (bear ? 0.85 : 1) * (1 - k * 0.06), repath: k * 0.3, atkCd: 0, dir: 1, walkT: 0, alive: true, flee: false
         });
       }
-      LJ.sfx('howl'); LJ.voice.cue(bear ? 'bear_roar' : 'wolf_howl');
+      LJ.voice.cue(bear ? 'bear_roar' : 'wolf_howl');
       LJ.ui.toast(bear ? 'A bear is coming for ' + tgt.name + '!' : n > 1 ? 'A wolf pack is on the prowl!' : 'A wolf is on the prowl!');
       return;
     }
@@ -1280,6 +1280,19 @@
   function critterGo(c, x, y) {
     c.tx = LJ.clamp(x, 8, W * TS - 8); c.ty = LJ.clamp(y, 8, H * TS - 8); c.moving = true;
   }
+  // One quiet call at a time from wildlife actually in view; unexplored or vanished animals stay silent.
+  const CRITTER_CUES = { deer: 'reindeer_call', squirrel: 'squirrel_call', swan: 'swan_call' };
+  function updWildlifeCalls(dt) {
+    if (!LJ.cv || (G.wildlifeT -= dt) > 0) return;
+    G.wildlifeT = 10 + Math.random() * 10;
+    const vw = LJ.cv.width, vh = LJ.cv.height, cx = G.cam.x, cy = G.cam.y;
+    const nearby = G.critters.filter(c => CRITTER_CUES[c.kind] && !c.gone && c.alpha > 0.5 &&
+      LJ.seenPx(c.x, c.y) && c.x >= cx && c.x < cx + vw && c.y >= cy && c.y < cy + vh);
+    if (!nearby.length) return;
+    const c = LJ.pick(nearby), distance = Math.hypot((c.x - cx - vw / 2) / vw, (c.y - cy - vh / 2) / vh);
+    LJ.voice.cue(CRITTER_CUES[c.kind], 0.5 - distance * 0.35);
+  }
+
   function updCritters(dt) {
     for (const c of G.critters) {
       if (c.gone) { c.alpha -= dt * 0.8; continue; }
@@ -1380,6 +1393,7 @@
     if (G.cine) LJ.ending.update(dt);
     else {
       updFog(dt);
+      updWildlifeCalls(dt);
       LJ.discoveries.update();
       updEconomy(dt);
       updAuto(dt);

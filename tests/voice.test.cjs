@@ -51,3 +51,12 @@ test('muting and missing recordings do not create playback nodes', async () => {
   await new Promise(setImmediate);
   assert.equal(sources.length, 0);
 });
+
+test('quiet wildlife cues share the voice mixer and honor their requested gain', async () => {
+  const { lj, sources, gains, dest } = await voice();
+  lj.voice.cue('howl', 0.4);
+  await new Promise(setImmediate);
+  assert.equal(sources.length, 1);
+  assert.equal(gains[0].gain.value, 0.75 * 0.4);
+  assert.equal(gains[0].to, dest);
+});

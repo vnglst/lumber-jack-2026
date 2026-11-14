@@ -73,7 +73,10 @@ LJ.CUES = [
   { id: 'wolf_snarl', who: 'wolf', label: 'Snarl', hint: 'A wolf bites a jack', try: 'Grrrr, short and nasty' },
   { id: 'wolf_yelp', who: 'wolf', label: 'Yelp', hint: 'A wolf is killed', try: 'A short "Yip!"' },
   { id: 'bear_roar', who: 'bear', label: 'Roar', hint: 'A bear appears, or attacks a jack', try: 'A big deep ROAAAR' },
-  { id: 'bear_groan', who: 'bear', label: 'Groan', hint: 'A bear is killed', try: 'A long sad low groan' }
+  { id: 'bear_groan', who: 'bear', label: 'Groan', hint: 'A bear is killed', try: 'A long sad low groan' },
+  { id: 'reindeer_call', who: 'deer', label: 'Reindeer chirrup', hint: 'Occasionally near a visible reindeer', try: 'A mellow, playful two-note chirrup' },
+  { id: 'squirrel_call', who: 'squirrel', label: 'Red squirrel chatter', hint: 'Occasionally near a visible red squirrel', try: 'Three tiny cartoon chitters' },
+  { id: 'swan_call', who: 'swan', label: 'Whooper swan call', hint: 'Occasionally near a visible swan', try: 'A comical little questioning honk' }
 ];
 
 // Voice line identity: the text with numbers folded away, as a file-name-safe key.
@@ -116,7 +119,7 @@ LJ.voiceGroups = function () {
   const endBy = who => L.ending.filter(l => l.who === who).map(l => l.text);
   add('suit', 'suit', 'Mr. Grant, the visitor in the suit', 'His speech at the very end. Smooth, corporate, a little too friendly.', endBy('suit'));
   add('jackend', 'jack', 'Jack: the ending', 'His replies to Mr. Grant. Stunned, then bitter, then resigned.', endBy('jack'));
-  for (const [id, title, who] of [['folkcues', 'The forest folk', 'folk'], ['wildcues', 'Wolves and bears', null]]) {
+  for (const [id, title, who] of [['folkcues', 'The forest folk', 'folk'], ['wildcues', 'Wildlife', null]]) {
     const items = LJ.CUES.filter(c => (who ? c.who === who : c.who !== 'folk')).map(c => ({ key: c.id, text: c.label, cue: c }));
     if (items.length) groups.push({ id, who: who || 'wild', title, hint: 'Sounds without words. The game plays them at the moment shown.', items });
   }

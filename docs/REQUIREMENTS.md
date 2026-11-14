@@ -61,6 +61,8 @@ How to read it:
 | 48 | 14 Nov | An interface of its own: painted boards, not Stardew wood | Active |
 | 49 | 14 Nov | Predictable navigation and controls | Active |
 | 50 | 14 Nov | Music for the opening, play and other scenes | Active |
+| 51 | 14 Nov | Sourced animal sound effects | Active |
+| 53 | 14 Nov | Playful animal voices | Active |
 
 ---
 
@@ -640,3 +642,23 @@ How to read it:
 - *Decision: the ♪ button now mutes everything, music included. Music has its own on/off in the pause menu, remembered in the browser (`lumberjack-music`), separate from saves.*
 - *Decision: browsers only allow sound after a first tap or key press. The first one anywhere, including on the opening screen, starts the audio, so the title music begins then rather than on page load.*
 - Added tests that every score parses, fills whole bars and that tracks of one song line up. The offline shell includes the two new scripts and is bumped to v4.
+
+
+## 51. Sourced animal sound effects (14 Nov 2026)
+
+> Search online for suitable animal sound effects, for all animals. Use these. Replace existing recordings if you find new ones.
+
+- Search online and integrate suitable sound effects for every animal in the game.
+- Replace existing animal recordings where suitable replacements are found.
+- Keep source, creator, license and adaptation details with the distributed recordings.
+- **Status:** §53 specifies the playful cartoon style.
+
+## 53. Playful animal voices (14 Nov 2026)
+
+> Not real sounds, playful and suitable for this game
+
+- Use expressive cartoon animal voices that suit the game's pixel art and humor.
+- *Decision: adapt rubberduck's CC0 mouth-performed creature pack into eight short, distinct wolf, bear, reindeer, red squirrel and whooper swan cues. Replace all five existing wolf/bear recordings; human and forest-folk takes stay unchanged.*
+- *Decision: peaceful animal calls come only from explored, on-screen critters that have not vanished. One shared 10–20-second interval and lower volume keep the forest lively without crowding the music or dialogue. They pause with gameplay and stay silent in the opening drive and ending.*
+- *Decision: use the existing voice mixer, global mute and editable recording-booth pipeline. The transient call timer resets on new games and loading; the save format is unchanged. Recorded sounds still require a connection, following the existing offline policy.*
+- *Decision: show audio credits and previews through a link in Help; retain the original archive URL, filename mapping, CC0 license and edits in `audio/CREDITS.md`. Bump the offline shell to v5 for the changed scripts and credits page.*

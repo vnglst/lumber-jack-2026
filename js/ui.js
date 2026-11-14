@@ -534,7 +534,7 @@
     row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
     row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch.', '− and +') +
     row('Menus', 'Shop is in the toolbar, ≡ pauses.', 'Shop is in the toolbar, ≡ pauses.', 'B shop. Esc backs out one step, then pauses.') +
-    '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels.</p><button>Back to work</button>');
+    '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels. <a href="credits.html" target="_blank" rel="noopener">Wildlife audio credits</a>.</p><button>Back to work</button>');
   };
 
   // The opening screen. It is shown once, at boot, over a fresh game that is paused and waiting.
