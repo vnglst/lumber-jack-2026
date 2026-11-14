@@ -28,6 +28,7 @@ How to read it:
 | 15 | 14 Nov | Voice recording studio | Active |
 | 16 | 14 Nov | Remove the sound effects studio | Done |
 | 17 | 14 Nov | Requirements and decision log | Active |
+| 18 | 14 Nov | Faster start with an extra Jack | Active |
 
 ---
 
@@ -226,3 +227,12 @@ How to read it:
 - Include the requests from the sound and voice session.
 - README.md and AGENTS.md point to this document.
 - Keep it as a decision log: new entries are added at the end, and older entries change only to get a **Status** line.
+
+## 18. Faster start with an extra Jack (14 Nov 2026)
+
+> You should start with enough money to hire an extra Jack, who will come walking towards your village right away. Otherwise the game starts really slowly.
+
+- New games start with enough money to hire a second Jack immediately.
+- Hiring is available at the starting tent in level 1, without a Cabin upgrade.
+- The hired Jack immediately walks from the market along the road towards the settlement.
+- *Decision: start with $80 (the first hire's price), give the tent room for two jacks, and show a hiring hint. Cabin and later hires retain village training. Existing saves keep their money and progress.*

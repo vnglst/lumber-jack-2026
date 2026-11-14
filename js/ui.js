@@ -449,6 +449,7 @@
     if (G.cleared >= G.thr[G.level - 1]) return 'Trees done! Now earn the rest of the quota: sell wood and lumber at the market.';
     if (sel.length && sel.every(u => u.kind === 'dozer')) return 'Tap a rock or river tile to bulldoze a way to it.';
     if (sel.length && sel.every(u => u.kind === 'truck') && !G.up.dispatch) return 'Tap the market sign (or “Haul run”) to send the truck on a trip.';
+    if (!G.village && LJ.jackCount() < LJ.popCap() && G.money >= LJ.SHOP.find(it => it.id === 'jack').cost().m) return 'Hire an extra Jack in the Shop — he starts walking to your tent right away.';
     if (G.cleared === 0 && !tasks('work')) return 'Tap a tree to send your jack to work.';
     const idle = LJ.jacks().filter(u => !u.task && !u.path.length && !u.hold && !u.fighting).length;
     if (idle && G.cleared < G.total) return idle + (idle > 1 ? ' jacks see' : ' jack sees') + ' no trees. Select them and tap near the forest to send them there.';

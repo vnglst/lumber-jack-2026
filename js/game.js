@@ -18,7 +18,7 @@
   });
   // The starting tent grows into the village, one upgrade at a time.
   const TIERS = (LJ.TIERS = [
-    { name: 'Tent', pop: 1, train: 10, sellMul: 1 },
+    { name: 'Tent', pop: 2, train: 10, sellMul: 1 },
     { name: 'Cabin', level: 1, cost: { m: 120, w: 20 }, pop: 4, train: 10, sellMul: 1, desc: 'Stores wood near the forest, lets you hire jacks and brings in market orders.' },
     { name: 'Lodge', level: 3, cost: { m: 600, l: 30 }, pop: 7, train: 5, sellMul: 1, desc: 'Room for 3 more jacks, and new jacks train twice as fast.' },
     { name: 'Town Hall', level: 6, cost: { m: 1800, l: 80 }, pop: 10, train: 5, sellMul: 1.2, desc: 'Room for 3 more jacks, and the market pays 20% more.' }
@@ -61,7 +61,7 @@
     { id: 'sharpaxe', name: 'Sharper Axes', desc: 'Chop 35% faster.', icon: 'axe', level: 1, cost: () => ({ m: 40 }) },
     { id: 'sling', name: 'Log Sling', desc: 'Carry 14 instead of 8.', icon: 'bag', level: 1, cost: () => ({ m: 50 }) },
     { id: 'boots', name: 'Sturdy Boots', desc: 'Walk 25% faster.', icon: 'boot', level: 1, cost: () => ({ m: 70 }) },
-    { id: 'jack', name: 'Hire a Jack', desc: 'Another pair of hands. Wants $' + WAGE + ' every payday.', icon: 'jack', level: 2, need: 'cabin', repeat: true,
+    { id: 'jack', name: 'Hire a Jack', desc: 'Another pair of hands. Walks in by road at the tent; trains at the Cabin. Wants $' + WAGE + ' every payday.', icon: 'jack', level: 1, repeat: true,
       cost: () => ({ m: 80 + 40 * (jackCount() - 1) }), can: () => jackCount() < popCap(), full: 'No room: build a bunkhouse' },
     bldItem('bunk', 2, () => ({ m: 150 + 100 * G.count.bunk, w: 20 }), 'A house with room for 3 more jacks.', 'bunk'),
     bldItem('sawmill', 2, () => ({ m: 150 + 150 * G.count.sawmill, w: 20 }), 'Jacks turn 2 wood into 1 lumber here. Lumber sells for $' + PRICE.lumber + '.', 'blade'),
@@ -152,6 +152,7 @@
   LJ.newGame = function (seed) {
     seed = seed || ((Math.random() * 1e9) | 0);
     begin(LJ.genWorld(seed));
+    G.money = 80; // Enough to hire a second jack before the first trip to market.
     G.base = addBuilding('base', w.base.tx, w.base.ty, 3, 3);
     ring(G.base, G.villMask);
     addUnit(w.start.x, w.start.y, 'Jack', 'jack', 0);
@@ -901,7 +902,14 @@
     if (it.place) { G.place = { kind: id, w: it.place[0], h: it.place[1] }; return 'place'; }
     pay(it.cost());
     if (id === 'base') upgradeBase();
-    else if (id === 'jack') G.village.queue.push({ t: TIERS[G.tier].train, total: TIERS[G.tier].train });
+    else if (id === 'jack') {
+      if (G.village) G.village.queue.push({ t: TIERS[G.tier].train, total: TIERS[G.tier].train });
+      else {
+        const u = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, NAMES[G.jackN++ % NAMES.length], 'jack', WAGE);
+        walkTo(u, c => G.villMask[c] === 1, 'return');
+        say(u, M.duty);
+      }
+    }
     else if (VEH[id]) spawnVehicle(id);
     else G.up[id] = true;
     if (id === 'dispatch') for (const u of G.units) if (u.task && u.task.type === 'haul') u.task.once = false;
