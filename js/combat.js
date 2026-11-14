@@ -158,7 +158,8 @@
 
   // ---------- Waves ----------
   const folkStats = lv => ({ hp: 22 + lv * 4, dmg: 5 + lv * 0.8, speed: 38 + lv, cd: Math.max(1.2, 1.9 - lv * 0.05) });
-  const gap = () => Math.max(70, 170 - G.level * 9);
+  const gap = () => Math.max(60, Math.round((170 - G.level * 9) * (0.8 + Math.random() * 0.4)));
+  const treesLeft = () => G.total - G.cleared;
 
   function compass(x, y) {
     const b = G.base, dx = x - (b.tx + 1), dy = y - (b.ty + 1);
@@ -195,7 +196,9 @@
     const wv = G.wave, w = G.world, Wd = w.W, at = findSpawn();
     if (at < 0) { wv.next = G.time + 30; return; }
     wv.n++;
-    const size = Math.min(28, (2 + G.level * 1.2 + wv.n * 0.6) | 0), st = folkStats(G.level), x0 = at % Wd, y0 = (at / Wd) | 0;
+    const late = treesLeft() < G.total * 0.02;
+    const size = Math.max(3, Math.min(late ? 6 : 28, Math.round((2 + G.level * 1.2 + wv.n * 0.6) * (0.75 + Math.random() * 0.5))));
+    const st = folkStats(G.level), x0 = at % Wd, y0 = (at / Wd) | 0;
     for (let k = 0; k < size; k++) {
       let i = at;
       for (let t = 0; t < 12; t++) {
@@ -223,12 +226,11 @@
       LJ.ui.toast('The forest folk have had enough of your logging. They are taking up their bows.');
       return;
     }
-    const nearlyGone = G.total - G.cleared < G.total * 0.02;
     if (wv.active) {
       let alive = 0;
       for (const a of G.animals) if (a.kind === 'native' && a.wave === wv.n) alive++;
       if (!alive) { wv.active = null; wv.next = G.time + gap(); return; }
-      if (!wv.active.retreating && (alive < wv.active.size * 0.4 || G.time - wv.active.start > 120 || nearlyGone)) {
+      if (!wv.active.retreating && (alive < wv.active.size * 0.4 || G.time - wv.active.start > 120)) {
         wv.active.retreating = true;
         for (const a of G.animals) if (a.kind === 'native' && a.wave === wv.n) { a.retreat = true; a.repath = 0; }
         LJ.voice.cue('folk_retreat');
@@ -236,10 +238,10 @@
       }
       return;
     }
-    if (!nearlyGone && G.time >= wv.next) spawnWave();
+    if (treesLeft() >= 4 && G.time >= wv.next) spawnWave();
   }
   // Seconds until the next war party, or null.
-  C.nextWaveIn = () => (G.wave.hostile && !G.wave.active ? Math.max(0, G.wave.next - G.time) : null);
+  C.nextWaveIn = () => (G.wave.hostile && !G.wave.active && treesLeft() >= 4 ? Math.max(0, G.wave.next - G.time) : null);
 
   // When they break into the village they carry off part of the stock, then leave.
   C.raid = function () {

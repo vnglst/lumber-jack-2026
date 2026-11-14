@@ -17,9 +17,12 @@ function game(seed = 42, arrive = true) {
     setInterval() {}, addEventListener() {}, document: { addEventListener() {} }
   });
   ctx.window = ctx;
-  for (const name of ['util', 'lines', 'world', 'game', 'combat', 'save']) {
+  for (const name of ['util', 'lines', 'world', 'game', 'combat', 'ending', 'save']) {
     if (name === 'world') {
-      ctx.LJ.sprites = { trees: [[{ ay: 64 }]], base: Array.from({ length: 4 }, () => ({ width: 48, height: 48 })) };
+      ctx.LJ.sprites = {
+        trees: [[{ ay: 64 }]], base: Array.from({ length: 4 }, () => ({ width: 48, height: 48 })),
+        dcFrame: { width: 48 }, dcStage1: {}, dcStage2: {}, datacenter: {}, mixer: { l: {} }
+      };
       ctx.LJ.spr = { rgb: hex => hex.match(/[a-f0-9]{2}/gi).map(v => parseInt(v, 16)) };
     }
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/' + name + '.js'), 'utf8'), ctx);
@@ -31,7 +34,10 @@ function game(seed = 42, arrive = true) {
   lj.Ground.prototype = { mark() {}, flush() {}, renderAll() {} };
   lj.sfx = () => {};
   lj.voice = { say() {}, cue() {} };
-  lj.ui = { toast() {}, follow() {}, levelUp() {}, gameOver() {}, introLine() {} };
+  lj.ui = {
+    toast() {}, follow() {}, levelUp() {}, gameOver() {}, introLine() {},
+    cineStart() {}, cineLine() {}, endScreen() {}, centerOn() {}, zoomTo() {}, zoom: () => 3, fitZoom: () => 0.5
+  };
   lj.newGame(seed);
   if (arrive) until(lj, () => !lj.G.arrival, 30);
   return lj;

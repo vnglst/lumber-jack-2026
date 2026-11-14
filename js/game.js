@@ -40,6 +40,10 @@
   const popCap = () => TIERS[G.tier].pop + 3 * G.count.bunk;
   const canChop = u => u.kind === 'jack' || u.kind === 'harv';
   const maxHpOf = (LJ.maxHpOf = u => u.kind === 'jack' ? 100 : VEH[u.kind].hp);
+  const atSawmill = u => {
+    const x = u.tile % W, y = (u.tile / W) | 0;
+    return G.buildings.find(b => b.kind === 'sawmill' && !b.dead && x >= b.tx - 1 && x <= b.tx + b.w && y >= b.ty - 1 && y <= b.ty + b.h);
+  };
   // How far a unit looks for trees (and how much fog it lifts around itself), in tiles.
   const sightOf = u => (u.kind === 'harv' ? 8 : u.kind === 'jack' ? 6 + (G.up.foreman ? 3 : 0) : 5);
   LJ.jackCount = jackCount; LJ.popCap = popCap; LJ.WAGE = WAGE; LJ.jacks = jacks; LJ.countKind = countKind; LJ.sightOf = sightOf;
@@ -792,11 +796,16 @@
       case 'toSaw': {
         if (u.carry) { G.wood += u.carry; u.carry = 0; }
         u.state = 'saw'; u.sawT = 0;
-        const mill = G.buildings.find(b => b.kind === 'sawmill' && !b.dead && Math.abs(u.tile % W - b.tx - 1) <= 2 && Math.abs(((u.tile / W) | 0) - b.ty) <= 2);
+        const mill = atSawmill(u);
         if (mill) face(u, (mill.tx + 1.5) * TS);
         break;
       }
       case 'saw':
+        if (!atSawmill(u)) {
+          if (G.count.sawmill) { u.state = 'think'; think(u); }
+          else { endTask(u); say(u, M.noSawmill); }
+          break;
+        }
         if (G.wood < 2) { u.swing = 0; break; }
         u.swing += dt; u.sawT += dt * effort(u);
         if (u.swing > 0.5) { u.swing = 0; LJ.sfx('saw'); chip(u.x + u.dir * 6, u.y - 6, '#e6c88a'); }

@@ -459,6 +459,7 @@
     if (nw !== null && nw < 30) return 'War drums in the forest… the next war party arrives in ' + mmss(nw) + '.';
     if (G.wave.hostile && !G.count.tower && G.level >= 3) return 'The forest folk will be back. Build Guard Towers and a palisade around the village.';
     if (G.money < 0) return "You're in debt: hired jacks and machines slack off until you're back in the black.";
+    if (G.stockpile) return 'Stockpiling: automatic market loading is paused. Jacks and Logging Trucks still deliver to camp. Tap “Stockpiling” to resume selling.';
     const tasks = t => G.units.some(u => u.task && u.task.type === t), sel = [...G.sel];
     if (G.cleared >= G.thr[G.level - 1]) return 'Trees done! Now earn the rest of the quota: sell wood and lumber at the market.';
     if (sel.length && sel.every(u => u.kind === 'dozer')) return 'Tap a rock or river tile to bulldoze a way to it.';
@@ -602,7 +603,7 @@
     set($('c-money').querySelector('b'), G.money.toLocaleString('en-US'));
     $('c-money').classList.toggle('debt', G.money < 0);
     set($('c-wood').querySelector('b'), G.wood);
-    $('stockBtn').style.display = G.village ? 'none' : '';
+    $('stockBtn').style.display = '';
     set($('stockBtn'), G.stockpile ? 'Stockpiling' : 'Selling');
     $('c-lumber').style.display = G.village ? '' : 'none';
     set($('c-lumber').querySelector('b'), G.lumber);

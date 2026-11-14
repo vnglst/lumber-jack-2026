@@ -37,6 +37,7 @@ How to read it:
 | 24 | 14 Nov | Heavy vehicles scar the terrain | Active |
 | 25 | 14 Nov | Slow narrated arrival tutorial | Active |
 | 26 | 14 Nov | Quieter recorded voices | Active |
+| 27 | 14 Nov | Playtest and improve the full gameplay loop | Active |
 
 ---
 
@@ -331,3 +332,16 @@ How to read it:
 
 - Lower in-game recorded voice volume without modifying recordings or sound-effect volume.
 - *Decision: play recorded lines and wordless voice cues at 75% gain. Recording-booth previews stay unchanged.*
+
+## 27. Playtest and improve the full gameplay loop (14 Nov 2026)
+
+> Test & review game mechanics. Make sure the game is engaging, fun and unpredictable up until the end.
+>
+> Use the playtesting results to identify and correct gameplay issues.
+
+- Check opening economy, expansion, combat, resource planning and the last-tree/ending transition.
+- Record measured results, distinguish ordinary play from controlled late-game fixtures, and fix demonstrated problems.
+- *Decision: retain the measured opening pace rather than speed everything up. Keep the stockpiling switch available after upgrading the tent, so players can save for lumber-heavy upgrades.*
+- *Decision: workers stop using a destroyed sawmill or relocate to a surviving one.*
+- *Decision: keep the first local warning at 50 seconds. Later waves vary in size and recovery time, with at least 60 seconds between waves and a visible countdown. Small late-game skirmishes replace the previous blanket ceasefire; no new wave is scheduled with fewer than four trees left.*
+- Automated simulation and browser checks can find pacing and correctness problems, but do not substitute for human judgments about fun.
