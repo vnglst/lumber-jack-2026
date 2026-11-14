@@ -61,6 +61,7 @@ How to read it:
 | 48 | 14 Nov | An interface of its own: painted boards, not Stardew wood | Active |
 | 49 | 14 Nov | Predictable navigation and controls | Active |
 | 50 | 14 Nov | Music for the opening, play and other scenes | Active |
+| 52 | 14 Nov | More efficient agent instructions | Active |
 
 ---
 
@@ -640,3 +641,14 @@ How to read it:
 - *Decision: the ♪ button now mutes everything, music included. Music has its own on/off in the pause menu, remembered in the browser (`lumberjack-music`), separate from saves.*
 - *Decision: browsers only allow sound after a first tap or key press. The first one anywhere, including on the opening screen, starts the audio, so the title music begins then rather than on page load.*
 - Added tests that every score parses, fills whole bars and that tracks of one song line up. The offline shell includes the two new scripts and is bumped to v4.
+
+
+## 52. More efficient agent instructions (14 Nov 2026)
+
+> review last sessions and improve agentic instructions to be more efficient next time
+
+- Review recent game-development sessions and improve repository instructions using observed friction.
+- Preserve the game's design constraints and the chronological requirements log.
+- *Decision: update the actual test commands and use `index.html` as the script-order source of truth, replacing the stale duplicated list. Keep `CLAUDE.md` as an include of `AGENTS.md`.*
+- *Decision: assign shared-file ownership and serial main integration when delegating; handoffs carry commits, validation and decisions. Reuse already-read context and repeat checks when changes justify them.*
+- *Decision: include targeted browser, offline-cache and legacy-save checks for the integration problems observed in the recent logistics/forest/PWA and interface/navigation/music sessions.*
