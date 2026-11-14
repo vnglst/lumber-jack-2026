@@ -115,7 +115,7 @@
     };
   }
   LJ.danger = level => [
-    '', '', 'Wolves now hunt in packs. And the forest folk are taking up their bows.', 'The packs are getting bolder.', 'Bears have woken up. They are not happy.',
+    '', '', 'Wolves now hunt in packs.', 'Bears have woken up. They are not happy.', 'The forest folk are taking up their bows.',
     'The animals are getting desperate.', 'Something in the forest is angry.', 'The packs are bigger than ever.',
     'Whatever is left of the forest is fighting back.', 'Every last tree has to go.'][level - 1] || '';
 
@@ -177,7 +177,7 @@
     begin(nw);
     Object.assign(G, d.g);
     G.fog = d.fog; G.fogLeft = G.fog.reduce((n, f) => n + (f ? 0 : 1), 0);
-    Object.assign(G.wave, d.wave, { active: null });
+    if (G.level >= LJ.combat.HOSTILE_LEVEL) Object.assign(G.wave, d.wave, { active: null });
     const oldDepots = d.buildings.filter(b => b.kind === 'depot' && !b.dead);
     G.buildings = d.buildings.filter(b => b.kind !== 'depot').map(b => Object.assign({ queue: [] }, b));
     // Old saves turn their fixed depots into logging trucks, keeping the same collection spots.
@@ -196,6 +196,7 @@
       u.task = { type: 'shuttle', ax: tile % W, ay: (tile / W) | 0 }; u.state = 'think';
     }
     G.critters = d.critters.map(c => makeCritter(c.kind, c.x, c.y, c.dir, Math.random() * 4));
+    if (G.level < LJ.combat.HOSTILE_LEVEL && !G.critters.some(c => c.kind === 'native')) spawnPeacefulFolk(LJ.rng(w.seed + 9));
     spawnButterflies(d.seed);
     G.ground.renderAll();
     return true;
@@ -1113,10 +1114,7 @@
   // ---------- Peaceful wildlife: deer and squirrels that flee from people and vanish with the forest ----------
   function spawnCritters() {
     const r = LJ.rng(w.seed + 9);
-    // The forest folk, going about their lives around their huts (until they have had enough).
-    for (const h of w.huts) for (let k = 0; k < 2; k++) {
-      G.critters.push(makeCritter('native', (h % W) * TS + 8 + (r() - 0.5) * 30, ((h / W) | 0) * TS + 14 + r() * 10, r() < 0.5 ? 1 : -1, r() * 4));
-    }
+    spawnPeacefulFolk(r);
     for (let tries = 0; tries < 3000 && G.critters.length < 26; tries++) {
       const x = (r() * W) | 0, y = (r() * H) | 0, i = y * W + x;
       if (w.type[i] !== T.GRASS || isTree(i) || Math.hypot(x - w.start.x, y - w.start.y) < 12) continue;
@@ -1124,6 +1122,12 @@
       for (let k = 0; k < 8; k++) { const n = (y + DY[k]) * W + x + DX[k]; if (n >= 0 && n < w.N && isTree(n)) trees++; }
       if (trees < 2) continue;
       G.critters.push(makeCritter(G.critters.length % 3 === 0 ? 'deer' : 'squirrel', x * TS + 8, y * TS + 10, r() < 0.5 ? 1 : -1, r() * 4));
+    }
+  }
+  // Visible inhabitants, not combat targets: they live near huts until war begins.
+  function spawnPeacefulFolk(r) {
+    for (const h of w.huts) for (let k = 0; k < 2; k++) {
+      G.critters.push(makeCritter('native', (h % W) * TS + 8 + (r() - 0.5) * 30, ((h / W) | 0) * TS + 14 + r() * 10, r() < 0.5 ? 1 : -1, r() * 4));
     }
   }
   function makeCritter(kind, x, y, dir, t) {

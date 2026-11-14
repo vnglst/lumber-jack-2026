@@ -33,6 +33,7 @@ How to read it:
 | 20 | 14 Nov | Mobile and desktop testing | Active |
 | 21 | 14 Nov | Locals attack every unit type | Active |
 | 22 | 14 Nov | Logging trucks replace log depots | Active |
+| 23 | 14 Nov | Peaceful locals before later attacks | Active |
 
 ---
 
@@ -283,3 +284,13 @@ How to read it:
 - *Decision: Logging Trucks unlock at level 3, cost $150 initially, carry 40 wood, and cost $8 per payday. Market trucks retain their separate village-to-market job.*
 - *Decision: save format 3 stores logging routes; format 2 remains loadable and existing depots become Logging Trucks at their former locations.*
 - **Supersedes** the fixed log depot implementation, and qualifies §19: forest Logging Trucks may collect harvested wood, but market trucks still load only at the tent/village.
+
+## 23. Peaceful locals before later attacks (14 Nov 2026)
+
+> Local attacks should only start happening later in the game. First it's just wolves. But you do see them in the woods.
+
+- Early threats are wolves, not local war parties.
+- Locals can be seen living peacefully around their forest huts before they become hostile.
+- *Decision: local hostility starts at level 5, with a warning and 50-second preparation period before the first wave. Bears remain a level-4 wildlife threat.*
+- *Decision: loading an older save below level 5 resets premature local hostility and restores peaceful inhabitants where their habitat remains.*
+- Level-up messaging must not announce local hostility earlier than level 5.

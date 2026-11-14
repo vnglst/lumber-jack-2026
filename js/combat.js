@@ -3,7 +3,8 @@
 (function () {
   const TS = LJ.TS, G = LJ.G;
   const C = (LJ.combat = {});
-  const BOLT_SPEED = 520, ARROW_SPEED = 210, TOWER_RANGE = 8 * TS, FOLK_RANGE = 80, HOSTILE_LEVEL = 3;
+  const BOLT_SPEED = 520, ARROW_SPEED = 210, TOWER_RANGE = 8 * TS, FOLK_RANGE = 80;
+  const HOSTILE_LEVEL = (C.HOSTILE_LEVEL = 5);
   const ARROW_VS_WOOD = 0.4; // arrows barely dent timber
 
   C.clearShots = function () { G.bolts = []; G.arrows = []; G.bursts = []; };

@@ -6,9 +6,10 @@ const contexts = new WeakMap();
 
 function game(seed = 42, arrive = true) {
   const store = new Map();
+  const math = Object.create(Math);
   let now = 2000;
   const ctx = vm.createContext({
-    console, Math,
+    console, Math: math,
     performance: { now: () => now += 2000 },
     localStorage: { getItem: k => store.get(k) || null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k) },
     btoa: s => Buffer.from(s, 'binary').toString('base64'),
@@ -24,6 +25,7 @@ function game(seed = 42, arrive = true) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/' + name + '.js'), 'utf8'), ctx);
   }
   const lj = ctx.LJ;
+  math.random = lj.rng(seed + 123);
   contexts.set(lj, ctx);
   lj.Ground = function () {};
   lj.Ground.prototype = { mark() {}, flush() {}, renderAll() {} };
