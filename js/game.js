@@ -41,7 +41,8 @@
     truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => (G.up.mega ? 120 : 60), max: 3 },
     shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => 40, max: 4, sprite: 'shuttle', voice: 'truck' },
     dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, cap: () => 16, max: 2 },
-    harv: { name: 'Harvester', wage: 30, hp: 240, wear: 8, cap: () => (G.up.mega ? 60 : 40), max: 3 }
+    feller: { name: 'Felling Tractor', wage: 18, hp: 220, wear: 8, cap: () => 24, max: 3, chop: 2.4, sight: 7, voice: 'harv', speed: { road: 54, trail: 40, ground: 30 } },
+    harv: { chop: 1.6, sight: 8, name: 'Harvester', wage: 30, hp: 240, wear: 8, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
   // The starting tent grows into the village, one upgrade at a time.
   const TIERS = (LJ.TIERS = [
@@ -67,14 +68,14 @@
   const buildingReady = (LJ.buildingReady = b => !b.dead && (!b.construction || !!b.construction.upgrade));
   const jackCount = () => jacks().length + (G.village ? G.village.queue.length : 0);
   const popCap = () => TIERS[G.tier].pop + 3 * G.count.bunk;
-  const canChop = u => u.kind === 'jack' || u.kind === 'harv';
+  const canChop = u => u.kind === 'jack' || !!VEH[u.kind].chop;
   const maxHpOf = (LJ.maxHpOf = u => u.kind === 'jack' ? 100 : VEH[u.kind].hp);
   const atSawmill = u => {
     const x = u.tile % W, y = (u.tile / W) | 0;
     return G.buildings.find(b => b.kind === 'sawmill' && buildingReady(b) && x >= b.tx - 1 && x <= b.tx + b.w && y >= b.ty - 1 && y <= b.ty + b.h);
   };
   // How far a unit looks for trees (and how much fog it lifts around itself), in tiles.
-  const sightOf = u => (u.kind === 'harv' ? 8 : u.kind === 'jack' ? 6 + (G.up.foreman ? 3 : 0) : 5);
+  const sightOf = u => (VEH[u.kind] && VEH[u.kind].sight ? VEH[u.kind].sight : u.kind === 'jack' ? 6 + (G.up.foreman ? 3 : 0) : 5);
   LJ.jackCount = jackCount; LJ.popCap = popCap; LJ.WAGE = WAGE; LJ.jacks = jacks; LJ.countKind = countKind; LJ.sightOf = sightOf;
 
   const vehItem = (id, level, m, desc, icon) => ({
@@ -109,10 +110,11 @@
     vehItem('dozer', 4, 600, 'Uproots stumps for extra wood, clears rocks for stone and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
     { id: 'foreman', name: 'Keen-eyed Foreman', desc: 'Jacks spot trees from 50% further away.', icon: 'hat', level: 5, cost: () => ({ m: 500 }) },
     { id: 'dispatch', name: 'Dispatcher', desc: 'Trucks keep hauling on their own whenever there are goods.', icon: 'clip', level: 5, need: 'truck', cost: () => ({ m: 450 }) },
+    vehItem('feller', 4, 480, 'A compact tree-cutting tractor. Fells a tree in 2.4 seconds and delivers 24 wood at a time. Wolves ignore it.', 'feller'),
     vehItem('harv', 6, 900, 'A machine that fells and carries trees by itself. Wolves ignore it.', 'harv'),
     { id: 'scope', name: 'Overcharged Lasers', desc: 'Longer range and 4-bolt bursts that hit harder.', icon: 'rifle', level: 6, need: 'rifles', cost: () => ({ m: 400 }) },
     { id: 'steam', name: 'Steam Sawmills', desc: 'Every sawmill saws lumber by itself.', icon: 'blade', level: 7, need: 'sawmill', cost: () => ({ m: 1200, l: 40 }) },
-    { id: 'turbo', name: 'Turbo Harvesters', desc: 'Harvesters fell trees 40% faster and drive faster.', icon: 'harv', level: 8, need: 'harv', cost: () => ({ m: 1500 }) },
+    { id: 'turbo', name: 'Turbo Harvesters', desc: 'Harvesters and felling tractors fell trees 40% faster. Harvesters also drive faster.', icon: 'harv', level: 8, need: 'harv', cost: () => ({ m: 1500 }) },
     { id: 'mega', name: 'Mega Haulers', desc: 'Trucks carry 120, harvesters 60.', icon: 'truck', level: 9, need: 'truck', cost: () => ({ m: 1500 }) }
   ]);
 
@@ -170,6 +172,7 @@
       animals: [], graves: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
       cine: null, suit: null, props: [], critters: [], dc: null, folkKilled: 0, wallMode: false, wallDrag: null, wallSites: {}, arrival: null
     });
+    LJ.discoveries.init();
     LJ.combat.reset();
     G.thr = FR.map(f => Math.max(1, Math.round(f * G.total)));
     // Money that must have been earned (in total) before a level counts as complete. The last level only needs the trees gone.
@@ -344,12 +347,13 @@
   }
   LJ.bfs = bfs;
 
-  const capOf = u => (u && u.kind !== 'jack' ? VEH[u.kind].cap() : (G.up.barrow ? 24 : G.up.sling ? 14 : 8) + (u ? rankOf(u).carry : 0));
+  const capOf = u => (u && u.kind !== 'jack' ? VEH[u.kind].cap() : (G.up.barrow ? 24 : G.up.sling ? 14 : 8) + (u ? rankOf(u).carry : 0) + (G.recipes.includes('sling') ? 4 : 0));
   // Unpaid hired jacks slack off, and unpaid machines run out of fuel, until the debt is cleared.
   const effort = u => (G.money < 0 && u.hired ? 0.7 : 1);
   function chopTime(t, u) {
-    if (u.kind === 'harv') return 1.6 * (G.up.turbo ? 0.6 : 1);
-    return SPECIES[w.obj[t]].t * (G.up.sharpaxe ? 0.65 : 1) * (G.up.chainsaw ? 0.5 : 1) / rankOf(u).work;
+    if (VEH[u.kind] && VEH[u.kind].chop) return VEH[u.kind].chop * (G.up.turbo ? 0.6 : 1);
+    const recipe = G.recipes.includes('resin') ? 0.85 : 1;
+    return recipe * SPECIES[w.obj[t]].t * (G.up.sharpaxe ? 0.65 : 1) * (G.up.chainsaw ? 0.5 : 1) / rankOf(u).work;
   }
   function speedOf(u) {
     // Trails (worn dirt, gravel) help a little; the road to market helps a lot, most of all for trucks.
@@ -799,7 +803,7 @@
     }
     if (G.units.some(u => u.dead)) {
       G.units = G.units.filter(u => !u.dead);
-      if (!jacks().length && !(G.village && G.village.queue.length) && !countKind('harv')) { G.paused = true; LJ.ui.gameOver(); }
+      if (!jacks().length && !(G.village && G.village.queue.length) && !G.units.some(canChop)) { G.paused = true; LJ.ui.gameOver(); }
     }
   }
 
@@ -862,7 +866,7 @@
           break;
         }
         if (G.wood < 2) { u.swing = 0; break; }
-        u.swing += dt; u.sawT += dt * effort(u) * rankOf(u).work;
+        u.swing += dt; u.sawT += dt * (G.recipes.includes('saw') ? 1.2 : 1) * effort(u) * rankOf(u).work;
         if (u.swing > 0.5) { u.swing = 0; LJ.sfx('saw'); chip(u.x + u.dir * 6, u.y - 6, '#e6c88a'); }
         if (u.sawT >= SAW_TIME) {
           u.sawT = 0; G.wood -= 2; G.lumber++;
@@ -930,7 +934,7 @@
       units = units.filter(canChop);
       if (!units.length) return;
       units.forEach((u, k) => workAt(u, tree % W, (tree / W) | 0, k === 0 ? tree : -1));
-      if (Math.random() < 0.5) say(units[0], LJ.pick(units[0].kind === 'jack' ? Q_ACK : Q_VEH[units[0].kind]));
+      if (Math.random() < 0.5) say(units[0], LJ.pick(units[0].kind === 'jack' ? Q_ACK : Q_VEH[VEH[units[0].kind].voice || units[0].kind]));
     },
     // Clear roots and bulldoze rock/water along the route to a target.
     dozeTo(units, idx) {
@@ -1119,7 +1123,7 @@
         (u.hold ? 'Stopped' : G.up.dispatch ? 'Waiting for goods' : 'Parked');
     }
     if (u.kind === 'dozer') return { toDoze: isRoot(u.target) ? 'Driving to roots' : 'Driving to obstacles', doze: isRoot(u.target) ? 'Uprooting roots' : 'Bulldozing', toDrop: 'Delivering root wood', move: 'Driving', return: 'Driving' }[u.state] || (u.hold ? 'Stopped' : 'Parked');
-    if (u.kind === 'harv') return { chop: 'Harvesting', toTree: 'Driving to the trees', toDrop: 'Unloading', move: 'Driving', return: 'Driving' }[u.state] || (u.hold ? 'Stopped' : 'No trees in sight');
+    if (VEH[u.kind] && VEH[u.kind].chop) return { chop: 'Harvesting', toTree: 'Driving to the trees', toDrop: 'Unloading', move: 'Driving', return: 'Driving' }[u.state] || (u.hold ? 'Stopped' : 'No trees in sight');
     switch (u.state) {
       case 'chop': return 'Chopping';
       case 'toTree': return 'Walking to a tree';
@@ -1185,7 +1189,7 @@
       }
     }
     // Steam sawmills
-    if (G.up.steam && G.count.sawmill && G.wood >= 2 && (G.steamT += dt * G.count.sawmill) >= 1.4) {
+    if (G.up.steam && G.count.sawmill && G.wood >= 2 && (G.steamT += dt * G.count.sawmill * (G.recipes.includes('saw') ? 1.2 : 1)) >= 1.4) {
       G.steamT = 0; G.wood -= 2; G.lumber++;
     }
     // Payday
@@ -1372,6 +1376,7 @@
     if (G.cine) LJ.ending.update(dt);
     else {
       updFog(dt);
+      LJ.discoveries.update();
       updEconomy(dt);
       updAuto(dt);
       updWild(dt);

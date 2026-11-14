@@ -56,6 +56,8 @@ How to read it:
 | 43 | 14 Nov | Truck speed is independent of direction | Active |
 | 44 | 14 Nov | Useful and distinct forest collection trucks | Active |
 
+| 45 | 14 Nov | Felling tractors and forest discoveries | Active |
+
 ---
 
 ## 0. Game plan and concept art (13 Nov 2026)
@@ -547,3 +549,15 @@ How to read it:
 - *Decision: a partial load waits eight seconds after its last delivery, and waits for carriers already approaching it. A full truck still departs immediately; partial loads leave when no carrier is approaching. Wood becomes village stock only after the truck physically returns and unloads.*
 - *Decision: Logging Trucks are green forest forwarders with open steel stakes and a folded yellow loading crane. Red market trucks retain their wooden bed; both display their load.*
 - Saves remain compatible; no saved fields or format change.
+
+## 45. Felling tractors and forest discoveries (14 Nov 2026)
+
+> Introduce more vehicles capable of cutting down trees, or other ways to speed up tree removal.
+> You should be able to find things in the forest. E.g. treasures, gold and recipes better.
+
+- Add another tree-cutting vehicle and practical ways to improve clearing productivity.
+- Reward forest exploration with collectible treasure, gold and useful recipes.
+- Show discoveries in the world and a notebook; preserve finds and recipe bonuses in saves.
+- *Decision: a Felling Tractor unlocks at level 4 for €480, carries 24 wood, fells a tree in 2.4 seconds and costs €18 per payday. Its compact orange saw-head sprite differs from the later green Harvester. Turbo Harvesters also improves tractors.*
+- *Decision: twelve seeded buried finds are spread through the forest without changing map generation. Clear the tree above a visible golden glint and bring a Jack or vehicle within 24 pixels to recover it. Gold yields €90 and cash boxes €180. Three recipes permanently improve Jack chopping by 15%, Jack carrying by four and sawmill processing by 20%. The ✦ notebook shows recipe effects and recovery progress.*
+- *Decision: save format 8 stores collected finds and recipes. Formats 2–7 remain loadable, gaining the same seeded finds while retaining their existing forest and progress.*

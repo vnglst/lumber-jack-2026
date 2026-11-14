@@ -5,7 +5,7 @@
   const $ = id => document.getElementById(id);
   const ui = (LJ.ui = {});
   const ZOOMS = [1, 1.5, 2, 3, 4];
-  const ICON_OF = { jack: 'jack', truck: 'truck', shuttle: 'shuttle', dozer: 'dozer', harv: 'harv' };
+  const ICON_OF = { jack: 'jack', truck: 'truck', shuttle: 'shuttle', dozer: 'dozer', harv: 'harv', feller: 'feller' };
   let cv, zi = 3, zoom = 3, keys = {}, lastClickU = null, lastClickT = 0, toastT = 0, panelSig = '', shopSig = '', orderSig = '';
   let mini, mctx, mimg, miniT = 0, mouse = null; // mouse: last pointer position in window pixels, null when outside
 
@@ -356,6 +356,7 @@
     $('again').onclick = () => ui.restart();
     $('stockBtn').onclick = () => { G.stockpile = !G.stockpile; LJ.sfx('click'); ui.toast(G.stockpile ? 'Wood is now stockpiled at the camp' : 'Wood is now sold at the market'); };
     $('soundBtn').onclick = () => { LJ.audioInit(); $('soundBtn').style.opacity = LJ.toggleMute() ? 0.4 : 1; };
+    $('findsBtn').onclick = () => { if (!G.cine && !G.arrival) ui.showFinds(); };
     $('helpBtn').onclick = () => { if (!G.cine) ui.showHelp(); };
   }
 
@@ -367,6 +368,13 @@
     G.paused = true;
     m.querySelector('button').onclick = () => { LJ.audioInit(); LJ.sfx('click'); m.classList.remove('open'); if (onOk) onOk(); G.paused = false; };
   }
+
+  ui.showFinds = function () {
+    const found = G.finds.filter(f => f.found);
+    modal('<h1>Forest finds</h1><p>' + found.length + ' / ' + G.finds.length + ' recovered. Explore for golden glints, clear the tree above them, then bring a Jack or machine nearby.</p>' +
+      '<ul>' + Object.values(LJ.discoveries.recipes).map(r => '<li><b>' + r.name + '</b>: ' + r.desc + (G.recipes.includes(r.id) ? ' <b>Recovered ✓</b>' : ' — still hidden') + '</li>').join('') + '</ul>' +
+      '<p>Gold and lost cash boxes fund the operation. Recipe bonuses apply to your whole crew as soon as they are recovered.</p><button>Back to the forest</button>');
+  };
 
   // The how-to-play dialog behind the ? button.
   ui.showHelp = function () {

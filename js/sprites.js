@@ -191,6 +191,21 @@
     return both(outline(c));
   })();
 
+  // Compact orange tractor with a forward saw head: distinct from the green harvester.
+  S.feller = (function () {
+    const c = mk(36, 25), x = cx2(c);
+    shadow(x, 17, 22, 16, 2);
+    box(x, 3, 11, 20, 7, '#c66824', '#f4aa4c', '#874020');
+    box(x, 5, 3, 11, 9, '#c66824', '#f4aa4c', '#874020');
+    glass(x, 6, 4, 9, 6); R(x, 11, 4, 1, 6, '#26303a');
+    R(x, 19, 5, 2, 6, '#3b3c44'); R(x, 19, 4, 2, 1, '#9fa5ac');
+    R(x, 23, 12, 6, 3, '#e4a33b'); R(x, 23, 12, 6, 1, '#ffe08b');
+    disc(x, 29, 16, 5, '#383c44'); disc(x, 29, 16, 3, '#c6cbd0');
+    R(x, 28, 11, 2, 10, '#f1e3b2'); R(x, 24, 15, 10, 2, '#f1e3b2');
+    wheel(x, 8, 20, 4); wheel(x, 20, 20, 3);
+    return both(outline(c));
+  })();
+
   // ---------- Buildings ----------
   // Outlines a building sprite and records where its chimney (or fire) smokes, in sprite pixels.
   const outlined = (c, smoke) => { const o = outline(c); o.smoke = smoke; return o; };
@@ -440,5 +455,5 @@
   });
   I.wall = icon(x => { for (let i = 0; i < 3; i++) { R(x, 1 + i * 4, 3, 3, 8, '#8a5a30'); R(x, 2 + i * 4, 1, 1, 2, '#8a5a30'); R(x, 1 + i * 4, 3, 1, 8, '#b07a44'); } R(x, 0, 5, 12, 1, '#4a2f1a'); R(x, 0, 9, 12, 1, '#4a2f1a'); });
   I.tower = S.tower;
-  I.truck = S.truck.full.r; I.shuttle = S.shuttle.full.r; I.dozer = S.dozer.r; I.harv = S.harv.r; I.village = S.village; I.depot = S.depot;
+  I.truck = S.truck.full.r; I.shuttle = S.shuttle.full.r; I.dozer = S.dozer.r; I.harv = S.harv.r; I.feller = S.feller.r; I.village = S.village; I.depot = S.depot;
 })();
