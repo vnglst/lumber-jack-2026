@@ -72,6 +72,7 @@
   }
 
   // ---------- game API ----------
+  const VOLUME = 0.8;
   let ac = null, master = null, muted = false;
   const last = {};
 
@@ -80,7 +81,7 @@
       try {
         ac = new (window.AudioContext || window.webkitAudioContext)();
         const comp = ac.createDynamicsCompressor(); // keeps stacked sounds from clipping
-        master = ac.createGain(); master.gain.value = 0.8;
+        master = ac.createGain(); master.gain.value = muted ? 0 : VOLUME;
         master.connect(comp); comp.connect(ac.destination);
       } catch (e) { ac = null; }
     }
@@ -96,8 +97,13 @@
     if (def) schedule(ac, master, def, ac.currentTime + 0.005);
   };
 
-  LJ.toggleMute = function () { muted = !muted; return muted; };
+  // Mute silences everything on the master gain, the music included.
+  LJ.toggleMute = function () { muted = !muted; if (master) master.gain.value = muted ? 0 : VOLUME; return muted; };
 
   // Where other sound code (voice.js) plays: the game's context and master gain, or null while muted or not yet unlocked.
-  LJ.synth = { live: () => (ac && !muted ? { ctx: ac, dest: master } : null) };
+  // bus() is the same without the mute check, for the music, which keeps its place while muted.
+  LJ.synth = {
+    live: () => (ac && !muted ? { ctx: ac, dest: master } : null),
+    bus: () => (ac ? { ctx: ac, dest: master } : null)
+  };
 })();
