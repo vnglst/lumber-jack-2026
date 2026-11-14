@@ -31,6 +31,7 @@ How to read it:
 | 18 | 14 Nov | Faster start with an extra Jack | Active |
 | 19 | 14 Nov | Arrive by truck and store wood at camp | Active |
 | 20 | 14 Nov | Mobile and desktop testing | Active |
+| 21 | 14 Nov | Locals attack every unit type | Active |
 
 ---
 
@@ -257,3 +258,12 @@ How to read it:
 - Include portrait and landscape mobile layouts.
 - *Decision: use Chromium with desktop and mobile-sized viewports and synthetic touch-pointer input. Physical iOS/Android devices are not available in this environment; those remain a release check.*
 - Fix short-screen dialogs so their buttons remain reachable by scrolling.
+
+## 21. Locals attack every unit type (14 Nov 2026)
+
+> Locals should attack any kind of unit, also trucks and bulldozer.
+
+- Forest folk target jacks, trucks, bulldozers and harvesters.
+- Arrows damage vehicles; destroyed vehicles and their cargo are lost.
+- Show damaged vehicle health in the world and selection panel.
+- *Decision: trucks have 180 HP, bulldozers 260 HP and harvesters 240 HP. Nearby jacks defend vehicles too. Wildlife still hunts people, not vehicles.*

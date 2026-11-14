@@ -12,9 +12,9 @@
   const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
   const NAMES = ['Jacques', 'Jackie', 'Big Jack', 'Jack Jr.', 'Jaq', 'Old Jack', 'Jax', 'Jacko', 'Lil Jack', 'Jackson', 'Jacqueline', 'Jock'];
   const VEH = (LJ.VEH = {
-    truck: { name: 'Truck', wage: 10, cap: () => (G.up.mega ? 120 : 60), max: 3 },
-    dozer: { name: 'Bulldozer', wage: 15, cap: () => 0, max: 2 },
-    harv: { name: 'Harvester', wage: 30, cap: () => (G.up.mega ? 60 : 40), max: 3 }
+    truck: { name: 'Truck', wage: 10, hp: 180, cap: () => (G.up.mega ? 120 : 60), max: 3 },
+    dozer: { name: 'Bulldozer', wage: 15, hp: 260, cap: () => 0, max: 2 },
+    harv: { name: 'Harvester', wage: 30, hp: 240, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
   // The starting tent grows into the village, one upgrade at a time.
   const TIERS = (LJ.TIERS = [
@@ -39,6 +39,7 @@
   const jackCount = () => jacks().length + (G.village ? G.village.queue.length : 0);
   const popCap = () => TIERS[G.tier].pop + 3 * G.count.bunk;
   const canChop = u => u.kind === 'jack' || u.kind === 'harv';
+  const maxHpOf = (LJ.maxHpOf = u => u.kind === 'jack' ? 100 : VEH[u.kind].hp);
   // How far a unit looks for trees (and how much fog it lifts around itself), in tiles.
   const sightOf = u => (u.kind === 'harv' ? 8 : u.kind === 'jack' ? 6 + (G.up.foreman ? 3 : 0) : 5);
   LJ.jackCount = jackCount; LJ.popCap = popCap; LJ.WAGE = WAGE; LJ.jacks = jacks; LJ.countKind = countKind; LJ.sightOf = sightOf;
@@ -225,7 +226,7 @@
     return {
       id: G.nextId++, kind, x: tx * TS + 8, y: ty * TS + 10, tile: ty * W + tx, path: [], state: 'idle', task: null,
       carry: 0, load: null, dir: 1, wait: 0, walkT: 0, swing: 0, sawT: 0, target: -1, clicks: 0, lastClick: -99,
-      lastWhack: -9, name, hired: wage > 0, wage, hp: 100, atkCd: 0, fighting: false, hold: false
+      lastWhack: -9, name, hired: wage > 0, wage, hp: kind === 'jack' ? 100 : VEH[kind].hp, atkCd: 0, fighting: false, hold: false
     };
   }
   function addUnit(tx, ty, name, kind, wage) {
@@ -522,11 +523,15 @@
     }
   }
 
-  function hurtJack(u, dmg, a) {
+  function hurtUnit(u, dmg, a) {
     if (u.dead) return;
-    if (u.hp >= 100 || Math.random() < 0.25) say(u, LJ.pick(FOE[a.kind].hit));
+    const jack = u.kind === 'jack';
+    if (jack && (u.hp >= 100 || Math.random() < 0.25)) say(u, LJ.pick(FOE[a.kind].hit));
     if (Math.random() < 0.3) LJ.voice.cue(FOE[a.kind].cry);
-    u.hp -= dmg; blood(u.x, u.y); LJ.sfx('hurt');
+    u.hp -= dmg;
+    if (jack) blood(u.x, u.y);
+    else for (let i = 0; i < 5; i++) chip(u.x, u.y - 6, '#c9ad70');
+    LJ.sfx('hurt');
     // Jacks nearby drop what they're doing and come to help, then go back to work.
     for (const v of G.units) {
       if (!a.alive || v === u || v.kind !== 'jack' || v.dead || v.fighting || Math.hypot(v.x - u.x, v.y - u.y) > 140) continue;
@@ -539,10 +544,11 @@
     if (u.hp > 0) return;
     u.dead = true; release(u);
     G.sel.delete(u);
-    G.graves.push({ x: u.x, y: u.y });
-    LJ.ui.toast(FOE[a.kind].death(u.name));
+    if (jack) G.graves.push({ x: u.x, y: u.y });
+    else { for (let i = 0; i < 16; i++) dust(u.x, u.y); LJ.sfx('rock'); }
+    LJ.ui.toast(jack ? FOE[a.kind].death(u.name) : 'The forest folk destroyed ' + u.name + '!');
   }
-  LJ.hurtJack = hurtJack; LJ.hurtAnimal = hurtAnimal;
+  LJ.hurtUnit = hurtUnit; LJ.hurtAnimal = hurtAnimal;
 
   // ---------- Buildings and walls under attack ----------
   LJ.damageBuilding = function (b, dmg) {
@@ -650,7 +656,7 @@
       const t = a.target, d = Math.hypot(t.x - a.x, t.y - a.y);
       if (d < 16) {
         a.dir = t.x > a.x ? 1 : -1;
-        if (a.atkCd <= 0) { a.atkCd = 0.8; hurtJack(t, a.dmg, a); }
+        if (a.atkCd <= 0) { a.atkCd = 0.8; hurtUnit(t, a.dmg, a); }
         return;
       }
       goal = t.tile;

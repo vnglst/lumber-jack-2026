@@ -65,7 +65,7 @@
   }
 
   // ---------- Arrows ----------
-  // tg is { u: jack } or { b: building }.
+  // tg is { u: unit } or { b: building }.
   function aimPoint(tg) {
     if (tg.u) return [tg.u.x, tg.u.y - 6];
     const b = tg.b;
@@ -83,7 +83,7 @@
       if (ar.t < ar.dur || ar.done) continue;
       ar.done = true;
       const tg = ar.tg;
-      if (tg.u) { if (!tg.u.dead && Math.hypot(tg.u.x - ar.x1, tg.u.y - 6 - ar.y1) < 10) LJ.hurtJack(tg.u, ar.dmg, ar.from); }
+      if (tg.u) { if (!tg.u.dead && Math.hypot(tg.u.x - ar.x1, tg.u.y - 6 - ar.y1) < (tg.u.kind === 'jack' ? 10 : 18)) LJ.hurtUnit(tg.u, ar.dmg, ar.from); }
       else if (!tg.b.dead) LJ.damageBuilding(tg.b, ar.dmg * ARROW_VS_WOOD);
     }
     if (G.arrows.length) G.arrows = G.arrows.filter(a => a.t < a.dur + 0.4); // spent arrows lie on the ground briefly
@@ -95,9 +95,9 @@
     const b = tg.b, x0 = b.tx * TS, y0 = b.ty * TS, x1 = (b.tx + b.w) * TS, y1 = (b.ty + b.h) * TS;
     return Math.hypot(a.x - LJ.clamp(a.x, x0, x1), a.y - LJ.clamp(a.y, y0, y1));
   }
-  // Jacks close by first; otherwise the nearest building of the settlement.
+  // Any nearby unit, including machines; otherwise the nearest settlement building.
   function pickTarget(a) {
-    const u = LJ.nearest(G.units, a.x, a.y, 150, j => j.kind === 'jack' && !j.dead);
+    const u = LJ.nearest(G.units, a.x, a.y, 150, u => !u.dead);
     if (u) return { u };
     let best = null, bd = 1e9;
     for (const b of G.buildings) {

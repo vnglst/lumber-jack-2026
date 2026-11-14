@@ -39,7 +39,8 @@
       ctx.drawImage(rider, Math.round(u.x) - 7 - rider.ax - cx, Math.round(u.y) - 7 - rider.ay - cy - bob);
     }
     ctx.drawImage(img, x, y);
-    if (!ghost && u.state === 'chop' && u.target >= 0 && !u.path.length) bar(ctx, x + (img.width >> 1) - 7, y - 4, 12, 1 - G.world.hp[u.target], '#ffd84a');
+    if (!ghost && u.hp < LJ.maxHpOf(u)) bar(ctx, x + (img.width >> 1) - 7, y - 4, 12, u.hp / LJ.maxHpOf(u), u.hp > LJ.maxHpOf(u) * 0.4 ? '#5fdc3c' : '#ff4a3a');
+    else if (!ghost && u.state === 'chop' && u.target >= 0 && !u.path.length) bar(ctx, x + (img.width >> 1) - 7, y - 4, 12, 1 - G.world.hp[u.target], '#ffd84a');
   }
   const drawAny = (ctx, u, cx, cy, G, ghost) => (u.kind === 'jack' ? drawUnit : drawVehicle)(ctx, u, cx, cy, G, ghost);
 

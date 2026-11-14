@@ -482,7 +482,7 @@
     if (!sel.length) { p.innerHTML = ''; return; }
     const u = sel[0], cargo = sel.reduce((a, b) => a + LJ.cargoOf(b), 0), has = k => sel.some(s => s.kind === k);
     const allJacks = sel.every(s => s.kind === 'jack');
-    const title = sel.length > 1 ? sel.length + (allJacks ? ' Jacks' : ' units') : u.name + (u.kind === 'jack' && u.hp < 100 ? ' · ♥ ' + Math.ceil(u.hp) : '');
+    const title = sel.length > 1 ? sel.length + (allJacks ? ' Jacks' : ' units') : u.name + (u.hp < LJ.maxHpOf(u) ? ' · ♥ ' + Math.ceil(u.hp) : '');
     const st = sel.length > 1 ? 'Carrying ' + cargo : LJ.statusOf(u) + (u.kind === 'dozer' ? '' : ' · ' + cargo + '/' + LJ.capOf(u));
     let btn = '';
     if (has('jack') && G.count.sawmill) btn += '<button data-act="saw">Saw lumber</button>';
