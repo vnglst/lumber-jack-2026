@@ -2,7 +2,8 @@
 // Tile world generation + the per-pixel ground renderer.
 (function () {
   const TS = (LJ.TS = 16);
-  const T = (LJ.T = { GRASS: 0, DIRT: 1, WATER: 2, ROCK: 3, GRAVEL: 4 });
+  const T = (LJ.T = { GRASS: 0, DIRT: 1, WATER: 2, ROCK: 3, GRAVEL: 4, ROAD: 5, BRIDGE: 6 });
+  const isRoad = (LJ.isRoad = t => t === T.ROAD || t === T.BRIDGE); // the pre-built road to market, bridges included
   LJ.STUMP = 9;
   // How many tile rows a tree's canopy reaches above its base: used for tap targets and view culling.
   LJ.TREE_ROWS = Math.ceil(Math.max(...LJ.sprites.trees.flat().map(c => c.ay)) / TS);
@@ -21,8 +22,6 @@
     const type = new Uint8Array(N), obj = new Uint8Array(N), variant = new Uint8Array(N);
     const lush = new Float32Array(N).fill(1), wear = new Uint8Array(N), bld = new Int16Array(N);
     const flower = new Uint8Array(N), hp = new Float32Array(N), claim = new Int32Array(N);
-    const roadY = (H >> 1) + Math.floor((hash(1, 2, seed) - 0.5) * 16);
-    const nearStart = (x, y) => x <= 9 && y >= roadY - 5 && y <= roadY + 3;
 
     // Rivers meander north-south; consecutive rows are bridged so they never leak.
     function river(x0, so) {
@@ -37,8 +36,36 @@
     }
     river(W * 0.4, 11); river(W * 0.72, 23);
 
-    // A pond in the starting region, for looks.
-    const px = 14 + Math.floor(hash(3, 4, seed) * 10), py = (roadY + 18) % H;
+    // The settlement starts in the middle of the map, on dry land between the two rivers.
+    const cy = (H >> 1) + Math.floor((hash(1, 2, seed) - 0.5) * 10);
+    const wetAt = x => x < W && type[cy * W + x] === T.WATER;
+    let x = Math.floor(W * 0.25);
+    while (x < W && !wetAt(x)) x++; // the first river...
+    while (wetAt(x + 1)) x++; // ...across to its east bank
+    const r1 = x;
+    x++;
+    while (x < W && !wetAt(x)) x++; // the second river's west bank
+    const r2 = x;
+    if (!force && (r2 >= W || r2 - r1 < 16)) return null;
+    const sx = r2 < W ? (r1 + r2) >> 1 : W >> 1;
+    const nearStart = (x, y) => Math.hypot(x - sx, y - cy) < 7;
+
+    // A road already runs west from the settlement to the market at the map's edge, bridging any water on the way.
+    const roadAt = x => (x < sx - 3 ? LJ.clamp(cy + Math.round((fbm(x * 0.05, 7.3, seed + 90, 2) - 0.5) * 16), 3, H - 4) : cy);
+    const road = new Uint8Array(N);
+    let prevY = cy;
+    for (let x = sx + 1; x >= 0; x--) {
+      // Over water the road runs straight, so bridges come out as clean spans rather than staircases.
+      const wet = type[prevY * W + x] === T.WATER || (x > 0 && type[prevY * W + x - 1] === T.WATER) || type[prevY * W + x + 1] === T.WATER;
+      const y = wet ? prevY : roadAt(x);
+      for (let k = Math.min(y, prevY); k <= Math.max(y, prevY); k++) road[k * W + x + 1] = 1; // climb in the previous column, so every step is 4-connected
+      road[y * W + x] = 1;
+      prevY = y;
+    }
+    const roadY = roadAt(0);
+
+    // A pond near the start, for looks.
+    const px = sx + 6 + Math.floor(hash(3, 4, seed) * 6), py = Math.min(H - 6, cy + 9);
     for (let y = py - 4; y <= py + 4; y++) for (let x = px - 5; x <= px + 5; x++) {
       if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) continue;
       const d = Math.hypot((x - px) * 0.8, y - py);
@@ -47,7 +74,7 @@
 
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x;
-      if (type[i] === T.WATER || nearStart(x, y)) continue;
+      if (type[i] === T.WATER || nearStart(x, y) || road[i]) continue;
       const nearW = (x > 0 && type[i - 1] === T.WATER) || (x < W - 1 && type[i + 1] === T.WATER) ||
         (y > 0 && type[i - W] === T.WATER) || (y < H - 1 && type[i + W] === T.WATER);
       if (fbm(x * 0.09, y * 0.09, seed + 5, 3) > 0.655 || (nearW && hash(x, y, seed + 21) < 0.18)) type[i] = T.ROCK;
@@ -56,8 +83,8 @@
     let total = 0;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x;
-      if (type[i] !== T.GRASS) continue;
-      const clearing = Math.hypot(x - 5, y - (roadY - 1)) < 4.6 + vnoise(x * 0.6, y * 0.6, seed + 70) * 1.5 || (y === roadY && x < 9);
+      if (type[i] !== T.GRASS || road[i]) continue;
+      const clearing = Math.hypot(x - sx, y - (cy - 1)) < 5.6 + vnoise(x * 0.6, y * 0.6, seed + 70) * 1.5;
       const d = fbm(x * 0.08, y * 0.08, seed + 9, 3), h = hash(x, y, seed + 31);
       if (!clearing && ((d > 0.44 && h < 0.93) || h < 0.05)) {
         const sp = fbm(x * 0.045, y * 0.045, seed + 77, 2), h2 = hash(x, y, seed + 41);
@@ -66,7 +93,7 @@
         hp[i] = 1; total++;
       } else if (hash(x, y, seed + 51) < 0.18) flower[i] = 1;
     }
-    for (let x = 0; x < 9; x++) type[roadY * W + x] = T.DIRT;
+    for (let i = 0; i < N; i++) if (road[i]) type[i] = type[i] === T.WATER ? T.BRIDGE : T.ROAD;
 
     // Decoration: purely visual plants and pebbles; codes index LJ.DECO.
     const deco = new Uint8Array(N), decoV = new Uint8Array(N);
@@ -74,7 +101,7 @@
       const i = y * W + x, t = type[i], h = hash(x, y, seed + 61);
       decoV[i] = (hash(x, y, seed + 62) * 3) | 0;
       if (t === T.WATER) { if (h < 0.05) deco[i] = 6; continue; }
-      if (t !== T.GRASS || obj[i] || nearStart(x, y) || (y === roadY && x < 10)) continue;
+      if (t !== T.GRASS || obj[i] || nearStart(x, y)) continue;
       let nearW = false, nearTree = false;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const nx = x + dx, ny = y + dy;
@@ -92,7 +119,7 @@
     const huts = [], hr = LJ.rng(seed + 333);
     for (let tries = 0; tries < 4000 && huts.length < 7; tries++) {
       const x = 3 + ((hr() * (W - 6)) | 0), y = 3 + ((hr() * (H - 6)) | 0), i = y * W + x;
-      if (x < 28 || !(obj[i] >= 1 && obj[i] <= 3) || huts.some(h => Math.hypot((h % W) - x, ((h / W) | 0) - y) < 14)) continue;
+      if (Math.hypot(x - sx, y - cy) < 22 || (x < sx && Math.abs(y - roadAt(x)) < 5) || !(obj[i] >= 1 && obj[i] <= 3) || huts.some(h => Math.hypot((h % W) - x, ((h / W) | 0) - y) < 14)) continue;
       let dense = 0;
       for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const o = obj[(y + dy) * W + x + dx]; if (o >= 1 && o <= 3) dense++; }
       if (dense < 18) continue;
@@ -103,15 +130,15 @@
     const tbx = new Int8Array(N), tby = new Int8Array(N);
     for (let i = 0; i < N; i++) { tbx[i] = ((hash(i, 1, seed) * 11) | 0) - 5; tby[i] = ((hash(i, 2, seed) * 7) | 0) - 3; }
 
-    // Sanity check: the start region (west of the first river) must hold a fair share of the forest.
-    const seen = new Uint8Array(N), stack = [roadY * W + 5];
+    // Sanity check: the land the settlement can reach without a bulldozer must hold a fair share of the forest.
+    const seen = new Uint8Array(N), stack = [(cy + 1) * W + sx];
     let reach = 0;
     seen[stack[0]] = 1;
     while (stack.length) {
-      const c = stack.pop(), cx = c % W, cy = (c / W) | 0;
+      const c = stack.pop(), qx = c % W, qy = (c / W) | 0;
       if (obj[c]) reach++;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = cx + dx, ny = cy + dy;
+        const nx = qx + dx, ny = qy + dy;
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const n = ny * W + nx;
         if (seen[n] || type[n] === T.WATER || type[n] === T.ROCK) continue;
@@ -119,9 +146,10 @@
       }
     }
     const frac = reach / total;
-    if (!force && (frac < 0.28 || frac > 0.6)) return null;
+    if (!force && (frac < 0.3 || frac > 0.75)) return null;
 
-    return { W, H, N, seed, type, obj, variant, lush, wear, bld, flower, hp, claim, deco, decoV, tbx, tby, huts, wall: new Uint8Array(N), roadY, totalTrees: total, start: { x: 6, y: roadY } };
+    return { W, H, N, seed, type, obj, variant, lush, wear, bld, flower, hp, claim, deco, decoV, tbx, tby, huts, wall: new Uint8Array(N), roadY, totalTrees: total,
+      start: { x: sx + 2, y: cy + 1 }, base: { tx: sx - 1, ty: cy - 3 } };
   }
 
   // ---------- Ground renderer ----------
@@ -132,6 +160,8 @@
   const GX = P(['#5a4630', '#6b553a', '#7d6646', '#8f7754', '#a28a64']), GX_BLADE = rgb('#463624'), GX_TIP = rgb('#b49c74');
   const DT = P(['#6e4a2c', '#835a36', '#986b42', '#ad7e50', '#c39461']), PEB = rgb('#dcb47e'), PEB_D = rgb('#55361f');
   const GV = P(['#5e5a54', '#76726a', '#8e8a80', '#a6a196', '#bdb8ab']);
+  const RD = P(['#8a6a44', '#9c7a50', '#ae8a5c', '#bf9a68', '#cfab78']), RUT = rgb('#76583a');
+  const PLANK = P(['#7a4d26', '#8a5a30', '#9a6838', '#b07a44']), RAIL = rgb('#4a2f1a');
   const WA = P(['#1d5ca6', '#2470bd', '#3388cf', '#57a6e0', '#9fd2f2', '#e4f4fb']), MUD = P(['#5f4c32', '#77613f', '#8f7a52']);
   const FLOWERS = [[255, 255, 255], [255, 150, 190], [240, 70, 70], [190, 130, 255], [255, 220, 80]];
 
@@ -170,9 +200,17 @@
   const isW = t => t === T.WATER, isLand = t => t !== T.WATER, isGrass = t => t === T.GRASS;
 
   // wet/dry: whether the 3x3 tiles around this tile hold any water / any land, so far-away pixels skip the edge checks.
-  GP.shade = function (px, py, d, o, wet, dry) {
+  // exact: the tile the pixel really sits on (i, below, is the jittered one that softens borders).
+  GP.shade = function (px, py, d, o, wet, dry, exact) {
     const w = this.w, s = w.seed, i = this.tj(px, py), t = w.type[i], h = hash(px, py, s + 13);
     let c;
+    if (w.type[exact] === T.BRIDGE) {
+      // Bridges keep straight edges: planks across, a dark rail where the bridge meets open water.
+      const lx = px & 15, ly = py & 15, up = w.type[exact - w.W] === T.WATER, down = w.type[exact + w.W] === T.WATER;
+      c = (up && ly < 2) || (down && ly > 13) ? (ly === 0 || ly === 15 ? RAIL : PLANK[3]) : lx % 4 === 3 ? PLANK[0] : PLANK[1 + (((px >> 2) + (hash(px >> 2, py >> 3, s) < 0.3 ? 1 : 0)) % 2)];
+      d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+      return;
+    }
     if (t === T.WATER) {
       if (dry && this.near(px, py, 2, isLand)) c = h < 0.55 ? WA[5] : WA[4];
       else if (dry && this.near(px, py, 5, isLand)) c = WA[3];
@@ -183,6 +221,11 @@
       }
     } else if (wet && t !== T.ROCK && this.near(px, py, 3, isW)) {
       c = h < 0.06 ? PEB : MUD[step(vnoise(px * 0.3, py * 0.3, s + 6), 3, px, py)];
+    } else if (isRoad(t)) {
+      // The packed road to market: lighter than trails, pebbly, with faint wheel ruts.
+      const horiz = isRoad(w.type[exact - 1]) || isRoad(w.type[exact + 1]);
+      const rut = horiz ? ((py & 15) === 5 || (py & 15) === 10) : ((px & 15) === 5 || (px & 15) === 10);
+      c = h < 0.03 ? PEB : rut && h < 0.7 ? RUT : RD[step(vnoise(px * 0.2, py * 0.2, s + 7) * 0.7 + hash(px, py, s + 8) * 0.3, 5, px, py)];
     } else if (t === T.DIRT) {
       if (h < 0.022) c = PEB;
       else if (hash(px, py - 1, s + 13) < 0.022) c = PEB_D;
@@ -209,7 +252,7 @@
     for (let y = Math.max(0, ty - 1); y <= Math.min(w.H - 1, ty + 1); y++) for (let x = Math.max(0, tx - 1); x <= Math.min(w.W - 1, tx + 1); x++) {
       if (w.type[y * w.W + x] === T.WATER) wet = true; else dry = true;
     }
-    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) this.shade(tx * TS + x, ty * TS + y, d, (y * TS + x) * 4, wet, dry);
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) this.shade(tx * TS + x, ty * TS + y, d, (y * TS + x) * 4, wet, dry, i);
     const set = (x, y, c) => {
       if (x < 0 || y < 0 || x >= TS || y >= TS) return;
       const o = (y * TS + x) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2];

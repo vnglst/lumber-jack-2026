@@ -68,7 +68,7 @@
     { id: 'rifles', name: 'Laser Pistols', desc: 'Jacks fire bursts of laser bolts at anything that attacks them.', icon: 'rifle', level: 2, cost: () => ({ m: 150 }) },
     { id: 'barrow', name: 'Wheelbarrows', desc: 'Jacks carry 24.', icon: 'barrow', level: 2, need: 'sling', cost: () => ({ m: 160, w: 20 }) },
     { id: 'chainsaw', name: 'Chainsaws', desc: 'Chop twice as fast. Loud.', icon: 'chainsaw', level: 3, need: 'sharpaxe', cost: () => ({ m: 300 }) },
-    vehItem('truck', 3, 350, 'Hauls 60 goods per trip from storage to market.', 'truck'),
+    vehItem('truck', 2, 250, 'Hauls 60 goods per trip down the road to market, much faster than walking.', 'truck'),
     bldItem('depot', 3, () => ({ m: 150, l: 10 }), 'Extra drop-off point for wood. Place it out by the forest.', 'depot'),
     bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Fires laser bursts at forest folk and wild animals. Sees far, and jacks nearby heal quickly.', 'tower'),
     { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Forest folk and wolves must break through them; your own people use the gates. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
@@ -103,6 +103,8 @@
   const wildPass = i => !blocked(i) && w.bld[i] === 0;
   // A bulldozer plans its route straight through rock and water.
   const dozePass = i => w.bld[i] === 0 && !isTree(i);
+  // The market sits where the road meets the west edge; nothing gets built right in front of it.
+  const nearMarket = (x, y) => x < 4 && Math.abs(y - w.roadY) < 2;
   LJ.isTree = isTree; LJ.pass = pass; LJ.blocked = blocked; LJ.wildPass = wildPass;
   // Everything that attacks the operation. wild: roams as wildlife (the forest folk come in waves instead).
   const FOE = (LJ.FOE = {
@@ -146,10 +148,11 @@
     G.thr = FR.map(f => Math.max(1, Math.round(f * G.total)));
     // Money that must have been earned (in total) before a level counts as complete. The last level only needs the trees gone.
     G.quota = G.thr.map((t, i) => (i && i < MAX_LEVEL - 1 ? Math.round((t * 14) / 100) * 100 : 0));
-    G.base = addBuilding('base', 2, w.roadY - 4, 3, 3);
+    G.base = addBuilding('base', w.base.tx, w.base.ty, 3, 3);
     ring(G.base, G.villMask);
     addUnit(w.start.x, w.start.y, 'Jack', 'jack', 0);
-    reveal(4, w.roadY - 2, 9);
+    reveal(w.start.x - 1, w.start.y - 2, 9);
+    for (let i = 0; i < w.N; i++) if (LJ.isRoad(w.type[i])) reveal(i % W, (i / W) | 0, 2.5); // the road to market is known land
     spawnCritters();
     const r = LJ.rng(seed + 5);
     for (let i = 0; i < 400 && G.bflies.length < 60; i++) {
@@ -255,14 +258,15 @@
     return SPECIES[w.obj[t]].t * (G.up.sharpaxe ? 0.65 : 1) * (G.up.chainsaw ? 0.5 : 1);
   }
   function speedOf(u) {
-    const t = w.type[u.tile], road = t === T.DIRT || t === T.GRAVEL;
-    if (u.kind === 'truck') return (road ? 100 : 55) * effort(u);
+    // Trails (worn dirt, gravel) help a little; the road to market helps a lot, most of all for trucks.
+    const t = w.type[u.tile], road = LJ.isRoad(t), trail = t === T.DIRT || t === T.GRAVEL;
+    if (u.kind === 'truck') return (road ? 160 : trail ? 100 : 55) * effort(u);
     if (u.kind === 'dozer') return 36 * effort(u);
-    if (u.kind === 'harv') return (G.up.turbo ? 54 : 38) * (road ? 1.2 : 1) * effort(u);
+    if (u.kind === 'harv') return (G.up.turbo ? 54 : 38) * (road ? 1.5 : trail ? 1.2 : 1) * effort(u);
     let s = 50 * effort(u);
     if (G.up.boots) s *= 1.25;
     if (u.carry > 0 || u.load) s *= 0.85;
-    if (road) s *= 1.15;
+    if (road) s *= 1.3; else if (trail) s *= 1.15;
     return s;
   }
 
@@ -525,7 +529,7 @@
   LJ.canWall = i => {
     if (i < 0 || i >= w.N || w.wall[i] || w.bld[i] || isTree(i) || !G.fog[i]) return false;
     const t = w.type[i], x = i % W, y = (i / W) | 0;
-    return (t === T.GRASS || t === T.DIRT || t === T.GRAVEL) && !(x < 4 && Math.abs(y - w.roadY) < 2);
+    return (t === T.GRASS || t === T.DIRT || t === T.GRAVEL || t === T.ROAD) && !nearMarket(x, y);
   };
   LJ.buildWalls = function (tiles) {
     let n = 0;
@@ -871,8 +875,7 @@
     for (let y = ty; y < ty + p.h; y++) for (let x = tx; x < tx + p.w; x++) {
       if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) return false;
       const i = y * W + x;
-      if (!pass(i) || !G.fog[i]) return false;
-      if (x < 4 && Math.abs(y - w.roadY) < 2) return false;
+      if (!pass(i) || !G.fog[i] || LJ.isRoad(w.type[i]) || nearMarket(x, y)) return false; // keep the road and the market clear
     }
     return true;
   };
@@ -1015,7 +1018,7 @@
     }
     for (let tries = 0; tries < 3000 && G.critters.length < 26; tries++) {
       const x = (r() * W) | 0, y = (r() * H) | 0, i = y * W + x;
-      if (w.type[i] !== T.GRASS || isTree(i) || x < 14) continue;
+      if (w.type[i] !== T.GRASS || isTree(i) || Math.hypot(x - w.start.x, y - w.start.y) < 12) continue;
       let trees = 0;
       for (let k = 0; k < 8; k++) { const n = (y + DY[k]) * W + x + DX[k]; if (n >= 0 && n < w.N && isTree(n)) trees++; }
       if (trees < 2) continue;

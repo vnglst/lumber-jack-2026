@@ -335,7 +335,8 @@
       '<p>One jack. One axe. An awful lot of trees.</p>' +
       '<ul><li><b>Tap a tree</b> to send your jack. Jacks keep cutting the nearest trees they can see; when none are left in sight, they wait.</li>' +
       '<li>Select jacks and <b>tap anywhere</b> to send them there. Keep tapping a tree being chopped to land extra whacks.</li>' +
-      '<li>Wood sells at the <b>market road</b> (west). Upgrade your tent into a village and build houses, sawmills and depots around it.</li>' +
+      '<li>Wood sells at the <b>market</b>, at the end of the long road west. It is a long walk: stockpile at the tent, and buy trucks as soon as you can.</li>' +
+      '<li>Upgrade your tent into a village and build houses, sawmills and depots around it.</li>' +
       '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
       '<li>Scroll by moving the mouse to a screen edge, dragging with the right mouse button, WASD/arrow keys or the minimap. F jumps to your selection. Wheel zooms. Touch: drag scrolls, pinch zooms.</li></ul>' +
       '<button>' + (help ? 'Back to work' : 'Start chopping') + '</button>');
@@ -413,13 +414,14 @@
     const idle = LJ.jacks().filter(u => !u.task && !u.path.length && !u.hold && !u.fighting).length;
     if (idle && G.cleared < G.total) return idle + (idle > 1 ? ' jacks see' : ' jack sees') + ' no trees. Select them and tap near the forest to send them there.';
     if (!G.village) {
-      if (G.sold === 0 && G.wood === 0) return 'A jack carries ' + LJ.capOf() + ' wood, then walks to the market road (west) to sell it. Tap his tree to help him chop.';
+      if (G.sold === 0 && G.wood === 0) return 'A jack carries ' + LJ.capOf() + ' wood, then walks the long road west to the market to sell it. Tap his tree to help him chop.';
       if (!Object.keys(G.up).length && G.money >= 40) return 'You can afford an upgrade — open the Shop.';
       if (G.cleared >= 8) return 'Next: upgrade the tent to a Cabin ($' + Math.max(0, G.money) + '/120, wood ' + G.wood + '/20). ' +
         (G.stockpile ? 'Wood is being stockpiled at the tent.' : 'Tap “Selling” to stockpile wood instead.');
       return '';
     }
     if (G.level >= 2 && LJ.jackCount() < 2) return 'Hire more jacks in the Shop. Each one wants $' + LJ.WAGE + ' every payday.';
+    if (G.level >= 2 && !LJ.countKind('truck') && tasks('haul')) return 'The market is a long walk away. A Truck ($250) makes the trip in seconds, with 60 goods at a time.';
     if (G.level >= 2 && !G.count.sawmill && G.wood >= 20) return 'Build a Sawmill: jacks there turn wood into lumber worth $' + LJ.PRICE.lumber + ' each.';
     if (G.count.sawmill && G.wood >= 6 && G.lumber === 0 && !G.up.steam && !tasks('saw')) return 'Select a jack and tap the sawmill to saw lumber: $' + LJ.PRICE.lumber + ' each, instead of $' + LJ.PRICE.wood + ' per wood.';
     if (G.wood + G.lumber >= 10 && !tasks('haul') && !G.units.some(u => u.kind === 'truck' && u.state !== 'idle')) return 'Nothing sells itself: select a jack or truck and tap the market sign.';
@@ -501,6 +503,8 @@
       else if (o >= 1 && o <= 3) { if (o === 3) { r = 120; g = 150; b = 40; } else { r = 26; g = o === 1 ? 84 : 104; b = 40; } }
       else if (t === T.WATER) { r = 52; g = 122; b = 200; }
       else if (t === T.ROCK) { r = 128; g = 126; b = 122; }
+      else if (t === T.ROAD) { r = 196; g = 160; b = 108; }
+      else if (t === T.BRIDGE) { r = 120; g = 80; b = 44; }
       else if (t === T.DIRT || t === T.GRAVEL) { r = 150; g = 118; b = 80; }
       else { const L = w.lush[i]; r = 150 - 70 * L; g = 130 + 32 * L; b = 80 - 20 * L; }
       if (!G.fog[i]) { r = 12; g = 18; b = 13; }

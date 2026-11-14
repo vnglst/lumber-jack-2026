@@ -52,7 +52,7 @@
       }
       if (ok) { bd = d; best = { tx, ty }; }
     }
-    return best || { tx: 6, ty: Math.max(1, w.roadY - SITE_H - 1) };
+    return best || { tx: Math.min(w.W - SITE_W - 1, v.tx + v.w + 2), ty: Math.max(1, v.ty - 1) }; // next to the village
   }
 
   E.start = function () {
@@ -120,7 +120,7 @@
 
   function walkSuit(dt) {
     const s = G.suit, W = G.world.W;
-    let dist = 34 * dt;
+    let dist = 70 * dt; // a brisk walk up the long road
     while (dist > 0 && s.path.length) {
       const n = s.path[s.path.length - 1];
       const px = (n % W) * TS + 8, py = ((n / W) | 0) * TS + 10, dx = px - s.x, dy = py - s.y, d = Math.hypot(dx, dy);
