@@ -542,4 +542,4 @@ How to read it:
 - Show a dark, nearly black margin outside the forest.
 - Keep unexplored tree overhang hidden by fog at the map boundary.
 - *Decision: allow half a viewport of overscroll on all four sides at every zoom, including when the entire map fits onscreen. Existing minimap, wheel, touch and keyboard controls share these bounds. Mention the margin in Help.*
-- *Decision: extend the fog mask four tiles beyond the map using the nearest edge tile's exploration state, preserving explored canopy overhang while covering hidden trees.*
+- *Decision: extend the fog mask four tiles beyond the map using the nearest edge tile's exploration state, preserving explored canopy overhang while covering hidden trees. Tree sprites also require their root tile to be explored, preventing a hidden canopy from leaking through an explored neighbor.*

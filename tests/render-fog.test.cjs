@@ -46,8 +46,26 @@ for (const [edge, x, y] of [['left', 0, 4], ['top', 4, 0], ['right', 7, 4], ['bo
   test('fog covers hidden tree overhang at the ' + edge + ' map edge', () => {
     const { lj, tree, draws } = scene(x, y);
     lj.render();
-    const sprite = draws.find(d => d.image === tree), fog = draws.at(-1);
-    const [sx, sy] = sprite.args, [fx, fy, fw, fh] = fog.args;
+    const fog = draws.at(-1);
+    const sx = x * 16 + 8 - tree.ax - lj.G.cam.x, sy = y * 16 + 10 - tree.ay - lj.G.cam.y;
+    const [fx, fy, fw, fh] = fog.args;
     assert.ok(fx <= sx && fy <= sy && fx + fw >= sx + tree.width && fy + fh >= sy + tree.height, 'fog ends before the hidden sprite does');
+  });
+}
+
+
+for (const [edge, x, y, nx, ny] of [
+  ['top', 4, 1, 4, 0], ['left', 0, 4, 0, 3], ['right', 7, 4, 7, 3], ['bottom', 4, 7, 3, 7]
+]) {
+  test('an unexplored canopy stays hidden beside an explored ' + edge + ' edge', () => {
+    const { lj, g, w, tree, draws } = scene(x, y), tile = y * w.W + x;
+    g.fog[ny * w.W + nx] = 1;
+    lj.render();
+    assert.equal(g.fog[tile], 0);
+    assert.ok(!draws.some(d => d.image === tree), 'hidden tree leaks through the explored margin');
+    draws.length = 0;
+    g.fog[tile] = 1; g.fogDirty = true;
+    lj.render();
+    assert.ok(draws.some(d => d.image === tree), 'explored trees must still render');
   });
 }

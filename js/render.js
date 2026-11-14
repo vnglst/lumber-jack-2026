@@ -105,7 +105,7 @@
     const list = [];
     for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
       const i = ty * W + tx, o = w.obj[i];
-      if (o >= 1 && o <= 3) list.push({ k: 0, i, bx: LJ.treeX(w, i), y: LJ.treeY(w, i) });
+      if (o >= 1 && o <= 3 && G.fog[i]) list.push({ k: 0, i, bx: LJ.treeX(w, i), y: LJ.treeY(w, i) });
       else if (o === LJ.STUMP) list.push({ k: 11, i, bx: LJ.treeX(w, i), y: LJ.treeY(w, i) - 1 });
       else if (w.type[i] === T.ROCK) { const oy = ((hash(i, 7, s) * 9) | 0) - 4; list.push({ k: 1, i, tx, ty, oy, y: ty * TS + 14 + oy }); }
       if (w.wall[i]) list.push({ k: 14, i, tx, ty, y: ty * TS + 14 });
