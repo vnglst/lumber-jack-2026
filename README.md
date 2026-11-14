@@ -14,7 +14,9 @@ make
 
 Opens the game at http://localhost:5173 (needs Python 3). No build step and no dependencies: it is plain HTML, CSS and JavaScript, so any static file server works too.
 
-The game saves itself in the browser as you play. Tap **?** in the game for the controls.
+The game saves itself in the browser as you play. Tap **?** in the game for the controls. Share it from the opening screen. On supported browsers, **Install game** adds it to your device; on iPhone/iPad use Safari's Share → Add to Home Screen. After one online visit, the game works offline (recorded voices need a connection).
+
+Publish the repository as a static site at `https://lumber-jack.koenvangilst.nl/` over HTTPS. The manifest, social metadata and self-hosted Plausible use that domain. Add this domain in the existing Plausible dashboard if it is not registered yet. Before each release, bump `CACHE` in `sw.js` whenever the HTML, CSS or game scripts change, and include any new game scripts in `CORE`. An update waits until all game tabs close; reopen to use it. For local development, use the browser's service-worker **Bypass for network** option (or unregister it) to see live edits after the first visit.
 
 ## Other commands
 

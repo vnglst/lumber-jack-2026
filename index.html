@@ -3,7 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Lumberjack</title>
+  <title>Lumberjack — A Finnish forest adventure</title>
+  <meta name="description" content="One jack. One axe. An awful lot of trees. Build a logging village, explore a Finnish forest and grow your operation in this free pixel-art strategy game.">
+  <meta name="author" content="Koen van Gilst">
+  <meta name="theme-color" content="#102a24">
+  <meta name="color-scheme" content="dark">
+  <link rel="canonical" href="https://lumber-jack.koenvangilst.nl/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Lumberjack">
+  <meta property="og:title" content="Lumberjack — A Finnish forest adventure">
+  <meta property="og:description" content="One jack. One axe. An awful lot of trees. Explore, build and automate in a free pixel-art forest strategy game.">
+  <meta property="og:url" content="https://lumber-jack.koenvangilst.nl/">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:image" content="https://lumber-jack.koenvangilst.nl/assets/social-card.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Lumberjack: a Finnish cottage beside a lake under the northern lights.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Lumberjack — A Finnish forest adventure">
+  <meta name="twitter:description" content="One jack. One axe. An awful lot of trees. Play the free pixel-art forest strategy game.">
+  <meta name="twitter:image" content="https://lumber-jack.koenvangilst.nl/assets/social-card.png">
+  <meta name="twitter:image:alt" content="Lumberjack: a Finnish cottage beside a lake under the northern lights.">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Lumberjack">
+  <script defer data-domain="lumber-jack.koenvangilst.nl" data-api="https://plausible.koenvangilst.nl/api/event" src="https://plausible.koenvangilst.nl/js/script.js"></script>
+  <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"VideoGame","name":"Lumberjack","url":"https://lumber-jack.koenvangilst.nl/","description":"A free pixel-art strategy game about building a logging village and exploring a Finnish forest.","image":"https://lumber-jack.koenvangilst.nl/assets/social-card.png","genre":["Strategy","Simulation"],"gamePlatform":"Web browser","operatingSystem":"Any","applicationCategory":"GameApplication","inLanguage":"en","playMode":"SinglePlayer","author":{"@type":"Person","name":"Koen van Gilst","url":"https://koenvangilst.nl/"},"offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
+  </script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -64,6 +96,11 @@
         <div class="logo"><span class="lumber">Lumber</span><span class="jack">Jack</span></div>
         <p class="tag">One jack. One axe. An awful lot of trees.</p>
         <div class="row"></div>
+        <div class="site-actions">
+          <button id="shareGame" class="ghost" type="button">Share game</button>
+          <button id="installGame" class="ghost" type="button" hidden>Install game</button>
+          <span id="shareStatus" role="status" aria-live="polite"></span>
+        </div>
         <p class="place">Somewhere in Finland</p>
       </div>
     </div>
@@ -87,5 +124,6 @@
   <script src="js/title.js"></script>
   <script src="js/save.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/site.js"></script>
 </body>
 </html>

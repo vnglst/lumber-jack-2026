@@ -55,8 +55,8 @@ How to read it:
 | 42 | 14 Nov | Start fully hidden and explore during the intro | Active |
 | 43 | 14 Nov | Truck speed is independent of direction | Active |
 | 44 | 14 Nov | Useful and distinct forest collection trucks | Active |
-
 | 45 | 14 Nov | Felling tractors and forest discoveries | Active |
+| 46 | 14 Nov | Sharing, installation and analytics | Active |
 
 ---
 
@@ -561,3 +561,19 @@ How to read it:
 - *Decision: a Felling Tractor unlocks at level 4 for €480, carries 24 wood, fells a tree in 2.4 seconds and costs €18 per payday. Its compact orange saw-head sprite differs from the later green Harvester. Turbo Harvesters also improves tractors.*
 - *Decision: twelve seeded buried finds are spread through the forest without changing map generation. Clear the tree above a visible golden glint and bring a Jack or vehicle within 24 pixels to recover it. Gold yields €90 and cash boxes €180. Three recipes permanently improve Jack chopping by 15%, Jack carrying by four and sawmill processing by 20%. The ✦ notebook shows recipe effects and recovery progress.*
 - *Decision: save format 8 stores collected finds and recipes. Formats 2–7 remain loadable, gaining the same seeded finds while retaining their existing forest and progress.*
+
+## 46. Sharing, installation and analytics (14 Nov 2026)
+
+> Add nice social sharing etc metadata. Anything you’d expect from a game/website like this.
+>
+> Make it PWA ready.
+>
+> Add plausible from koenvangilst.nl, for subdomain: lumber-jack.koenvangilst.nl
+
+- Add descriptive search metadata, a canonical URL, Open Graph and Twitter cards, a social preview, icons, structured game data, a sitemap and crawler instructions. Preserve the ending surprise.
+- Offer native sharing with clipboard/manual-copy fallbacks on the opening screen.
+- Add an installable web app manifest, device icons, standalone display and an offline game shell.
+- Reuse the existing self-hosted Plausible script and event endpoint from koenvangilst.nl, with `lumber-jack.koenvangilst.nl` as its tracking domain.
+- *Decision: the share preview uses the game's own Finnish lake and northern-lights artwork. Website actions stay on the opening screen.*
+- *Decision: cache a complete, versioned game shell. New versions wait for old game tabs to close. Never cache the recording booth, its write API, analytics or recordings; offline voices fall back to text. Existing browser saves remain in localStorage.*
+- *Decision: the production domain is `https://lumber-jack.koenvangilst.nl/`; Plausible must have that site registered in its dashboard. HTTPS hosting is required for installation outside localhost.*
