@@ -30,6 +30,7 @@ How to read it:
 | 17 | 14 Nov | Requirements and decision log | Active |
 | 18 | 14 Nov | Faster start with an extra Jack | Active |
 | 19 | 14 Nov | Arrive by truck and store wood at camp | Active |
+| 20 | 14 Nov | Mobile and desktop testing | Active |
 
 ---
 
@@ -247,3 +248,12 @@ How to read it:
 - *Decision: the arrival truck stays as the first market truck, with no upkeep. It automatically sells surplus, retaining the existing 20-wood building reserve. Stockpiling pauses automatic loading. Later purchased trucks retain their existing orders and upkeep.*
 - *Decision: the short arrival sequence is replayed rather than saved midway; normal saves resume once camp is ready. Existing saves remain compatible.*
 - **Supersedes** the pre-village direct-to-market carrying in game plan §5.
+
+## 20. Mobile and desktop testing (14 Nov 2026)
+
+> Test the game on both mobile and desktop
+
+- Check starting, hiring, controls and layout at desktop and mobile sizes.
+- Include portrait and landscape mobile layouts.
+- *Decision: use Chromium with desktop and mobile-sized viewports and synthetic touch-pointer input. Physical iOS/Android devices are not available in this environment; those remain a release check.*
+- Fix short-screen dialogs so their buttons remain reachable by scrolling.
