@@ -13,6 +13,7 @@ Serve with `make`. Use a fresh game, without replacing a wanted save.
 - Saving: reload and Continue; units, goods and progress remain available.
 - Worker experience: select a Jack, complete work and check XP, promotion feedback and the updated carrying capacity; reload to verify rank persistence.
 - Upgraded village: toggle Stockpiling and confirm automatic market loading pauses while forest deliveries continue.
+- Construction: place a building and upgrade the village; check scaffolding, yellow progress bars and seconds remaining. Verify benefits start only on completion, Help pauses construction, and reload/Continue resumes the same project.
 
 ## Checked 14 Nov 2026
 
@@ -26,5 +27,6 @@ Chromium desktop and mobile-sized viewports. Touch-pointer events were simulated
 - Actual ground-renderer samples progressed from green `(80,151,58)` to brown `(146,103,64)` to dark ruts `(63,50,39)` with increasing wear.
 - Opening tutorial: a compact start screen replaces the instructions wall; the truck takes 25 seconds, with five successive captions. Caption layout checked at desktop and mobile sizes; full instructions remain in Help.
 - Seeded opening, late-game and experience results are recorded in [PLAYTESTING.md](PLAYTESTING.md), including the limits of automated playtesting.
+- Construction: browser-checked a 15-second Cabin upgrade and an unfinished Sawmill. Confirmed the pending tier/services, build-time descriptions, partial sprite/scaffolding rendering, and paused timer. Regression checks include unfinished tower healing/fire, housing limits, destroyed stakes/sites, and saving the first Cabin upgrade.
 
 Before release, repeat on physical iOS Safari and Android Chrome, including two-finger pinch and orientation changes.

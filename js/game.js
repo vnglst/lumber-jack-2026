@@ -4,7 +4,7 @@
   const TS = LJ.TS, T = LJ.T, STUMP = LJ.STUMP;
   const G = (LJ.G = {});
   const PRICE = (LJ.PRICE = { wood: 3, lumber: 10, stone: 6 });
-  const MAX_LEVEL = 10, WAGE = 20, PAY_EVERY = 60, SAW_TIME = 3.5, INTRO_BEAT_TIME = 5;
+  const MAX_LEVEL = 10, WAGE = 20, PAY_EVERY = 60, SAW_TIME = 3.5, INTRO_BEAT_TIME = 5, WALL_BUILD_TIME = 3;
   // Share of the forest that must be cleared to complete each of the 10 levels. The last level needs every single tree.
   const FR = [0.005, 0.03, 0.07, 0.12, 0.19, 0.28, 0.4, 0.55, 0.74, 1];
   // Per species: seconds to chop with a plain axe, and wood yield. Oaks are slow but rich.
@@ -39,29 +39,32 @@
   // The starting tent grows into the village, one upgrade at a time.
   const TIERS = (LJ.TIERS = [
     { name: 'Tent', pop: 2, train: 10, sellMul: 1 },
-    { name: 'Cabin', level: 1, cost: { m: 120, w: 20 }, pop: 4, train: 10, sellMul: 1, desc: 'Room for more jacks, village training and market orders.' },
-    { name: 'Lodge', level: 3, cost: { m: 600, l: 30 }, pop: 7, train: 5, sellMul: 1, desc: 'Room for 3 more jacks, and new jacks train twice as fast.' },
-    { name: 'Town Hall', level: 6, cost: { m: 1800, l: 80 }, pop: 10, train: 5, sellMul: 1.2, desc: 'Room for 3 more jacks, and the market pays 20% more.' }
+    { name: 'Cabin', level: 1, cost: { m: 120, w: 20 }, build: 15, pop: 4, train: 10, sellMul: 1, desc: 'Room for more jacks, village training and market orders.' },
+    { name: 'Lodge', level: 3, cost: { m: 600, l: 30 }, build: 25, pop: 7, train: 5, sellMul: 1, desc: 'Room for 3 more jacks, and new jacks train twice as fast.' },
+    { name: 'Town Hall', level: 6, cost: { m: 1800, l: 80 }, build: 35, pop: 10, train: 5, sellMul: 1.2, desc: 'Room for 3 more jacks, and the market pays 20% more.' }
   ]);
   // Buildings: the base (the tent and its upgrades) and the ones the player places around it.
   // sight: how far it lifts the fog; heals: jacks nearby heal quickly; mask: which list of standing spots its ring joins.
   const BLD = (LJ.BLD = {
     base: { name: 'Village', sight: 5, heals: true, hp: 500, raid: true }, // raid: raided at 0 HP instead of destroyed
-    bunk: { name: 'Bunkhouse', size: [2, 2], max: 4, sight: 5 },
-    sawmill: { name: 'Sawmill', size: [3, 2], max: 3, sight: 5, mask: 'sawMask' },
-    tower: { name: 'Guard Tower', size: [2, 2], max: 6, sight: 13, heals: true, hp: 320 }
+    bunk: { name: 'Bunkhouse', size: [2, 2], build: 12, max: 4, sight: 5 },
+    sawmill: { name: 'Sawmill', size: [3, 2], build: 18, max: 3, sight: 5, mask: 'sawMask' },
+    tower: { name: 'Guard Tower', size: [2, 2], build: 20, max: 6, sight: 13, heals: true, hp: 320 }
   });
   let w, W, H, vis, par, q, stamp = 0;
 
   const jacks = () => G.units.filter(u => u.kind === 'jack');
   const countKind = k => G.units.filter(u => u.kind === k).length;
+  // G.count grants completed services; pricing and purchase limits also count unfinished sites.
+  const buildingCount = k => G.buildings.filter(b => b.kind === k && !b.dead).length;
+  const buildingReady = (LJ.buildingReady = b => !b.dead && (!b.construction || !!b.construction.upgrade));
   const jackCount = () => jacks().length + (G.village ? G.village.queue.length : 0);
   const popCap = () => TIERS[G.tier].pop + 3 * G.count.bunk;
   const canChop = u => u.kind === 'jack' || u.kind === 'harv';
   const maxHpOf = (LJ.maxHpOf = u => u.kind === 'jack' ? 100 : VEH[u.kind].hp);
   const atSawmill = u => {
     const x = u.tile % W, y = (u.tile / W) | 0;
-    return G.buildings.find(b => b.kind === 'sawmill' && !b.dead && x >= b.tx - 1 && x <= b.tx + b.w && y >= b.ty - 1 && y <= b.ty + b.h);
+    return G.buildings.find(b => b.kind === 'sawmill' && buildingReady(b) && x >= b.tx - 1 && x <= b.tx + b.w && y >= b.ty - 1 && y <= b.ty + b.h);
   };
   // How far a unit looks for trees (and how much fog it lifts around itself), in tiles.
   const sightOf = u => (u.kind === 'harv' ? 8 : u.kind === 'jack' ? 6 + (G.up.foreman ? 3 : 0) : 5);
@@ -72,14 +75,14 @@
     cost: () => ({ m: m + Math.round(m * 0.5) * countKind(id) }), can: () => countKind(id) < VEH[id].max, full: 'Max ' + VEH[id].max
   });
   const bldItem = (id, level, cost, desc, icon) => ({
-    id, name: BLD[id].name, desc, icon, level, need: 'cabin', repeat: true, place: BLD[id].size,
-    cost, can: () => G.count[id] < BLD[id].max, full: 'Max ' + BLD[id].max
+    id, name: BLD[id].name, desc: desc + ' Builds in ' + BLD[id].build + ' seconds.', icon, level, need: 'cabin', repeat: true, place: BLD[id].size,
+    cost, can: () => buildingCount(id) < BLD[id].max, full: 'Max ' + BLD[id].max
   });
   const nextTier = () => TIERS[Math.min(G.tier + 1, TIERS.length - 1)];
   const SHOP = (LJ.SHOP = [
     { id: 'base', icon: 'village', repeat: true, done: () => G.tier >= TIERS.length - 1,
       get name() { return 'Upgrade to ' + nextTier().name; },
-      get desc() { return nextTier().desc; },
+      get desc() { return nextTier().desc + ' Builds in ' + nextTier().build + ' seconds.'; },
       get level() { return nextTier().level; },
       cost: () => nextTier().cost },
     { id: 'sharpaxe', name: 'Sharper Axes', desc: 'Chop 35% faster.', icon: 'axe', level: 1, cost: () => ({ m: 40 }) },
@@ -87,15 +90,15 @@
     { id: 'boots', name: 'Sturdy Boots', desc: 'Walk 25% faster.', icon: 'boot', level: 1, cost: () => ({ m: 70 }) },
     { id: 'jack', name: 'Hire a Jack', desc: 'Another pair of hands. Walks in by road at the tent; trains at the Cabin. Wants $' + WAGE + ' every payday.', icon: 'jack', level: 1, repeat: true,
       cost: () => ({ m: 80 + 40 * (jackCount() - 1) }), can: () => jackCount() < popCap(), full: 'No room: build a bunkhouse' },
-    bldItem('bunk', 2, () => ({ m: 150 + 100 * G.count.bunk, w: 20 }), 'A house with room for 3 more jacks.', 'bunk'),
-    bldItem('sawmill', 2, () => ({ m: 150 + 150 * G.count.sawmill, w: 20 }), 'Jacks turn 2 wood into 1 lumber here. Lumber sells for $' + PRICE.lumber + '.', 'blade'),
+    bldItem('bunk', 2, () => ({ m: 150 + 100 * buildingCount('bunk'), w: 20 }), 'A house with room for 3 more jacks.', 'bunk'),
+    bldItem('sawmill', 2, () => ({ m: 150 + 150 * buildingCount('sawmill'), w: 20 }), 'Jacks turn 2 wood into 1 lumber here. Lumber sells for $' + PRICE.lumber + '.', 'blade'),
     { id: 'rifles', name: 'Laser Pistols', desc: 'Jacks fire bursts of laser bolts at anything that attacks them.', icon: 'rifle', level: 2, cost: () => ({ m: 150 }) },
     { id: 'barrow', name: 'Wheelbarrows', desc: 'Jacks carry 24.', icon: 'barrow', level: 2, need: 'sling', cost: () => ({ m: 160, w: 20 }) },
     { id: 'chainsaw', name: 'Chainsaws', desc: 'Chop twice as fast. Loud.', icon: 'chainsaw', level: 3, need: 'sharpaxe', cost: () => ({ m: 300 }) },
     vehItem('truck', 2, 250, 'Hauls 60 goods per trip down the road to market, much faster than walking.', 'truck'),
     vehItem('shuttle', 3, 150, 'Tap a forest clearing to set a route. Jacks load it there; it shuttles up to 40 wood back to the village automatically.', 'truck'),
     bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Fires laser bursts at forest folk and wild animals. Sees far, and jacks nearby heal quickly.', 'tower'),
-    { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Forest folk and wolves must break through them; your own people use the gates. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
+    { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Takes ' + WALL_BUILD_TIME + ' seconds per section. Your people use the gates; enemies break through. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
     vehItem('dozer', 4, 600, 'Clears rocks (for stone) and fills in rivers so you can reach new forest.', 'dozer'),
     { id: 'foreman', name: 'Keen-eyed Foreman', desc: 'Jacks spot trees from 50% further away.', icon: 'hat', level: 5, cost: () => ({ m: 500 }) },
     { id: 'dispatch', name: 'Dispatcher', desc: 'Trucks keep hauling on their own whenever there are goods.', icon: 'clip', level: 5, need: 'truck', cost: () => ({ m: 450 }) },
@@ -156,7 +159,7 @@
       villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), sawMask: new Uint8Array(w.N), smokeT: 0,
       fog: new Uint8Array(w.N), fogDirty: true, fogT: 0, fogLeft: w.N, worldVer: 0,
       animals: [], graves: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
-      cine: null, suit: null, props: [], critters: [], dc: null, folkKilled: 0, wallMode: false, wallDrag: null, arrival: null
+      cine: null, suit: null, props: [], critters: [], dc: null, folkKilled: 0, wallMode: false, wallDrag: null, wallSites: {}, arrival: null
     });
     LJ.combat.reset();
     G.thr = FR.map(f => Math.max(1, Math.round(f * G.total)));
@@ -221,7 +224,7 @@
     });
     G.base = G.buildings.find(b => b.kind === 'base');
     G.village = G.tier >= 1 ? G.base : null;
-    for (const b of G.buildings) if (!b.dead && b.kind in G.count) G.count[b.kind]++;
+    for (const b of G.buildings) if (buildingReady(b) && b.kind in G.count) G.count[b.kind]++;
     rebuildMasks();
     G.units = d.units.map(u => Object.assign(makeUnit(0, 0, u.name, u.kind, u.wage), u, { state: 'think' }));
     for (const b of oldDepots) {
@@ -246,13 +249,14 @@
 
   function addBuilding(kind, tx, ty, bw, bh) {
     const hp = BLD[kind].hp || 160;
-    const b = { kind, tx, ty, w: bw, h: bh, queue: [], hp, max: hp };
+    const duration = BLD[kind].build;
+    const b = { kind, tx, ty, w: bw, h: bh, queue: [], hp, max: hp, construction: duration ? { t: duration, total: duration } : null };
     G.buildings.push(b);
     for (let y = ty; y < ty + bh; y++) for (let x = tx; x < tx + bw; x++) {
       const i = y * W + x;
       w.bld[i] = G.buildings.length; w.obj[i] = 0; w.flower[i] = 0; w.deco[i] = 0;
     }
-    reveal(tx + bw / 2, ty + bh / 2, BLD[kind].sight); // buildings never move, so they lift the fog once
+    if (!b.construction) reveal(tx + bw / 2, ty + bh / 2, BLD[kind].sight);
     G.worldVer++;
     return b;
   }
@@ -649,7 +653,8 @@
     chip((b.tx + b.w / 2) * TS, (b.ty + b.h / 2) * TS, '#8a5a30');
     if (b.hp > 0) return;
     if (BLD[b.kind].raid) { b.hp = b.max * 0.4; LJ.combat.raid(); return; }
-    b.dead = true; G.count[b.kind]--;
+    if (buildingReady(b)) G.count[b.kind]--;
+    b.dead = true;
     for (let y = b.ty; y < b.ty + b.h; y++) for (let x = b.tx; x < b.tx + b.w; x++) w.bld[y * W + x] = 0;
     rebuildMasks(); markAround((b.ty + 1) * W + b.tx + 1, 3); G.worldVer++;
     for (let i = 0; i < 30; i++) dust((b.tx + Math.random() * b.w) * TS, (b.ty + b.h) * TS - Math.random() * 30);
@@ -660,7 +665,7 @@
     G.villMask.fill(0); G.storeMask.fill(0); G.sawMask.fill(0);
     ring(G.base, G.villMask);
     ring(G.base, G.storeMask);
-    for (const b of G.buildings) if (!b.dead && BLD[b.kind].mask) ring(b, G[BLD[b.kind].mask]);
+    for (const b of G.buildings) if (buildingReady(b) && BLD[b.kind].mask) ring(b, G[BLD[b.kind].mask]);
   }
 
   const WALL_HP = 60, WALL_COST = (LJ.WALL_COST = { m: 4, w: 2 });
@@ -674,7 +679,8 @@
     for (const i of tiles) {
       if (!LJ.canWall(i)) continue;
       if (G.money < WALL_COST.m || G.wood < WALL_COST.w) { LJ.ui.toast('Not enough money or wood for more palisade.'); break; }
-      G.money -= WALL_COST.m; G.wood -= WALL_COST.w; w.wall[i] = WALL_HP; n++;
+      G.money -= WALL_COST.m; G.wood -= WALL_COST.w; w.wall[i] = 1;
+      G.wallSites[i] = { t: WALL_BUILD_TIME, total: WALL_BUILD_TIME }; n++;
     }
     if (n) { LJ.sfx('build'); G.worldVer++; }
     return n;
@@ -683,7 +689,7 @@
     if (!w.wall[i]) return;
     w.wall[i] = Math.max(0, w.wall[i] - dmg);
     chip((i % W) * TS + 8, ((i / W) | 0) * TS + 6, '#b07a44'); LJ.sfx('thud');
-    if (!w.wall[i]) { G.worldVer++; for (let k = 0; k < 6; k++) dust((i % W) * TS + 8, ((i / W) | 0) * TS + 14); }
+    if (!w.wall[i]) { delete G.wallSites[i]; G.worldVer++; for (let k = 0; k < 6; k++) dust((i % W) * TS + 8, ((i / W) | 0) * TS + 14); }
   }
 
   // Jacks defend themselves against anything in reach. Returns true while they are busy fighting.
@@ -776,7 +782,7 @@
   // Jacks heal quickly near buildings that heal (the village, guard towers).
   function nearHome(u) {
     const x = u.tile % W, y = (u.tile / W) | 0;
-    return G.buildings.some(b => !b.dead && BLD[b.kind].heals && Math.abs(x - b.tx - b.w / 2) <= 4 && Math.abs(y - b.ty - b.h / 2) <= 4);
+    return G.buildings.some(b => buildingReady(b) && BLD[b.kind].heals && Math.abs(x - b.tx - b.w / 2) <= 4 && Math.abs(y - b.ty - b.h / 2) <= 4);
   }
 
   function dust(x, y) {
@@ -972,6 +978,7 @@
   LJ.shopState = function (it) {
     const c = it.cost(), ct = costText(c);
     if (G.arrival) return { st: 'locked', label: 'Arriving…', costText: ct };
+    if (it.id === 'base' && G.base.construction) return { st: 'locked', label: 'Building · ' + Math.ceil(G.base.construction.t) + 's', costText: ct };
     if ((!it.repeat && owned(it.id)) || (it.done && it.done())) return { st: 'owned', label: '✓', costText: ct };
     if (it.level > G.level) return { st: 'locked', label: 'Level ' + it.level, costText: ct };
     if (it.need && !owned(it.need)) return { st: 'locked', label: 'Needs ' + (it.need === 'cabin' ? 'Cabin' : SHOP.find(s => s.id === it.need).name), costText: ct };
@@ -997,7 +1004,7 @@
     if (G.tier === 1) {
       G.village = b;
       ring(b, G.storeMask);
-      G.orderCd = 25; G.payT = PAY_EVERY; G.stockpile = false;
+      G.orderCd = 25; G.payT = PAY_EVERY;
     }
     levelFootprint(b);
     for (let i = 0; i < 24; i++) dust((b.tx + Math.random() * b.w) * TS, (b.ty + b.h) * TS - Math.random() * 30);
@@ -1010,7 +1017,7 @@
     if (it.wall) { G.wallMode = true; return 'wall'; }
     if (it.place) { G.place = { kind: id, w: it.place[0], h: it.place[1] }; return 'place'; }
     pay(it.cost());
-    if (id === 'base') upgradeBase();
+    if (id === 'base') G.base.construction = { t: nextTier().build, total: nextTier().build, upgrade: true };
     else if (id === 'jack') {
       if (G.village) G.village.queue.push({ t: TIERS[G.tier].train, total: TIERS[G.tier].train });
       else {
@@ -1048,8 +1055,6 @@
       LJ.sfx('no'); return false;
     }
     pay(c);
-    if (BLD[p.kind].mask) ring(b, G[BLD[p.kind].mask]);
-    G.count[p.kind]++;
     G.place = null;
     levelFootprint(b);
     // Anyone standing on the building site steps aside.
@@ -1096,6 +1101,29 @@
   LJ.cargoOf = u => u.carry + (u.load ? u.load.w + u.load.l + (u.load.s || 0) : 0);
 
   // ---------- Simulation step ----------
+  function updConstruction(dt) {
+    for (const b of G.buildings) {
+      const c = b.construction;
+      if (b.dead || !c || (c.t -= dt) > 0) continue;
+      b.construction = null;
+      if (c.upgrade) upgradeBase();
+      else {
+        G.count[b.kind]++;
+        if (BLD[b.kind].mask) ring(b, G[BLD[b.kind].mask]);
+        reveal(b.tx + b.w / 2, b.ty + b.h / 2, BLD[b.kind].sight);
+        G.worldVer++;
+        LJ.ui.toast(BLD[b.kind].name + ' is ready!');
+      }
+      LJ.sfx('build');
+    }
+    for (const i in G.wallSites) {
+      const c = G.wallSites[i];
+      if ((c.t -= dt) > 0) continue;
+      if (w.wall[i]) w.wall[i] = WALL_HP;
+      delete G.wallSites[i]; G.worldVer++;
+    }
+  }
+
   function updEconomy(dt) {
     const b = G.base;
     // Smoke from the campfire, later the chimney (busier with steam sawmills)
@@ -1247,6 +1275,7 @@
       return;
     }
     G.time += dt;
+    if (!G.cine) updConstruction(dt);
     for (const u of G.units) {
       if (u.dead) continue;
       if (u.state === 'sellRun' && !u.path.length && u.wait <= 0) { sell(u, u.carry, 0); u.carry = 0; u.state = 'idle'; }

@@ -149,8 +149,26 @@
         case 2: {
           const b = d.b, spr = LJ.bldSprite(b);
           const o = LJ.bldOrigin(b), bx = o[0] - cx, by = o[1] - cy;
-          ctx.drawImage(spr, bx, by);
-          if (b.queue.length) bar(ctx, bx + 14, by - 5, 28, 1 - b.queue[0].t / b.queue[0].total, '#58c8ff');
+          if (b.construction && !b.construction.upgrade) {
+            const progress = 1 - b.construction.t / b.construction.total;
+            const fx = b.tx * TS - cx, fy = b.ty * TS - cy;
+            ctx.fillStyle = '#463624'; ctx.fillRect(fx, fy, b.w * TS, b.h * TS);
+            ctx.fillStyle = '#986b42'; ctx.fillRect(fx + 2, fy + 2, b.w * TS - 4, b.h * TS - 4);
+            const revealed = Math.floor(spr.height * progress);
+            ctx.save();
+            ctx.beginPath(); ctx.rect(bx, by + spr.height - revealed, spr.width, revealed); ctx.clip();
+            ctx.drawImage(spr, bx, by); ctx.restore();
+          } else ctx.drawImage(spr, bx, by);
+          if (b.construction) {
+            const foot = by + spr.height - 2;
+            ctx.fillStyle = '#463624'; ctx.fillRect(bx + 2, foot - 24, 4, 26); ctx.fillRect(bx + spr.width - 6, foot - 24, 4, 26);
+            ctx.fillStyle = '#c39461'; ctx.fillRect(bx + 3, foot - 24, 2, 26); ctx.fillRect(bx + spr.width - 5, foot - 24, 2, 26);
+            ctx.fillRect(bx + 2, foot - 18, spr.width - 4, 3);
+            bar(ctx, bx + (spr.width >> 1) - 14, by - 5, 28, 1 - b.construction.t / b.construction.total, '#ffd84a');
+            ctx.font = '7px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff3d6';
+            ctx.fillText(Math.ceil(b.construction.t) + 's', bx + (spr.width >> 1), by - 8);
+          }
+          if (b.queue.length) bar(ctx, bx + 14, by - (b.construction ? 15 : 5), 28, 1 - b.queue[0].t / b.queue[0].total, '#58c8ff');
           if (b.hp < b.max) bar(ctx, bx + (spr.width >> 1) - 14, by + 4, 28, b.hp / b.max, b.hp > b.max * 0.4 ? '#5fdc3c' : '#ff4a3a');
           if (b.flash > 0) { ctx.globalCompositeOperation = 'lighter'; glow(ctx, bx + spr.muzzle.x, by + spr.muzzle.y, '#4ae8ff', 3); ctx.globalCompositeOperation = 'source-over'; }
           break;
@@ -158,6 +176,8 @@
         case 14: {
           const spr = w.wall[d.i] < 30 ? S.wallBroken : S.wall;
           ctx.drawImage(spr, d.tx * TS - 1 - cx, d.ty * TS + 18 - spr.height - cy);
+          const site = G.wallSites[d.i];
+          if (site) bar(ctx, d.tx * TS - cx, d.ty * TS - 3 - cy, 14, 1 - site.t / site.total, '#ffd84a');
           break;
         }
         case 3: drawAny(ctx, d.u, cx, cy, G, false); break;

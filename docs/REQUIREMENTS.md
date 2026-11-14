@@ -39,6 +39,7 @@ How to read it:
 | 26 | 14 Nov | Quieter recorded voices | Active |
 | 27 | 14 Nov | Playtest and improve the full gameplay loop | Active |
 | 28 | 14 Nov | Jacks learn through work | Active |
+| 29 | 14 Nov | Construction takes time | Active |
 
 ---
 
@@ -356,3 +357,16 @@ How to read it:
 - *Decision: Greenhorn (0 XP), Woodsman (40), Veteran (160), Expert (480), Master (1,200). Playtests found the first 480-XP Master cap was reached within ten minutes, so the final rank now takes longer. Rank bonuses cap at 50% faster chopping/processing, six extra carrying slots and 10% faster walking. Bonuses stack with equipment; machines do not gain experience.*
 - *Decision: award 4 XP per felled tree, 2 per lumber processed, 1 per four wood delivered to storage or a Logging Truck, and 1 per two goods sold on a Jack's own market run. No XP for idling, empty trips, partial whacks or combat.*
 - *Decision: cap XP at 1,200 and persist it in save format 4. Versions 2 and 3 still load; Jacks without XP start at zero.*
+
+## 29. Construction takes time (14 Nov 2026)
+
+> Building something new should take some time.
+
+- Player-placed buildings, village upgrades and palisades take time instead of completing instantly.
+- Show construction sites, scaffolding and progress; show build times before purchasing.
+- Pay once at the start. New buildings provide no housing, processing, healing, tower fire or extra sight until complete.
+- Existing village services remain active at the old tier while an upgrade is built.
+- Unfinished sites reserve their footprint and count towards purchase limits/prices. Destroyed sites never complete.
+- *Decision: Bunkhouse 12 seconds, Sawmill 18, Guard Tower 20; Cabin upgrade 15, Lodge 25, Town Hall 35; palisade sections 3 seconds each. Construction is automatic at normal game time and pauses with the game.*
+- *Decision: palisades start as fragile 1-HP stakes and reach full strength only when finished. The starting tent remains part of the narrated arrival; equipment purchases, worker training and road deliveries keep their existing behavior.*
+- *Decision: save format 5 preserves construction progress; formats 2–4 remain loadable as completed structures.*

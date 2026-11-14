@@ -54,7 +54,7 @@
   // ---------- Guard towers ----------
   function updTowers(dt) {
     for (const b of G.buildings) {
-      if (b.kind !== 'tower' || b.dead) continue;
+      if (b.kind !== 'tower' || !LJ.buildingReady(b)) continue;
       b.flash = Math.max(0, (b.flash || 0) - dt);
       if ((b.cd = (b.cd || 0) - dt) > 0) continue;
       if (!b.muzzle) { const [ox, oy] = LJ.bldOrigin(b), m = LJ.sprites.tower.muzzle; b.muzzle = { x: ox + m.x, y: oy + m.y, muzzleY: 0, owner: b }; }

@@ -129,7 +129,7 @@
       if (right) { G.place = null; return; }
       G.hover = [wx, wy];
       const kind = G.place.kind;
-      if (LJ.tryPlace(Math.floor(wx / TS) - (G.place.w >> 1), Math.floor(wy / TS) - (G.place.h >> 1))) ui.toast(LJ.BLD[kind].name + ' built!');
+      if (LJ.tryPlace(Math.floor(wx / TS) - (G.place.w >> 1), Math.floor(wy / TS) - (G.place.h >> 1))) ui.toast(LJ.BLD[kind].name + ' construction started — ' + LJ.BLD[kind].build + ' seconds.');
       else if (G.place) ui.toast("Can't build there — it needs a clear, explored spot the road can reach.");
       return;
     }
@@ -323,7 +323,7 @@
         $('shop').classList.remove('open');
         if (!G.hover) G.hover = [G.cam.x + vwW() / 2, G.cam.y + vwH() / 2];
         ui.toast('Pick a clear spot for the ' + b.dataset.name.toLowerCase());
-      } else if (r) ui.toast(b.dataset.id === 'jack' ? 'A new jack is on the way…' : LJ.VEH[b.dataset.id] ? 'A ' + b.dataset.name.toLowerCase() + ' is coming up the road!' : b.dataset.name + ' purchased!');
+      } else if (r) ui.toast(b.dataset.id === 'base' ? 'Village upgrade started — watch the yellow construction bar.' : b.dataset.id === 'jack' ? 'A new jack is on the way…' : LJ.VEH[b.dataset.id] ? 'A ' + b.dataset.name.toLowerCase() + ' is coming up the road!' : b.dataset.name + ' purchased!');
     });
     $('panel').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b || G.arrival) return;

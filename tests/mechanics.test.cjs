@@ -1,12 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { game, step, until } = require('./harness.cjs');
+const { game, step, until, finishConstruction } = require('./harness.cjs');
 
 function sawmillGame() {
   const lj = game(), g = lj.G;
   lj.cmd.stop(lj.jacks());
-  g.money = 10000; g.wood = 1000; g.level = 6;
-  lj.buy('base'); lj.buy('sawmill');
+  g.money = 10000; g.wood = 1000; g.level = 6; g.stockpile = true;
+  g.animalCd = 1e9; g.wave.hostile = true; g.wave.next = 1e9;
+  lj.buy('base'); finishConstruction(lj); lj.buy('sawmill');
   placeMill(lj);
   return lj;
 }
@@ -14,7 +15,7 @@ function sawmillGame() {
 function placeMill(lj) {
   const g = lj.G;
   for (let y = g.base.ty - 6; y < g.base.ty + 7; y++) for (let x = g.base.tx - 6; x < g.base.tx + 7; x++) {
-    if (lj.canPlace(x, y) && lj.tryPlace(x, y)) return;
+    if (lj.canPlace(x, y) && lj.tryPlace(x, y)) { finishConstruction(lj); return; }
   }
   throw Error('No sawmill site in test fixture');
 }
@@ -53,6 +54,7 @@ test('stockpiling at an upgraded village allows saving lumber for the Town Hall'
   g.tier = 2;
   assert.equal(lj.shopState(lj.SHOP.find(it => it.id === 'base')).st, 'ok');
   assert.ok(lj.buy('base'));
+  finishConstruction(lj);
   assert.equal(g.tier, 3);
   assert.equal(g.lumber, 0);
 });

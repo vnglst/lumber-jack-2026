@@ -1,12 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { game, step, until, storage } = require('./harness.cjs');
+const { game, step, until, finishConstruction, storage } = require('./harness.cjs');
 
 function loggingRoute() {
   const lj = game(), g = lj.G, w = g.world;
   lj.cmd.stop(lj.jacks());
   g.money = 1000; g.wood = 20; g.level = 3;
   lj.buy('base');
+  finishConstruction(lj);
   assert.ok(lj.buy('shuttle'));
   const truck = g.units.find(u => u.kind === 'shuttle');
   until(lj, () => !truck.path.length && truck.state === 'idle', 30);

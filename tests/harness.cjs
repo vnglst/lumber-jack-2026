@@ -21,6 +21,7 @@ function game(seed = 42, arrive = true) {
     if (name === 'world') {
       ctx.LJ.sprites = {
         trees: [[{ ay: 64 }]], base: Array.from({ length: 4 }, () => ({ width: 48, height: 48 })),
+        tower: { width: 32, height: 64, muzzle: { x: 16, y: 12 } },
         dcFrame: { width: 48 }, dcStage1: {}, dcStage2: {}, datacenter: {}, mixer: { l: {} }
       };
       ctx.LJ.spr = { rgb: hex => hex.match(/[a-f0-9]{2}/gi).map(v => parseInt(v, 16)) };
@@ -55,4 +56,8 @@ function until(lj, predicate, seconds = 60) {
   if (!predicate()) throw new Error('Simulation condition timed out after ' + seconds + ' seconds');
 }
 
-module.exports = { game, step, until, storage: lj => contexts.get(lj).localStorage };
+function finishConstruction(lj) {
+  until(lj, () => !lj.G.buildings.some(b => !b.dead && b.construction), 60);
+}
+
+module.exports = { game, step, until, finishConstruction, storage: lj => contexts.get(lj).localStorage };

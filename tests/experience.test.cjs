@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { game, step, until, storage } = require('./harness.cjs');
+const { game, step, until, finishConstruction, storage } = require('./harness.cjs');
 
 function nextTree(lj, jack) {
   const w = lj.G.world;
@@ -111,12 +111,13 @@ test('processing real lumber earns XP and improves with rank', () => {
     const lj = game(), g = lj.G, jack = lj.jacks()[0];
     lj.cmd.stop(g.units);
     g.money = 1000; g.wood = 100; g.level = 2; g.stockpile = true;
-    lj.buy('base'); lj.buy('sawmill');
+    lj.buy('base'); finishConstruction(lj); lj.buy('sawmill');
     let built = false;
     for (let y = g.base.ty - 6; y < g.base.ty + 7 && !built; y++) for (let x = g.base.tx - 6; x < g.base.tx + 7 && !built; x++) {
       if (lj.canPlace(x, y)) built = lj.tryPlace(x, y);
     }
     assert.ok(built);
+    finishConstruction(lj);
     jack.xp = xp;
     lj.cmd.saw([jack]); until(lj, () => jack.state === 'saw', 30);
     const start = g.time;
@@ -130,16 +131,16 @@ test('processing real lumber earns XP and improves with rank', () => {
   assert.ok(times[1] < times[0] * 0.75);
 });
 
-test('XP survives version 4 saves; older saves without XP remain compatible', () => {
+test('XP survives current saves; older saves without XP remain compatible', () => {
   const lj = game(), jack = lj.jacks()[0];
   jack.xp = 175;
   lj.saveGame();
   const store = storage(lj), saved = JSON.parse(store.getItem('lumberjack-save'));
-  assert.equal(saved.v, 4);
+  assert.equal(saved.v, 5);
   assert.ok(lj.loadGame());
   assert.equal(lj.jacks()[0].xp, 175);
   assert.equal(lj.rankOf(lj.jacks()[0]).name, 'Veteran');
-  for (const version of [2, 3]) {
+  for (const version of [2, 3, 4]) {
     const old = JSON.parse(JSON.stringify(saved));
     old.v = version; old.units.forEach(u => delete u.xp);
     store.setItem('lumberjack-save', JSON.stringify(old));
