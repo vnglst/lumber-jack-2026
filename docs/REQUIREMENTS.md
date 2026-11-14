@@ -58,6 +58,7 @@ How to read it:
 | 45 | 14 Nov | Felling tractors and forest discoveries | Active |
 | 46 | 14 Nov | Sharing, installation and analytics | Active |
 | 47 | 14 Nov | Map-edge navigation and black padding | Active |
+| 48 | 14 Nov | An interface of its own: painted boards, not Stardew wood | Active |
 
 ---
 
@@ -588,3 +589,14 @@ How to read it:
 - Keep unexplored tree overhang hidden by fog at the map boundary.
 - *Decision: allow half a viewport of overscroll on all four sides at every zoom, including when the entire map fits onscreen. Existing minimap, wheel, touch and keyboard controls share these bounds. Mention the margin in Help.*
 - *Decision: extend the fog mask four tiles beyond the map using the nearest edge tile's exploration state, preserving explored canopy overhang while covering hidden trees. Tree sprites also require their root tile to be explored, preventing a hidden canopy from leaking through an explored neighbor.*
+
+## 48. An interface of its own: painted boards, not Stardew wood (14 Nov 2026)
+
+> It looks very much like stardew valley right now. Up until the UI components. Make those look less like Stardew Valley. The game can be inspired by it, but it should not be a copy.
+
+- The interface components (HUD chips, toolbar, selection panel, shop, dialogs, story boxes, order notice, minimap frame, buttons) must have their own identity rather than the brown-wood-and-gold look of Stardew Valley.
+- *Decision: take the look from the game's own setting. Panels are painted like the Finnish houses in the game: punamulta red vertical boards with a white eaves board along the top and a tarred outline. Buttons are white-painted trim with dark lettering; quiet buttons are a deeper red.*
+- *Decision: square, pixel-sized corners (2px) instead of rounded wood; flat paint instead of gradients; DIN-style sign lettering (DIN Alternate, Bahnschrift, condensed fallbacks) instead of a rounded face. Still no font files or other dependencies.*
+- *Decision: ochre yellow marks money, names and XP; spruce green marks progress and "accept"; a chip turns white with red figures when in debt. The market order is a white notice with a red edge, no longer a tilted parchment note.*
+- *Decision: colours live in CSS custom properties at the top of `css/style.css`, so later interface work shares them. The logo keeps its lettering, repainted white and ochre.*
+- World art, sprites, the opening-screen scene, the recording booth and all behaviour are unchanged. The offline shell cache is bumped to v2 so installed copies pick up the new stylesheet.
