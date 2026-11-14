@@ -57,6 +57,7 @@ How to read it:
 | 44 | 14 Nov | Useful and distinct forest collection trucks | Active |
 | 45 | 14 Nov | Felling tractors and forest discoveries | Active |
 | 46 | 14 Nov | Sharing, installation and analytics | Active |
+| 47 | 14 Nov | Map-edge navigation and black padding | Active |
 
 ---
 
@@ -577,3 +578,13 @@ How to read it:
 - *Decision: the share preview uses the game's own Finnish lake and northern-lights artwork. Website actions stay on the opening screen.*
 - *Decision: cache a complete, versioned game shell. New versions wait for old game tabs to close. Never cache the recording booth, its write API, analytics or recordings; offline voices fall back to text. Existing browser saves remain in localStorage.*
 - *Decision: the production domain is `https://lumber-jack.koenvangilst.nl/`; Plausible must have that site registered in its dashboard. HTTPS hosting is required for installation outside localhost.*
+
+## 47. Map-edge navigation and black padding (14 Nov 2026)
+
+> Fullsize map is not easy to navigate, some pieces are hidden behind the UI. Add more black padding?
+
+- Let players pan beyond every map edge so edge tiles can be brought clear of the HUD, minimap and selection controls.
+- Show a dark, nearly black margin outside the forest.
+- Keep unexplored tree overhang hidden by fog at the map boundary.
+- *Decision: allow half a viewport of overscroll on all four sides at every zoom, including when the entire map fits onscreen. Existing minimap, wheel, touch and keyboard controls share these bounds. Mention the margin in Help.*
+- *Decision: extend the fog mask four tiles beyond the map using the nearest edge tile's exploration state, preserving explored canopy overhang while covering hidden trees. Tree sprites also require their root tile to be explored, preventing a hidden canopy from leaking through an explored neighbor.*

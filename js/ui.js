@@ -47,8 +47,10 @@
   function clampCam() {
     const w = G.world; if (!w) return;
     const mw = w.W * TS, mh = w.H * TS, vw = vwW(), vh = vwH();
-    G.cam.x = mw <= vw ? (mw - vw) / 2 : LJ.clamp(G.cam.x, 0, mw - vw);
-    G.cam.y = mh <= vh ? (mh - vh) / 2 : LJ.clamp(G.cam.y, 0, mh - vh);
+    // Half a viewport of black margin lets every edge tile reach the clear centre,
+    // away from the HUD, minimap and selection panel, even when zoomed out.
+    G.cam.x = LJ.clamp(G.cam.x, -vw / 2, mw - vw / 2);
+    G.cam.y = LJ.clamp(G.cam.y, -vh / 2, mh - vh / 2);
   }
 
   // Moves the camera by a distance in screen pixels.
@@ -387,7 +389,7 @@
     '<li>Upgrade your tent into a village and build houses and sawmills. Logging Trucks shuttle harvested wood from a forest clearing back to your village; market trucks sell it.</li>' +
     '<li>Jacks learn through work. Select one to see his rank and XP: experience improves chopping, processing, carrying and walking.</li>' +
     '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it. Forest villages defend themselves if you approach. Tap a hut to attack it and permanently stop its reinforcements.</li>' +
-    '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection.</li>' +
+    '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection. Pan past the forest edges into the black margin to bring edge tiles clear of the UI.</li>' +
     '<li>The game saves itself as you play.</li></ul><button>Back to work</button>');
   };
 
