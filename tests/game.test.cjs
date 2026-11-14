@@ -2,6 +2,25 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { game, step, until } = require('./harness.cjs');
 
+test('the intro route follows road and bridge tiles without diagonal shortcuts, then parks at camp', () => {
+  for (const seed of [1, 42, 12345, 7, 99, 2026]) {
+    const lj = game(seed, false), g = lj.G, w = g.world, truck = g.arrival;
+    const parking = w.start.y * w.W + w.start.x, route = truck.path.slice().reverse();
+    assert.ok(route.length);
+    assert.equal(route.at(-1), parking);
+    assert.ok(lj.isRoad(w.type[truck.tile]));
+    let prev = truck.tile;
+    for (const tile of route) {
+      assert.ok(tile === parking || lj.isRoad(w.type[tile]), 'intro left the road on map ' + seed);
+      assert.equal(Math.abs(tile % w.W - prev % w.W) + Math.abs(((tile / w.W) | 0) - ((prev / w.W) | 0)), 1);
+      prev = tile;
+    }
+    until(lj, () => !g.base.pending, 90);
+    assert.equal(truck.tile, parking);
+    assert.equal(truck.path.length, 0);
+  }
+});
+
 test('truck arrives before Jack pitches camp, across several maps', () => {
   for (const seed of [1, 42, 12345]) {
     const lj = game(seed, false), g = lj.G;

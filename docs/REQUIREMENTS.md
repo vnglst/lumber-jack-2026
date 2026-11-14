@@ -51,6 +51,7 @@ How to read it:
 | 38 | 14 Nov | Audible market deal notifications | Active |
 | 39 | 14 Nov | Move orders let Jacks retreat from combat | Active |
 | 40 | 14 Nov | Huts are persistent sources of village defenders | Active |
+| 41 | 14 Nov | Intro truck follows the road | Active |
 
 ---
 
@@ -497,3 +498,11 @@ How to read it:
 - *Decision: huts have 200 HP and can be attacked with axes or lasers. Destroying a hut makes its surviving locals withdraw; there are no replacement war parties from arbitrary forest tiles. Hut destruction is not required for the ending.*
 - Level-5 raid timing and raider retreat rules remain unchanged; village defense is independent of those raids and remaining tree counts.
 - *Decision: save format 7 preserves hut layout settings, damage, anger and destruction. Formats 2–6 remain loadable.*
+
+## 41. Intro truck follows the road (14 Nov 2026)
+
+> Truck should follow the road in intro.
+
+- The opening truck follows the generated road and bridges instead of taking shortcuts through clear ground.
+- *Decision: use a road-only, four-direction route, with a final short turn off the road into the existing camp parking spot. No diagonal corner-cutting.*
+- Story pacing, skipping captions, regular hauling routes and existing saves are unchanged.

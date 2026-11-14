@@ -194,7 +194,9 @@
     ring(G.base, G.storeMask);
     G.base.pending = true; // Reserve the campsite; pitch the tent after the truck arrives.
     G.arrival = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, 'Truck 1', 'truck', 0);
-    walkTo(G.arrival, c => c === w.start.y * W + w.start.x, 'return');
+    const parking = w.start.y * W + w.start.x;
+    G.arrival.path = bfs(G.arrival.tile, c => c === parking, i => pass(i) && (LJ.isRoad(w.type[i]) || i === parking), true);
+    G.arrival.state = 'return';
     let distance = 0, px = G.arrival.x, py = G.arrival.y;
     for (const n of G.arrival.path.slice().reverse()) {
       const x = (n % W) * TS + 8, y = ((n / W) | 0) * TS + 10;
