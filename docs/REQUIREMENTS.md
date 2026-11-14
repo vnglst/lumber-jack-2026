@@ -54,6 +54,7 @@ How to read it:
 | 41 | 14 Nov | Intro truck follows the road | Active |
 | 42 | 14 Nov | Start fully hidden and explore during the intro | Active |
 | 43 | 14 Nov | Truck speed is independent of direction | Active |
+| 46 | 14 Nov | Sharing, installation and analytics | Active |
 
 ---
 
@@ -531,3 +532,20 @@ How to read it:
 - *Decision: measure speed as world pixels traveled per second; diagonal X/Y components are normalized rather than each receiving the full horizontal speed.*
 - *Decision: retain §37's terrain differences: roads/bridges 96 pixels/second, dirt/gravel 60, open ground 36. Direction alone must not change these speeds.*
 - The existing movement already normalizes distance. Added regression coverage for both truck types in all eight directions on each surface; no production movement change was needed.
+
+
+## 46. Sharing, installation and analytics (14 Nov 2026)
+
+> Add nice social sharing etc metadata. Anything you’d expect from a game/website like this.
+>
+> Make it PWA ready.
+>
+> Add plausible from koenvangilst.nl, for subdomain: lumber-jack.koenvangilst.nl
+
+- Add descriptive search metadata, a canonical URL, Open Graph and Twitter cards, a social preview, icons, structured game data, a sitemap and crawler instructions. Preserve the ending surprise.
+- Offer native sharing with clipboard/manual-copy fallbacks on the opening screen.
+- Add an installable web app manifest, device icons, standalone display and an offline game shell.
+- Reuse the existing self-hosted Plausible script and event endpoint from koenvangilst.nl, with `lumber-jack.koenvangilst.nl` as its tracking domain.
+- *Decision: the share preview uses the game's own Finnish lake and northern-lights artwork. Website actions stay on the opening screen.*
+- *Decision: cache a complete, versioned game shell. New versions wait for old game tabs to close. Never cache the recording booth, its write API, analytics or recordings; offline voices fall back to text. Existing browser saves remain in localStorage.*
+- *Decision: the production domain is `https://lumber-jack.koenvangilst.nl/`; Plausible must have that site registered in its dashboard. HTTPS hosting is required for installation outside localhost.*
