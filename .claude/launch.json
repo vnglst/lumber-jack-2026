@@ -4,7 +4,7 @@
     {
       "name": "lumberjack",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["serve.py", "5173"],
+      "runtimeArgs": ["tools/serve.py", "5173"],
       "port": 5173
     }
   ]

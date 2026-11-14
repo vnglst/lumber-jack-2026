@@ -128,9 +128,9 @@
     'The animals are getting desperate.', 'Something in the forest is angry.', 'The packs are bigger than ever.',
     'Whatever is left of the forest is fighting back.', 'Every last tree has to go.'][level - 1] || '';
 
-  LJ.newGame = function (seed) {
-    seed = seed || ((Math.random() * 1e9) | 0);
-    w = LJ.genWorld(seed); W = w.W; H = w.H;
+  // Takes a world into use: search buffers, and the whole game state reset to a fresh start on it.
+  function begin(nw) {
+    w = nw; W = w.W; H = w.H;
     vis = new Uint32Array(w.N); par = new Int32Array(w.N); q = new Int32Array(w.N); stamp = 0;
     Object.assign(G, {
       world: w, ground: new LJ.Ground(w), units: [], buildings: [],
@@ -148,20 +148,51 @@
     G.thr = FR.map(f => Math.max(1, Math.round(f * G.total)));
     // Money that must have been earned (in total) before a level counts as complete. The last level only needs the trees gone.
     G.quota = G.thr.map((t, i) => (i && i < MAX_LEVEL - 1 ? Math.round((t * 14) / 100) * 100 : 0));
+  }
+  function spawnButterflies(seed) {
+    const r = LJ.rng(seed + 5);
+    for (let i = 0; i < 400 && G.bflies.length < 60; i++) {
+      const x = (r() * W) | 0, y = (r() * H) | 0;
+      if (w.type[y * W + x] === T.GRASS && w.lush[y * W + x] > 0.5) {
+        G.bflies.push({ x: x * TS + 8, y: y * TS + 8, tx: x * TS + 8, ty: y * TS + 8, t: 0, col: ['#fff', '#ffd84a', '#ff9ad0', '#9ad0ff'][(r() * 4) | 0], ph: r() * 6 });
+      }
+    }
+  }
+
+  LJ.newGame = function (seed) {
+    seed = seed || ((Math.random() * 1e9) | 0);
+    begin(LJ.genWorld(seed));
     G.base = addBuilding('base', w.base.tx, w.base.ty, 3, 3);
     ring(G.base, G.villMask);
     addUnit(w.start.x, w.start.y, 'Jack', 'jack', 0);
     reveal(w.start.x - 1, w.start.y - 2, 9);
     for (let i = 0; i < w.N; i++) if (LJ.isRoad(w.type[i])) reveal(i % W, (i / W) | 0, 2.5); // the road to market is known land
     spawnCritters();
-    const r = LJ.rng(seed + 5);
-    for (let i = 0; i < 400 && G.bflies.length < 60; i++) {
-      const x = (r() * W) | 0, y = (r() * H) | 0;
-      if (w.type[y * W + x] === T.GRASS) {
-        G.bflies.push({ x: x * TS + 8, y: y * TS + 8, tx: x * TS + 8, ty: y * TS + 8, t: 0, col: ['#fff', '#ffd84a', '#ff9ad0', '#9ad0ff'][(r() * 4) | 0], ph: r() * 6 });
-      }
-    }
+    spawnButterflies(seed);
     G.ground.renderAll();
+  };
+
+  // Rebuilds a saved game (see save.js). The map is regenerated from its seed, then everything that changed is laid over it.
+  LJ.restoreGame = function (d) {
+    const nw = LJ.genWorld(d.seed);
+    if (nw.seed !== d.seed) return false;
+    for (const k in d.world) nw[k].set(d.world[k]);
+    for (const [i, v] of d.chopping) nw.hp[i] = v; // trees half chopped when the game was saved
+    for (let i = 0; i < nw.N; i++) if (nw.bld[i]) { nw.deco[i] = 0; nw.flower[i] = 0; } // buildings cleared what grew there
+    begin(nw);
+    Object.assign(G, d.g);
+    G.fog = d.fog; G.fogLeft = G.fog.reduce((n, f) => n + (f ? 0 : 1), 0);
+    Object.assign(G.wave, d.wave, { active: null });
+    G.buildings = d.buildings.map(b => Object.assign({ queue: [] }, b));
+    G.base = G.buildings.find(b => b.kind === 'base');
+    G.village = G.tier >= 1 ? G.base : null;
+    for (const b of G.buildings) if (!b.dead && b.kind in G.count) G.count[b.kind]++;
+    rebuildMasks();
+    G.units = d.units.map(u => Object.assign(makeUnit(0, 0, u.name, u.kind, u.wage), u, { state: 'think' }));
+    G.critters = d.critters.map(c => makeCritter(c.kind, c.x, c.y, c.dir, Math.random() * 4));
+    spawnButterflies(d.seed);
+    G.ground.renderAll();
+    return true;
   };
 
   // The sprite a building is drawn with, and the top-left corner (world pixels) where it goes:
@@ -196,12 +227,15 @@
     }
   }
 
-  function addUnit(tx, ty, name, kind, wage) {
-    const u = {
+  function makeUnit(tx, ty, name, kind, wage) {
+    return {
       id: G.nextId++, kind, x: tx * TS + 8, y: ty * TS + 10, tile: ty * W + tx, path: [], state: 'idle', task: null,
       carry: 0, load: null, dir: 1, wait: 0, walkT: 0, swing: 0, sawT: 0, target: -1, clicks: 0, lastClick: -99,
       lastWhack: -9, name, hired: wage > 0, wage, hp: 100, atkCd: 0, fighting: false, hold: false
     };
+  }
+  function addUnit(tx, ty, name, kind, wage) {
+    const u = makeUnit(tx, ty, name, kind, wage);
     G.units.push(u);
     return u;
   }
@@ -342,13 +376,21 @@
     const dx = (n % W) - ax, dy = ((n / W) | 0) - ay;
     return dx * dx + dy * dy <= R * R;
   };
-  // Cheap check before a full search: is there any visible tree within R tiles of (ax, ay)?
-  function anyTreeNear(ax, ay, R) {
-    const test = seenTreeNear(ax, ay, R);
+  // Visits the explored tiles within R tiles of (ax, ay); stops early (returning true) as soon as fn returns true.
+  function someNear(ax, ay, R, fn) {
     for (let y = Math.max(0, ay - R); y <= Math.min(H - 1, ay + R); y++) for (let x = Math.max(0, ax - R); x <= Math.min(W - 1, ax + R); x++) {
-      if (test(y * W + x)) return true;
+      const i = y * W + x;
+      if (G.fog[i] && (x - ax) * (x - ax) + (y - ay) * (y - ay) <= R * R && fn(i)) return true;
     }
     return false;
+  }
+  // Cheap check before a full search: is there any visible tree within R tiles of (ax, ay)?
+  const anyTreeNear = (ax, ay, R) => someNear(ax, ay, R, isTree);
+  // Explored rock tiles within R tiles of (ax, ay): what an idle bulldozer clears on its own. Water only on orders.
+  function rocksNear(ax, ay, R) {
+    const out = [];
+    someNear(ax, ay, R, i => { if (w.type[i] === T.ROCK) out.push(i); });
+    return out;
   }
 
   function think(u) {
@@ -371,7 +413,10 @@
     if (t.type === 'doze') {
       const job = t.job;
       for (const c of job.tiles) if (!blocked(c)) job.tiles.delete(c);
-      if (!job.tiles.size) { say(u, 'All clear!'); endTask(u); return; }
+      if (!job.tiles.size) { // like the jacks: carry on with any rocks in sight of the work spot
+        for (const c of rocksNear(t.ax, t.ay, sightOf(u))) job.tiles.add(c);
+        if (!job.tiles.size) { endTask(u); u.idleVer = G.worldVer; if (Math.random() < 0.5) say(u, 'All clear!'); return; }
+      }
       const r = nearestAdj(u, n => job.tiles.has(n) && blocked(n), true);
       if (r.path) { w.claim[r.found] = u.id; u.target = r.found; u.path = r.path; u.state = 'toDoze'; }
       else if (r.sawClaimed) { u.wait = 0.6; u.state = 'think'; }
@@ -386,7 +431,7 @@
     if (r.path) { w.claim[r.found] = u.id; u.target = r.found; u.path = r.path; u.state = 'toTree'; }
     else if (u.carry > 0) goDrop(u);
     else if (r.sawClaimed) { u.wait = 0.6; u.state = 'think'; }
-    else { endTask(u); u.noTrees = G.worldVer; if (Math.random() < 0.5) say(u, LJ.pick(Q_NONE)); } // don't search again until the world changes
+    else { endTask(u); u.idleVer = G.worldVer; if (Math.random() < 0.5) say(u, LJ.pick(Q_NONE)); } // nothing to do: don't look again until the world changes
   }
 
   // Where does chopped wood go? Nearest storage if the settlement has any, else the camp pile (stockpiling) or the market road.
@@ -520,7 +565,8 @@
   };
   // Standing spots for storage and sawmills, recomputed after a building is lost.
   function rebuildMasks() {
-    G.storeMask.fill(0); G.sawMask.fill(0);
+    G.villMask.fill(0); G.storeMask.fill(0); G.sawMask.fill(0);
+    ring(G.base, G.villMask);
     if (G.tier >= 1) ring(G.base, G.storeMask);
     for (const b of G.buildings) if (!b.dead && BLD[b.kind].mask) ring(b, G[BLD[b.kind].mask]);
   }
@@ -717,7 +763,7 @@
           w.type[t] = T.GRAVEL; w.obj[t] = 0; markAround(t, 2); G.worldVer++;
           if (rock) { G.stone += 2; LJ.float(u.x, u.y - 18, '+2 stone', ''); }
           LJ.sfx('rock');
-          if (u.task && u.task.job) u.task.job.tiles.delete(t);
+          if (u.task && u.task.job) { u.task.job.tiles.delete(t); u.task.ax = t % W; u.task.ay = (t / W) | 0; } // the work spot follows the clearing
           release(u); think(u);
         }
         break;
@@ -753,7 +799,7 @@
       const tiles = path.filter(blocked);
       if (!tiles.length) { LJ.cmd.move(dz, idx); return true; }
       const job = { tiles: new Set(tiles) };
-      for (const u of dz) setTask(u, { type: 'doze', job });
+      for (const u of dz) setTask(u, { type: 'doze', job, ax: idx % W, ay: (idx / W) | 0 });
       say(dz[0], LJ.pick(Q_VEH.dozer));
       return true;
     },
@@ -1000,11 +1046,15 @@
     const stock = G.wood + G.lumber + G.stone;
     for (const u of G.units) {
       if (u.task || u.hold || u.path.length || u.wait > 0 || u.fighting) continue;
-      if (u.noTrees === G.worldVer && canChop(u)) continue;
+      if (u.idleVer === G.worldVer) continue; // found nothing to do last time, and nothing has changed since
       if (G.up.dispatch && u.kind === 'truck' && stock >= 15) setTask(u, { type: 'haul', once: false });
       else if (canChop(u)) {
         const tx = u.tile % W, ty = (u.tile / W) | 0;
         if (anyTreeNear(tx, ty, sightOf(u))) { workAt(u, tx, ty); think(u); }
+      } else if (u.kind === 'dozer') {
+        const tx = u.tile % W, ty = (u.tile / W) | 0, rocks = rocksNear(tx, ty, sightOf(u));
+        if (rocks.length) { setTask(u, { type: 'doze', job: { tiles: new Set(rocks) }, ax: tx, ay: ty }); think(u); }
+        else u.idleVer = G.worldVer;
       }
     }
   }
@@ -1014,7 +1064,7 @@
     const r = LJ.rng(w.seed + 9);
     // The forest folk, going about their lives around their huts (until they have had enough).
     for (const h of w.huts) for (let k = 0; k < 2; k++) {
-      G.critters.push({ kind: 'native', x: (h % W) * TS + 8 + (r() - 0.5) * 30, y: ((h / W) | 0) * TS + 14 + r() * 10, tx: 0, ty: 0, t: r() * 4, dir: r() < 0.5 ? 1 : -1, walkT: 0, moving: false, flee: false, alpha: 1 });
+      G.critters.push(makeCritter('native', (h % W) * TS + 8 + (r() - 0.5) * 30, ((h / W) | 0) * TS + 14 + r() * 10, r() < 0.5 ? 1 : -1, r() * 4));
     }
     for (let tries = 0; tries < 3000 && G.critters.length < 26; tries++) {
       const x = (r() * W) | 0, y = (r() * H) | 0, i = y * W + x;
@@ -1022,8 +1072,11 @@
       let trees = 0;
       for (let k = 0; k < 8; k++) { const n = (y + DY[k]) * W + x + DX[k]; if (n >= 0 && n < w.N && isTree(n)) trees++; }
       if (trees < 2) continue;
-      G.critters.push({ kind: G.critters.length % 3 === 0 ? 'deer' : 'squirrel', x: x * TS + 8, y: y * TS + 10, tx: 0, ty: 0, t: r() * 4, dir: r() < 0.5 ? 1 : -1, walkT: 0, moving: false, flee: false, alpha: 1 });
+      G.critters.push(makeCritter(G.critters.length % 3 === 0 ? 'deer' : 'squirrel', x * TS + 8, y * TS + 10, r() < 0.5 ? 1 : -1, r() * 4));
     }
+  }
+  function makeCritter(kind, x, y, dir, t) {
+    return { kind, x, y, tx: 0, ty: 0, t, dir, walkT: 0, moving: false, flee: false, alpha: 1 };
   }
   const tileOfPx = (x, y) => ((y / TS) | 0) * W + ((x / TS) | 0);
   LJ.tileOfPx = tileOfPx;

@@ -79,6 +79,7 @@
       }
     }
     LJ.ui.cineStart();
+    LJ.clearSave(); // the game is over; a reload starts a fresh forest
     LJ.ui.toast('The last tree is down! Someone is coming up the road…');
   };
 
