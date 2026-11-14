@@ -9,15 +9,15 @@
   LJ.TREE_ROWS = Math.ceil(Math.max(...LJ.sprites.trees.flat().map(c => c.ay)) / TS);
   const { hash, vnoise, fbm } = LJ;
 
-  LJ.genWorld = function (seed) {
+  LJ.genWorld = function (seed, hutLimit = 7) {
     for (let a = 0; a < 40; a++) {
-      const w = build(seed + a * 101, false);
+      const w = build(seed + a * 101, false, hutLimit);
       if (w) return w;
     }
-    return build(seed, true);
+    return build(seed, true, hutLimit);
   };
 
-  function build(seed, force) {
+  function build(seed, force, hutLimit) {
     const W = 104, H = 72, N = W * H;
     const type = new Uint8Array(N), obj = new Uint8Array(N), variant = new Uint8Array(N);
     const lush = new Float32Array(N).fill(1), wear = new Uint8Array(N), bld = new Int16Array(N);
@@ -117,7 +117,7 @@
 
     // The forest folk's huts: small clearings deep in the forest, well away from the start and from each other.
     const huts = [], hr = LJ.rng(seed + 333);
-    for (let tries = 0; tries < 4000 && huts.length < 7; tries++) {
+    for (let tries = 0; tries < 4000 && huts.length < hutLimit; tries++) {
       const x = 3 + ((hr() * (W - 6)) | 0), y = 3 + ((hr() * (H - 6)) | 0), i = y * W + x;
       if (Math.hypot(x - sx, y - cy) < 22 || (x < sx && Math.abs(y - roadAt(x)) < 5) || !(obj[i] >= 1 && obj[i] <= 3) || huts.some(h => Math.hypot((h % W) - x, ((h / W) | 0) - y) < 14)) continue;
       let dense = 0;
@@ -148,7 +148,7 @@
     const frac = reach / total;
     if (!force && (frac < 0.3 || frac > 0.75)) return null;
 
-    return { W, H, N, seed, type, obj, variant, lush, wear, bld, flower, hp, claim, deco, decoV, tbx, tby, huts, wall: new Uint8Array(N), roadY, totalTrees: total,
+    return { W, H, N, seed, type, obj, variant, lush, wear, bld, flower, hp, claim, deco, decoV, tbx, tby, huts, hutLimit, wall: new Uint8Array(N), roadY, totalTrees: total,
       start: { x: sx + 2, y: cy + 1 }, base: { tx: sx - 1, ty: cy - 3 } };
   }
 

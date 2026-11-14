@@ -143,6 +143,10 @@
           const name = LJ.DECO[d.dc].name, list = name === 'pebbles' ? S.pebbles : S.decor[name], spr = list[w.decoV[d.i] % list.length];
           const ox = ((hash(d.i, 6, s) * 7) | 0) - 3;
           ctx.drawImage(spr, d.tx * TS + 8 + ox - (spr.width >> 1) - cx, d.y + 2 - spr.height - cy);
+          if (d.dc === 8) {
+            const h = LJ.combat.hutAt(d.i);
+            if (h && h.hp < h.max) bar(ctx, d.tx * TS - 5 - cx, d.y - spr.height - 3 - cy, 24, h.hp / h.max, '#ff4a3a');
+          }
           break;
         }
         case 13: {

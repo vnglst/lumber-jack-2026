@@ -159,7 +159,7 @@
     w = nw; W = w.W; H = w.H;
     vis = new Uint32Array(w.N); par = new Int32Array(w.N); q = new Int32Array(w.N); stamp = 0;
     Object.assign(G, {
-      world: w, ground: new LJ.Ground(w), units: [], buildings: [],
+      world: w, ground: new LJ.Ground(w), units: [], buildings: [], hutLimit: w.hutLimit,
       money: 0, wood: 0, lumber: 0, stone: 0, cleared: 0, total: w.totalTrees, level: 1, levelDone: false, up: {},
       time: 0, paused: true, sel: new Set(), floats: [], parts: [], falls: [], bubbles: [], bflies: [],
       nextId: 1, drag: null, exitIdx: w.roadY * W, sold: 0, cam: { x: 0, y: 0 },
@@ -187,7 +187,7 @@
 
   LJ.newGame = function (seed) {
     seed = seed || ((Math.random() * 1e9) | 0);
-    begin(LJ.genWorld(seed));
+    begin(LJ.genWorld(seed, 12));
     G.money = 80; // Enough to hire a second jack before the first trip to market.
     G.base = addBuilding('base', w.base.tx, w.base.ty, 3, 3);
     ring(G.base, G.villMask);
@@ -213,7 +213,7 @@
 
   // Rebuilds a saved game (see save.js). The map is regenerated from its seed, then everything that changed is laid over it.
   LJ.restoreGame = function (d) {
-    const nw = LJ.genWorld(d.seed);
+    const nw = LJ.genWorld(d.seed, d.g.hutLimit || 7);
     if (nw.seed !== d.seed) return false;
     for (const k in d.world) nw[k].set(d.world[k]);
     for (const [i, v] of d.chopping) nw.hp[i] = v; // trees half chopped when the game was saved
@@ -223,6 +223,7 @@
     }
     begin(nw);
     Object.assign(G, d.g);
+    for (const h of G.huts) if (!h.alive) w.deco[h.tile] = 0;
     G.fog = d.fog; G.fogLeft = G.fog.reduce((n, f) => n + (f ? 0 : 1), 0);
     if (G.level >= LJ.combat.HOSTILE_LEVEL) Object.assign(G.wave, d.wave, { active: null });
     const oldDepots = d.buildings.filter(b => b.kind === 'depot' && !b.dead);
@@ -242,7 +243,12 @@
       const u = addUnit(b.tx, b.ty, 'Logging Truck ' + (countKind('shuttle') + 1), 'shuttle', VEH.shuttle.wage);
       u.task = { type: 'shuttle', ax: tile % W, ay: (tile / W) | 0 }; u.state = 'think';
     }
-    G.critters = d.critters.map(c => makeCritter(c.kind, c.x, c.y, c.dir, Math.random() * 4));
+    G.critters = d.critters.map(c => Object.assign(makeCritter(c.kind, c.x, c.y, c.dir, Math.random() * 4), { home: c.home }));
+    for (const c of G.critters) if (c.kind === 'native') {
+      if (c.home === undefined) { const h = LJ.nearest(G.huts, c.x, c.y, Infinity); if (h) c.home = h.tile; }
+      const h = LJ.combat.hutAt(c.home);
+      if (!h || h.angry) c.gone = true;
+    }
     if (G.level < LJ.combat.HOSTILE_LEVEL && !G.critters.some(c => c.kind === 'native')) spawnPeacefulFolk(LJ.rng(w.seed + 9));
     spawnButterflies(d.seed);
     G.ground.renderAll();
@@ -620,6 +626,7 @@
   function blood(x, y) { for (let i = 0; i < 5; i++) chip(x, y - 6, '#d5392f'); }
 
   function hurtAnimal(a, dmg) {
+    if (a.kind === 'hut') { LJ.combat.hurtHut(a, dmg); return; }
     a.hp -= dmg; blood(a.x, a.y);
     if (a.hp <= 0 && a.alive) {
       a.alive = false;
@@ -685,7 +692,7 @@
 
   const WALL_HP = 60, WALL_COST = (LJ.WALL_COST = { m: 4, w: 2 });
   LJ.canWall = i => {
-    if (i < 0 || i >= w.N || w.wall[i] || w.bld[i] || isTree(i) || !G.fog[i]) return false;
+    if (i < 0 || i >= w.N || w.wall[i] || w.bld[i] || isTree(i) || !G.fog[i] || LJ.combat.hutAt(i)) return false;
     const t = w.type[i], x = i % W, y = (i / W) | 0;
     return (t === T.GRASS || t === T.DIRT || t === T.MUD || t === T.GRAVEL || t === T.ROAD) && !nearMarket(x, y);
   };
@@ -712,7 +719,9 @@
     u.atkCd -= dt;
     if (u.task && u.task.type === 'move') { u.fighting = false; return false; } // an explicit move order means: run!
     const range = G.up.scope ? 130 : G.up.rifles ? 100 : 26;
-    const best = LJ.nearest(G.animals, u.x, u.y, range, a => a.alive);
+    let best = LJ.nearest(G.animals, u.x, u.y, range, a => a.alive);
+    const target = u.task && u.task.type === 'hunt' && u.task.a;
+    if (!best && target && target.kind === 'hut' && target.alive && Math.hypot(target.x - u.x, target.y - u.y) <= range) best = target;
     u.fighting = !!best;
     if (!best) return false;
     face(u, best.x);
@@ -957,8 +966,9 @@
     },
     hunt(units, a) {
       units = units.filter(u => u.kind === 'jack');
+      if (units.length && a.kind === 'hut') LJ.combat.angerHut(a);
       for (const u of units) setTask(u, { type: 'hunt', a });
-      if (units.length) say(units[0], LJ.pick(LN.hunt));
+      if (units.length) say(units[0], LJ.pick(a.kind === 'hut' ? LN.ack : LN.hunt));
     },
     saw(units) {
       if (!G.count.sawmill) return;
@@ -1062,7 +1072,7 @@
     for (let y = ty; y < ty + p.h; y++) for (let x = tx; x < tx + p.w; x++) {
       if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) return false;
       const i = y * W + x;
-      if (!pass(i) || !G.fog[i] || LJ.isRoad(w.type[i]) || nearMarket(x, y)) return false; // keep the road and the market clear
+      if (!pass(i) || !G.fog[i] || LJ.isRoad(w.type[i]) || nearMarket(x, y) || LJ.combat.hutAt(i)) return false; // keep roads, the market and living huts clear
     }
     return true;
   };
@@ -1117,7 +1127,7 @@
       case 'toSaw': return 'Walking to the sawmill';
       case 'saw': return G.wood < 2 ? 'Sawing (out of wood!)' : 'Sawing lumber';
       case 'move': return 'Walking';
-      case 'hunt': return 'Hunting';
+      case 'hunt': return u.task && u.task.a.kind === 'hut' ? 'Attacking hut' : 'Hunting';
       default: return u.fighting ? 'Fighting!' : u.hold ? 'Waiting for orders' : 'Idle — no trees in sight';
     }
   };
@@ -1226,7 +1236,8 @@
   function spawnCritters() {
     const r = LJ.rng(w.seed + 9);
     spawnPeacefulFolk(r);
-    for (let tries = 0; tries < 3000 && G.critters.length < 26; tries++) {
+    const critterLimit = G.critters.length + 12;
+    for (let tries = 0; tries < 3000 && G.critters.length < critterLimit; tries++) {
       const x = (r() * W) | 0, y = (r() * H) | 0, i = y * W + x;
       if (w.type[i] !== T.GRASS || isTree(i) || Math.hypot(x - w.start.x, y - w.start.y) < 12) continue;
       let trees = 0;
@@ -1243,10 +1254,10 @@
       swans++;
     }
   }
-  // Visible inhabitants, not combat targets: they live near huts until war begins.
+  // Peaceful inhabitants stay by their own hut until it is threatened or war begins.
   function spawnPeacefulFolk(r) {
-    for (const h of w.huts) for (let k = 0; k < 2; k++) {
-      G.critters.push(makeCritter('native', (h % W) * TS + 8 + (r() - 0.5) * 30, ((h / W) | 0) * TS + 14 + r() * 10, r() < 0.5 ? 1 : -1, r() * 4));
+    for (const h of G.huts) if (h.alive && !h.angry) for (let k = 0; k < 2; k++) {
+      G.critters.push(Object.assign(makeCritter('native', h.x + (r() - 0.5) * 30, h.y + 4 + r() * 10, r() < 0.5 ? 1 : -1, r() * 4), { home: h.tile }));
     }
   }
   function makeCritter(kind, x, y, dir, t) {
@@ -1262,6 +1273,17 @@
   function updCritters(dt) {
     for (const c of G.critters) {
       if (c.gone) { c.alpha -= dt * 0.8; continue; }
+      if (c.kind === 'native') {
+        const h = LJ.combat.hutAt(c.home);
+        if (!h || h.angry) { c.gone = true; continue; }
+        if (!c.moving && (c.t -= dt) <= 0) critterGo(c, h.x + (Math.random() - 0.5) * 32, h.y + (Math.random() - 0.5) * 32);
+        if (c.moving) {
+          const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy), dist = Math.min(d, 16 * dt);
+          if (d < 1) critterStop(c, 2 + Math.random() * 4);
+          else { c.x += dx / d * dist; c.y += dy / d * dist; c.dir = dx > 0 ? 1 : -1; c.walkT += dt; }
+        }
+        continue;
+      }
       const tile = tileOfPx(c.x, c.y);
       if (c.kind === 'swan') { // drifts about its water and leaves when the water is filled in
         if (w.type[tile] !== T.WATER) { c.gone = true; continue; }

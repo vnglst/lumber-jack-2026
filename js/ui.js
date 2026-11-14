@@ -156,7 +156,8 @@
     let sel = [...G.sel];
     const doze = LJ.canDoze(idx) && G.fog[idx] && sel.some(s => s.kind === 'dozer');
     if (tr >= 0 && !doze && LJ.whack(tr)) return;
-    const beast = pickAnimal(wx, wy, slack);
+    const hut = G.huts.find(h => h.alive && G.fog[h.tile] && Math.abs(wx - h.x) <= 17 + slack && wy >= h.y - 24 - slack && wy <= h.y + 4 + slack);
+    const beast = hut || pickAnimal(wx, wy, slack);
     if (beast && LJ.seenPx(beast.x, beast.y)) {
       if (!sel.some(s => s.kind === 'jack')) sel = LJ.jacks();
       G.sel = new Set(sel);
@@ -377,7 +378,7 @@
     '<li>You arrive by <b>truck</b> and pitch your tent. Jacks carry wood back to camp; your truck sells the surplus at the market down the road west. Camp keeps 20 wood for building.</li>' +
     '<li>Upgrade your tent into a village and build houses and sawmills. Logging Trucks shuttle harvested wood from a forest clearing back to your village; market trucks sell it.</li>' +
     '<li>Jacks learn through work. Select one to see his rank and XP: experience improves chopping, processing, carrying and walking.</li>' +
-    '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
+    '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it. Forest villages defend themselves if you approach. Tap a hut to attack it and permanently stop its reinforcements.</li>' +
     '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection.</li>' +
     '<li>The game saves itself as you play.</li></ul><button>Back to work</button>');
   };

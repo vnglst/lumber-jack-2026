@@ -11,6 +11,30 @@
   C.reset = function () {
     C.clearShots();
     G.wave = { hostile: false, next: 0, n: 0, active: null };
+    G.huts = G.world.huts.map(tile => ({
+      kind: 'hut', tile, x: (tile % G.world.W) * TS + 8, y: ((tile / G.world.W) | 0) * TS + 10,
+      hp: 200, max: 200, alive: G.world.deco[tile] === 8, angry: false, spawnCd: 0
+    }));
+  };
+  C.hutAt = tile => G.huts.find(h => h.tile === tile && h.alive) || null;
+  C.angerHut = function (h) {
+    if (!h.alive || h.angry) return;
+    h.angry = true;
+    for (const c of G.critters) if (c.kind === 'native' && c.home === h.tile) c.gone = true;
+    LJ.voice.cue('folk_warcry');
+    LJ.ui.toast('You are too close to a forest village. Its defenders are taking up their bows!');
+  };
+  C.hurtHut = function (h, dmg) {
+    if (!h.alive) return;
+    C.angerHut(h);
+    h.hp = Math.max(0, h.hp - dmg);
+    sparks(h.x, h.y - 6, '#b99464', 5);
+    if (h.hp > 0) return;
+    h.alive = false;
+    G.world.deco[h.tile] = 0; G.worldVer++;
+    for (const a of G.animals) if (a.kind === 'native' && a.home === h.tile) { a.retreat = true; a.repath = 0; }
+    LJ.sfx('rock');
+    LJ.ui.toast('A forest hut is destroyed. No more locals will come from it.');
   };
 
   const sparks = (x, y, col, n) => {
@@ -98,12 +122,13 @@
     return Math.hypot(a.x - LJ.clamp(a.x, x0, x1), a.y - LJ.clamp(a.y, y0, y1));
   }
   // Any nearby unit, including machines; otherwise the nearest settlement building.
-  function pickTarget(a) {
-    const u = LJ.nearest(G.units, a.x, a.y, 150, u => !u.dead);
+  function pickTarget(a, hut) {
+    const nearby = tg => !hut || distTo(hut, tg) <= 8 * TS;
+    const u = LJ.nearest(G.units, a.x, a.y, 150, u => !u.dead && nearby({ u }));
     if (u) return { u };
     let best = null, bd = 1e9;
     for (const b of G.buildings) {
-      if (b.dead) continue;
+      if (b.dead || !nearby({ b })) continue;
       const d = distTo(a, { b });
       if (d < bd) { bd = d; best = { b }; }
     }
@@ -134,6 +159,8 @@
 
   function updFolk(a, dt) {
     a.shootCd -= dt; a.retarget -= dt; a.repath -= dt; a.aim = Math.max(0, a.aim - dt); a.hitCd -= dt;
+    const hut = a.defender && C.hutAt(a.home);
+    if (a.defender && !hut) a.retreat = true;
     if (a.retreat) {
       if (a.tile === a.home && !a.path.length) { a.alive = false; return; } // gone back into the forest
       if (a.repath <= 0) { a.repath = 1.5; a.path = LJ.enemyPath(a.tile, c => c === a.home) || []; }
@@ -141,11 +168,16 @@
       return;
     }
     if (!a.tg || a.retarget <= 0 || (a.tg.u && a.tg.u.dead) || (a.tg.b && a.tg.b.dead)) {
-      const tg = pickTarget(a), same = a.tg && tg && a.tg.u === tg.u && a.tg.b === tg.b;
+      const tg = pickTarget(a, hut), same = a.tg && tg && a.tg.u === tg.u && a.tg.b === tg.b;
       if (!same) { a.tg = tg; a.repath = 0; } // only re-plan the route when the target actually changed
       a.retarget = 1;
     }
-    if (!a.tg) { a.retreat = true; return; }
+    if (!a.tg) {
+      if (!hut) { a.retreat = true; return; }
+      if (a.repath <= 0) { a.repath = 1.2; a.path = LJ.enemyPath(a.tile, c => c === a.home) || []; }
+      march(a, dt, a.speed);
+      return;
+    }
     if (distTo(a, a.tg) <= FOLK_RANGE) {
       const [px] = aimPoint(a.tg);
       a.dir = px > a.x ? 1 : -1;
@@ -159,6 +191,29 @@
 
   // ---------- Waves ----------
   const folkStats = lv => ({ hp: 22 + lv * 4, dmg: 5 + lv * 0.8, speed: 38 + lv, cd: Math.max(1.2, 1.9 - lv * 0.05) });
+  function addFolk(tile, home, extra) {
+    const st = folkStats(G.level), W = G.world.W;
+    G.animals.push(Object.assign({
+      kind: 'native', x: (tile % W) * TS + 4 + Math.random() * 8, y: ((tile / W) | 0) * TS + 8 + Math.random() * 4, tile, home,
+      path: [], hp: st.hp, max: st.hp, dmg: st.dmg, speed: st.speed * (0.9 + Math.random() * 0.2), cd: st.cd,
+      shootCd: Math.random() * 2, retarget: Math.random(), repath: Math.random(), aim: 0, hitCd: 0, dir: 1, walkT: Math.random(), alive: true
+    }, extra));
+  }
+  function updHuts(dt) {
+    for (const h of G.huts) {
+      if (!h.alive) continue;
+      if (!h.angry && G.units.some(u => !u.dead && Math.hypot(u.x - h.x, u.y - h.y) <= 6 * TS)) C.angerHut(h);
+      if (!h.angry) continue;
+      h.spawnCd = Math.max(0, h.spawnCd - dt);
+      if (h.spawnCd > 0) continue;
+      const guards = G.animals.filter(a => a.alive && a.defender && a.home === h.tile).length;
+      for (let k = guards; k < 2; k++) {
+        const tile = h.tile + (k ? 1 : -1);
+        addFolk(LJ.wildPass(tile) && !G.world.wall[tile] ? tile : h.tile, h.tile, { defender: true });
+      }
+      h.spawnCd = 20;
+    }
+  }
   const gap = () => Math.max(60, Math.round((170 - G.level * 9) * (0.8 + Math.random() * 0.4)));
   const treesLeft = () => G.total - G.cleared;
 
@@ -187,9 +242,8 @@
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const n = (y + dy) * Wd + x + dx; if (n >= 0 && n < w.N && LJ.isTree(n)) trees++; }
       return trees >= 4 && reach[i] === 1;
     };
-    const huts = w.huts.slice().sort(() => Math.random() - 0.5);
-    for (const h of huts) if (ok(h)) return h;
-    for (let k = 0; k < 300; k++) { const i = (Math.random() * w.N) | 0; if (LJ.isTree(i) && ok(i)) return i; }
+    const huts = G.huts.filter(h => h.alive).slice().sort(() => Math.random() - 0.5);
+    for (const h of huts) if (ok(h.tile)) return h.tile;
     return -1;
   }
 
@@ -199,18 +253,14 @@
     wv.n++;
     const late = treesLeft() < G.total * 0.02;
     const size = Math.max(3, Math.min(late ? 6 : 28, Math.round((2 + G.level * 1.2 + wv.n * 0.6) * (0.75 + Math.random() * 0.5))));
-    const st = folkStats(G.level), x0 = at % Wd, y0 = (at / Wd) | 0;
+    const x0 = at % Wd, y0 = (at / Wd) | 0;
     for (let k = 0; k < size; k++) {
       let i = at;
       for (let t = 0; t < 12; t++) {
         const x = x0 + ((Math.random() * 5) | 0) - 2, y = y0 + ((Math.random() * 5) | 0) - 2, n = y * Wd + x;
         if (x > 0 && y > 0 && x < Wd && y < w.H && LJ.wildPass(n)) { i = n; break; }
       }
-      G.animals.push({
-        kind: 'native', wave: wv.n, x: (i % Wd) * TS + 4 + Math.random() * 8, y: ((i / Wd) | 0) * TS + 8 + Math.random() * 4, tile: i, home: at,
-        path: [], hp: st.hp, max: st.hp, dmg: st.dmg, speed: st.speed * (0.9 + Math.random() * 0.2), cd: st.cd,
-        shootCd: Math.random() * 2, retarget: Math.random(), repath: Math.random(), aim: 0, hitCd: 0, dir: 1, walkT: Math.random(), alive: true
-      });
+      addFolk(i, at, { wave: wv.n });
     }
     wv.active = { size, start: G.time, retreating: false };
     LJ.sfx('drum'); LJ.voice.cue('folk_warcry');
@@ -242,7 +292,7 @@
     if (treesLeft() >= 4 && G.time >= wv.next) spawnWave();
   }
   // Seconds until the next war party, or null.
-  C.nextWaveIn = () => (G.wave.hostile && !G.wave.active && treesLeft() >= 4 ? Math.max(0, G.wave.next - G.time) : null);
+  C.nextWaveIn = () => (G.wave.hostile && !G.wave.active && treesLeft() >= 4 && G.huts.some(h => h.alive) ? Math.max(0, G.wave.next - G.time) : null);
 
   // When they break into the village they carry off part of the stock, then leave.
   C.raid = function () {
@@ -250,11 +300,12 @@
     const wd = take('wood'), lm = take('lumber');
     LJ.ui.toast('The forest folk raided the village and carried off ' + wd + ' wood' + (lm ? ' and ' + lm + ' lumber' : '') + '!');
     LJ.sfx('no'); LJ.voice.cue('folk_raid');
-    for (const a of G.animals) if (a.kind === 'native') { a.retreat = true; a.repath = 0; }
+    for (const a of G.animals) if (a.kind === 'native' && !a.defender) { a.retreat = true; a.repath = 0; }
     if (G.wave.active) G.wave.active.retreating = true;
   };
 
   C.update = function (dt) {
+    updHuts(dt);
     for (const u of G.units) if (u.flash > 0) u.flash -= dt;
     for (const a of G.animals) if (a.alive && a.kind === 'native') updFolk(a, dt);
     updTowers(dt);

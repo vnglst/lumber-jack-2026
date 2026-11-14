@@ -50,6 +50,7 @@ How to read it:
 | 37 | 14 Nov | Slower working trucks | Active |
 | 38 | 14 Nov | Audible market deal notifications | Active |
 | 39 | 14 Nov | Move orders let Jacks retreat from combat | Active |
+| 40 | 14 Nov | Huts are persistent sources of village defenders | Active |
 
 ---
 
@@ -305,6 +306,8 @@ How to read it:
 
 ## 23. Peaceful locals before later attacks (14 Nov 2026)
 
+**Status:** early village defense is superseded by §40; level-5 raiding parties remain active.
+
 > Local attacks should only start happening later in the game. First it's just wolves. But you do see them in the woods.
 
 - Early threats are wolves, not local war parties.
@@ -346,6 +349,8 @@ How to read it:
 - *Decision: play recorded lines and wordless voice cues at 75% gain. Recording-booth previews stay unchanged.*
 
 ## 27. Playtest and improve the full gameplay loop (14 Nov 2026)
+
+**Status:** §40 adds persistent hut defenders, independent of raiding-party retreat and last-tree limits.
 
 > Test & review game mechanics. Make sure the game is engaging, fun and unpredictable up until the end.
 >
@@ -477,3 +482,18 @@ How to read it:
 - A valid move order immediately cancels a Jack's attack and takes priority over automatic retaliation, including after further hits.
 - Enemies can still chase and damage retreating Jacks; normal self-defense resumes at the destination or after a new attack order.
 - *Decision: cancel the retreating Jack's unfired laser-burst shots, but keep bolts already in flight and other units' bursts. Unreachable move orders leave the current task unchanged.*
+
+## 40. Huts are persistent sources of village defenders (14 Nov 2026)
+
+> Locals will keep defending their village until their village is destroyed.
+
+> yeah if you come near their village they get mad, the locals huts are where they originate. Destroying the hut removes that source of locals from the game - but there should be more.
+
+- Locals defend their own village when player units approach, even before level 5; distant villages remain peaceful.
+- Living huts are the source of defenders and later raiding parties. Destroying one permanently removes that source, not the other villages.
+- Jacks can attack a visible hut by clicking/tapping it. Show damage and remove the hut when destroyed.
+- *Decision: new maps aim for 12 huts instead of 7, retaining separation from the camp and market road. Existing saves retain their original layout and tree totals.*
+- *Decision: approaching within six tiles or ordering an attack angers that hut. It maintains up to two defenders, replacing losses every 20 seconds. Defenders engage threats within eight tiles of home and return home when intruders leave; wave losses, timers and raids do not dismiss them.*
+- *Decision: huts have 200 HP and can be attacked with axes or lasers. Destroying a hut makes its surviving locals withdraw; there are no replacement war parties from arbitrary forest tiles. Hut destruction is not required for the ending.*
+- Level-5 raid timing and raider retreat rules remain unchanged; village defense is independent of those raids and remaining tree counts.
+- *Decision: save format 7 preserves hut layout settings, damage, anger and destruction. Formats 2–6 remain loadable.*
