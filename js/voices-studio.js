@@ -173,12 +173,24 @@
     return { data, peaks };
   }
 
+  // 16-bit mono WAV.
+  function toWav(d, rate) {
+    const n = d.length, ab = new ArrayBuffer(44 + n * 2), v = new DataView(ab);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 0x7fff, true);
+    return new Blob([ab], { type: 'audio/wav' });
+  }
+
   async function finishRec(r) {
     let out = null;
     try { out = await process(new Blob(r.chunks, { type: r.mr.mimeType })); } catch (e) { toast('Could not read that recording: ' + e.message, 5000); return; }
     if (!out) return toast("Didn't hear anything. Is the right microphone selected? Watch the level bar while you talk.", 5000);
     const take = { key: r.key, t: Date.now(), ms: Math.round(out.data.length / RATE * 1000), peaks: out.peaks, kept: false,
-      wav: LJ.synth.toWav({ getChannelData: () => out.data, sampleRate: RATE }) };
+      wav: toWav(out.data, RATE) };
     await store.put(take);
     const all = await store.list(r.key);
     for (const old of all.filter(t => !t.kept).slice(MAX_TAKES)) await store.del(old);

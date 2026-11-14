@@ -28,7 +28,6 @@ The game saves itself in the browser as you play. Tap **?** in the game for the 
 
 `voices.html` is the recording booth: every line the characters say (the jacks, the vehicles, Mr. Grant, the war cries of the forest folk) is listed, and you record it with a microphone of your choice. Press **Keep** on the best take and the game plays it from then on; lines without a recording stay silent text bubbles. Recordings are saved as `audio/voice/*.wav` (needs `make` running).
 
-`sounds.html` is the sound studio for the synthesized effects: play, tweak and invent the game's synthesized sound effects. Tweaks are drafts that an open game tab plays straight away for testing; **Save** writes them to `js/sfx-defs.js` (needs `make` running), **Revert** drops them, and every save keeps the version it replaced so you can restore it.
 
 ## Layout
 
@@ -36,10 +35,9 @@ The game saves itself in the browser as you play. Tap **?** in the game for the 
 index.html     the game
 sprites.html   sprite sheet
 voices.html    recording booth for voice lines
-sounds.html    sound studio for synthesized effects
 css/           styles
 js/            game code (loaded in order by index.html)
 audio/voice/   voice recordings made in the booth
 docs/          game plan, requirements and concept art
-tools/         dev server (also saves sounds from the studio)
+tools/         dev server (also saves recordings from the booth)
 ```

@@ -19,7 +19,7 @@ Lumberjack is a browser game in plain JavaScript: no build step, no dependencies
   - `save`, `main`
 - Rules live in tables in `game.js`: `SHOP`, `TIERS` (base upgrades), `BLD` (buildings), `VEH` (vehicles) and `FOE` (enemies). Prefer adding a field to a table over special-casing a kind in code.
 - The map is 104×72 tiles of 16 px. World layers are typed arrays on `G.world`.
-- Sound effects are data in `js/sfx-defs.js` (stacks of tone/noise layers) played by `js/sound.js`. Edit them in `sounds.html` (`js/studio.js`), which saves through `tools/serve.py`. Add a sound by adding an entry there and calling `LJ.sfx('name')`.
+- Sound effects are data in `js/sfx-defs.js` (stacks of tone/noise layers) played by `js/sound.js`. Add a sound by adding an entry there and calling `LJ.sfx('name')`.
 - Everything a character says lives in `js/lines.js` (`LJ.LINES`, plus `LJ.CUES` for wordless sounds like war cries). `say()` shows the text and `voice.js` plays the recording from `audio/voice/` when one exists, keyed by the line's text, so rewording a line means re-recording it. Record them in `voices.html` (`js/voices-studio.js`). A new line goes in `lines.js` and is picked up by the booth automatically.
 - Saves (`save.js`) store only what changes during play and regenerate the map from its seed. Bump `VERSION` there if the saved shape changes.
 

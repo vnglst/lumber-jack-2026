@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Local dev server for Lumberjack: serves the repo root with caching disabled, so edits show up on reload.
 
-It also accepts writes from this machine only, so the studios can save their work:
-  POST   /api/sfx-defs     sound studio (sounds.html) rewrites js/sfx-defs.js
-  POST   /api/voice/<key>  recording booth (voices.html) saves audio/voice/<key>.wav
+It also accepts writes from this machine only, so the recording booth (voices.html) can save its work:
+  POST   /api/voice/<key>  saves audio/voice/<key>.wav
   DELETE /api/voice/<key>  removes that recording
 audio/voice/manifest.json ({key: version}) is rebuilt after every change; the game reads it to know what can be played.
 """
@@ -16,8 +15,6 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SFX_FILE = ROOT / "js" / "sfx-defs.js"
-SFX_PREFIX = "'use strict';"
 VOICE_DIR = ROOT / "audio" / "voice"
 VOICE_KEY = re.compile(r"^[a-z0-9_-]{1,100}$")
 MAX_WAV = 4 * 1024 * 1024
@@ -66,15 +63,6 @@ class NoCache(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if not self.local_only():
             return
-        if self.path == "/api/sfx-defs":
-            data = self.body(512 * 1024)
-            if data is None:
-                return
-            text = data.decode("utf-8")
-            if not text.startswith(SFX_PREFIX) or "LJ.SFX_DEFAULTS = {" not in text:
-                return self.send_error(400, "Not a sound definitions file")
-            write_atomic(SFX_FILE, data)
-            return self.done()
         key = self.voice_key()
         if key is None:
             return self.send_error(404)
@@ -103,5 +91,5 @@ if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5173
     handler = functools.partial(NoCache, directory=str(ROOT))
     print(f"Lumberjack: http://localhost:{port}  (Ctrl+C to stop)")
-    print(f"Sound studio: http://localhost:{port}/sounds.html   Recording booth: http://localhost:{port}/voices.html")
+    print(f"Recording booth: http://localhost:{port}/voices.html")
     http.server.ThreadingHTTPServer(("", port), handler).serve_forever()

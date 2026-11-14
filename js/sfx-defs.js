@@ -1,5 +1,5 @@
 'use strict';
-// Sound effect definitions, written by the sound studio (sounds.html → Save). Hand edits are fine too.
+// Sound effect definitions, played by js/sound.js. Tweak the numbers and reload the game to hear the change.
 //
 // A sound is a stack of layers played together:
 //   tone : { type:'tone',  wave, freq, to, dur, vol, at, attack, vibRate, vibDepth }
