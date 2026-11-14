@@ -53,6 +53,7 @@ How to read it:
 | 40 | 14 Nov | Huts are persistent sources of village defenders | Active |
 | 41 | 14 Nov | Intro truck follows the road | Active |
 | 42 | 14 Nov | Start fully hidden and explore during the intro | Active |
+| 43 | 14 Nov | Truck speed is independent of direction | Active |
 
 ---
 
@@ -521,3 +522,12 @@ How to read it:
 - *Decision: remove initial road/camp reveals and prevent the reserved, unbuilt tent from revealing the campsite. The truck's first simulation update starts exploration; arrival and the normal unit sight reveal the camp.*
 - Saved games retain their explored terrain. Starting another new game resets exploration completely.
 - **Supersedes** §10's pre-explored-road requirement and refines §36. Story timing and save format are unchanged.
+
+## 43. Truck speed is independent of direction (14 Nov 2026)
+
+> Truck speeds should be the same when going horizontal or diagonal.
+
+- Market and Logging Trucks travel at the same physical speed horizontally, vertically and diagonally on the same terrain.
+- *Decision: measure speed as world pixels traveled per second; diagonal X/Y components are normalized rather than each receiving the full horizontal speed.*
+- *Decision: retain §37's terrain differences: roads/bridges 96 pixels/second, dirt/gravel 60, open ground 36. Direction alone must not change these speeds.*
+- The existing movement already normalizes distance. Added regression coverage for both truck types in all eight directions on each surface; no production movement change was needed.
