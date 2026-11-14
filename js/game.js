@@ -225,6 +225,9 @@
     for (let i = 0; i < nw.N; i++) if (nw.wear[i] >= 6) {
       nw.flower[i] = 0; if (nw.deco[i] !== 8) nw.deco[i] = 0;
     }
+    // Legacy saves have no hut state: derive living huts from the restored terrain/decor.
+    // Newer saves replace this default with their explicit damage and destruction state.
+    LJ.combat.reset();
     Object.assign(G, d.g);
     for (const h of G.huts) if (!h.alive) w.deco[h.tile] = 0;
     G.fog = d.fog; G.fogLeft = G.fog.reduce((n, f) => n + (f ? 0 : 1), 0);
