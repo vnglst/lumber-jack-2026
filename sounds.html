@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumberjack — sound studio</title>
+  <link rel="stylesheet" href="css/studio.css">
+</head>
+<body>
+  <header class="top">
+    <h1><span class="lumber">Lumber</span><span class="jack">Jack</span> <small>sound studio</small></h1>
+    <span class="status">Tweaks become drafts the game plays for testing · Save writes js/sfx-defs.js</span>
+    <div class="spacer"></div>
+    <label class="toggle" title="Play the sound after every tweak"><input type="checkbox" id="autoplay"> Auto-play</label>
+    <button id="exportJson" title="Download your drafts as JSON">Export</button>
+    <button id="importJson" title="Load drafts from a JSON file">Import</button>
+    <button id="revertAll" class="danger" title="Throw away every draft">↺ Revert all</button>
+    <button id="saveAll" class="on" title="Write every draft to js/sfx-defs.js">💾 Save all</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <a class="btn" href="index.html" target="lumberjack-game" title="Open the game in another tab; edits play there live">Open game ↗</a>
+  </header>
+
+  <div class="layout">
+    <nav id="side"></nav>
+    <main id="main"></main>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="js/util.js"></script>
+  <script src="js/sfx-defs.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/studio.js"></script>
+</body>
+</html>
