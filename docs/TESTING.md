@@ -14,6 +14,7 @@ Serve with `make`. Use a fresh game, without replacing a wanted save.
 - Worker experience: select a Jack, complete work and check XP, promotion feedback and the updated carrying capacity; reload to verify rank persistence.
 - Upgraded village: toggle Stockpiling and confirm automatic market loading pauses while forest deliveries continue.
 - Construction: place a building and upgrade the village; check scaffolding, yellow progress bars and seconds remaining. Verify benefits start only on completion, Help pauses construction, and reload/Continue resumes the same project.
+- Roots: select a bulldozer and order it onto a reachable stump. Check the three-second uprooting action, bare mud, cargo, delivery to camp or a Logging Truck, and persistence after reloading.
 
 ## Checked 14 Nov 2026
 
@@ -28,5 +29,7 @@ Chromium desktop and mobile-sized viewports. Touch-pointer events were simulated
 - Opening tutorial: a compact start screen replaces the instructions wall; the truck takes 25 seconds, with five successive captions. Caption layout checked at desktop and mobile sizes; full instructions remain in Help.
 - Seeded opening, late-game and experience results are recorded in [PLAYTESTING.md](PLAYTESTING.md), including the limits of automated playtesting.
 - Construction: browser-checked a 15-second Cabin upgrade and an unfinished Sawmill. Confirmed the pending tier/services, build-time descriptions, partial sprite/scaffolding rendering, and paused timer. Regression checks include unfinished tower healing/fire, housing limits, destroyed stakes/sites, and saving the first Cabin upgrade.
+- Roots: browser-checked a right-click work order, the muddy ground shader and the “Delivering root wood · 2/16” status before wood entered village stock. Regression checks cover one-time yields, shared jobs, full/partial deliveries, Stop, saved orders/cargo/mud, and unchanged rock/water clearing.
+- Direct review caught and fixed an overflow after saving a partial Logging Truck handoff: a bulldozer carrying 15 wood now unloads before digging another two.
 
 Before release, repeat on physical iOS Safari and Android Chrome, including two-finger pinch and orientation changes.

@@ -184,6 +184,28 @@ test('a bulldozer can explicitly uproot the stump under its own tracks', () => {
   until(lj, () => g.wood === wood + 2, 30);
 });
 
+test('a saved partial truck handoff cannot let the bulldozer exceed its capacity', () => {
+  const { lj, g, w, dozer, root } = clearing();
+  dozer.carry = 16; // A full, previously recovered root load.
+  assert.ok(lj.buy('shuttle'));
+  const truck = g.units.find(u => u.kind === 'shuttle');
+  lj.cmd.stop([truck]); position(truck, root + 1, w);
+  lj.cmd.move([truck], root + 1);
+  truck.carry = 39;
+  lj.cmd.dozeTo([dozer], root);
+  until(lj, () => dozer.carry === 15, 10);
+  assert.equal(truck.carry, 40);
+  lj.saveGame();
+  assert.ok(lj.loadGame());
+  const restored = g.units.find(u => u.kind === 'dozer');
+  for (let i = 0; i < 30 / 0.05 && restored.carry; i++) {
+    lj.update(0.05);
+    assert.ok(restored.carry <= lj.capOf(restored));
+  }
+  assert.equal(restored.carry, 0);
+  assert.equal(g.world.obj[root], lj.STUMP);
+});
+
 test('rock and water clearing still work, while standing trees are not bulldozed', () => {
   const { lj, g, w, dozer, root } = clearing();
   w.obj[root] = 0;

@@ -488,7 +488,7 @@
       const job = t.job;
       for (const c of job.tiles) if (!canDoze(c)) job.tiles.delete(c);
       // Batch nearby roots, but don't carry a small load through a whole rock-clearing expedition.
-      if (u.carry >= capOf(u) || (u.carry > 0 && !someNear(t.ax, t.ay, sightOf(u), isRoot))) { goDrop(u); return; }
+      if (u.carry + DOZE.roots.amount > capOf(u) || (u.carry > 0 && !someNear(t.ax, t.ay, sightOf(u), isRoot))) { goDrop(u); return; }
       if (!job.tiles.size) {
         for (const c of dozeTargetsNear(t.ax, t.ay, sightOf(u))) job.tiles.add(c);
         if (!job.tiles.size) { endTask(u); u.idleVer = G.worldVer; if (Math.random() < 0.5) say(u, M.allClear); return; }
