@@ -52,6 +52,7 @@ How to read it:
 | 39 | 14 Nov | Move orders let Jacks retreat from combat | Active |
 | 40 | 14 Nov | Huts are persistent sources of village defenders | Active |
 | 41 | 14 Nov | Intro truck follows the road | Active |
+| 42 | 14 Nov | Start fully hidden and explore during the intro | Active |
 
 ---
 
@@ -165,6 +166,8 @@ How to read it:
 - **Weapons**: better shooting mechanics and effects. The guns are laser pistols that fire bursts.
 
 ## 10. The road to the market (14 Nov 2026)
+
+**Status:** the pre-explored road is superseded by §42; road layout and transport remain active.
 
 > Hauling to market doesn't make much sense right now. It's right next to the town/start point. Ideas to improve this?
 
@@ -454,6 +457,8 @@ How to read it:
 
 ## 36. Normal fog reveal during the opening drive (14 Nov 2026)
 
+**Status:** §42 removes pre-explored terrain; the normal vehicle reveal radius and update cadence remain active.
+
 > Fog of war in truck intro should be as in normal game. It’s too narrow now.
 
 - Intro vehicles reveal nearby terrain using the same radius and update cadence as normal gameplay.
@@ -506,3 +511,13 @@ How to read it:
 - The opening truck follows the generated road and bridges instead of taking shortcuts through clear ground.
 - *Decision: use a road-only, four-direction route, with a final short turn off the road into the existing camp parking spot. No diagonal corner-cutting.*
 - Story pacing, skipping captions, regular hauling routes and existing saves are unchanged.
+
+## 42. Start fully hidden and explore during the intro (14 Nov 2026)
+
+> There should be complete fog of war when starting, clearing it for first time when intro is rolling.
+
+- New games begin with the entire map unexplored, including the market road and campsite.
+- The intro truck reveals nearby terrain for the first time as it drives along the road, using normal vehicle sight. Previously explored terrain stays visible behind it.
+- *Decision: remove initial road/camp reveals and prevent the reserved, unbuilt tent from revealing the campsite. The truck's first simulation update starts exploration; arrival and the normal unit sight reveal the camp.*
+- Saved games retain their explored terrain. Starting another new game resets exploration completely.
+- **Supersedes** §10's pre-explored-road requirement and refines §36. Story timing and save format are unchanged.

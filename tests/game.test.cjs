@@ -74,6 +74,34 @@ test('intro trucks uncover the same radius and remembered terrain as normal truc
   }
 });
 
+test('new games start fully hidden and reveal only the ground reached during the intro', () => {
+  for (const seed of [1, 42, 12345]) {
+    const lj = game(seed, false), g = lj.G, w = g.world, truck = g.arrival;
+    const camp = w.start.y * w.W + w.start.x, market = truck.tile;
+    const route = [market, ...truck.path];
+    assert.equal(g.fogLeft, w.N);
+    assert.ok(g.fog.every(v => v === 0));
+    assert.equal(g.fog[camp], 0);
+    step(lj, 0.05);
+    assert.equal(g.fog[market], 1);
+    assert.equal(g.fog[camp], 0);
+    assert.ok(g.fogLeft < w.N);
+    step(lj, 5);
+    assert.equal(g.fog[camp], 0);
+    assert.equal(g.fog[market], 1);
+    assert.equal(g.time, 0);
+    until(lj, () => !g.arrival, 180);
+    assert.ok(route.every(n => g.fog[n] === 1));
+    assert.equal(g.fog[camp], 1);
+    const explored = Array.from(g.fog);
+    lj.saveGame(); assert.ok(lj.loadGame());
+    assert.deepEqual(Array.from(g.fog), explored);
+    lj.newGame(seed);
+    assert.equal(g.fogLeft, g.world.N);
+    assert.ok(g.fog.every(v => v === 0));
+  }
+});
+
 test('wood is deposited at camp before the truck loads and sells it', () => {
   const lj = game(), g = lj.G, jack = lj.jacks()[0];
   lj.cmd.stop([jack]);

@@ -189,10 +189,9 @@
     seed = seed || ((Math.random() * 1e9) | 0);
     begin(LJ.genWorld(seed, 12));
     G.money = 80; // Enough to hire a second jack before the first trip to market.
-    G.base = addBuilding('base', w.base.tx, w.base.ty, 3, 3);
+    G.base = addBuilding('base', w.base.tx, w.base.ty, 3, 3, true); // Reserve the hidden campsite until the truck arrives.
     ring(G.base, G.villMask);
     ring(G.base, G.storeMask);
-    G.base.pending = true; // Reserve the campsite; pitch the tent after the truck arrives.
     G.arrival = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, 'Truck 1', 'truck', 0);
     const parking = w.start.y * W + w.start.x;
     G.arrival.path = bfs(G.arrival.tile, c => c === parking, i => pass(i) && (LJ.isRoad(w.type[i]) || i === parking), true);
@@ -206,8 +205,6 @@
     // the ride last as long as the story; the how-to-play lines follow at camp, with the truck parked.
     const story = LN.intro.reduce((sum, line) => sum + beatTime(line), 0);
     Object.assign(G.arrival, { introSpeed: distance / story, introV: 0, introBeat: -1, introLeft: 0 });
-    reveal(w.start.x - 1, w.start.y - 2, 9);
-    for (let i = 0; i < w.N; i++) if (LJ.isRoad(w.type[i])) reveal(i % W, (i / W) | 0, 2.5); // the road to market is known land
     spawnCritters();
     spawnButterflies(seed);
     G.ground.renderAll();
@@ -265,16 +262,16 @@
     return [b.tx * TS + ((b.w * TS - spr.width) >> 1), (b.ty + b.h) * TS + 1 - spr.height];
   };
 
-  function addBuilding(kind, tx, ty, bw, bh) {
+  function addBuilding(kind, tx, ty, bw, bh, pending = false) {
     const hp = BLD[kind].hp || 160;
     const duration = BLD[kind].build;
-    const b = { kind, tx, ty, w: bw, h: bh, queue: [], hp, max: hp, construction: duration ? { t: duration, total: duration } : null };
+    const b = { kind, tx, ty, w: bw, h: bh, queue: [], hp, max: hp, pending, construction: duration ? { t: duration, total: duration } : null };
     G.buildings.push(b);
     for (let y = ty; y < ty + bh; y++) for (let x = tx; x < tx + bw; x++) {
       const i = y * W + x;
       w.bld[i] = G.buildings.length; w.obj[i] = 0; w.flower[i] = 0; w.deco[i] = 0;
     }
-    if (!b.construction) reveal(tx + bw / 2, ty + bh / 2, BLD[kind].sight);
+    if (!b.pending && !b.construction) reveal(tx + bw / 2, ty + bh / 2, BLD[kind].sight);
     G.worldVer++;
     return b;
   }
