@@ -15,6 +15,7 @@ Serve with `make`. Use a fresh game, without replacing a wanted save.
 - Upgraded village: toggle Stockpiling and confirm automatic market loading pauses while forest deliveries continue.
 - Construction: place a building and upgrade the village; check scaffolding, yellow progress bars and seconds remaining. Verify benefits start only on completion, Help pauses construction, and reload/Continue resumes the same project.
 - Roots: select a bulldozer and order it onto a reachable stump. Check the three-second uprooting action, bare mud, cargo, delivery to camp or a Logging Truck, and persistence after reloading.
+- Market deals: listen for the rising chime when a fresh offer appears; verify it does not repeat while the offer remains visible, and that mute silences it.
 
 ## Checked 14 Nov 2026
 
@@ -31,5 +32,6 @@ Chromium desktop and mobile-sized viewports. Touch-pointer events were simulated
 - Construction: browser-checked a 15-second Cabin upgrade and an unfinished Sawmill. Confirmed the pending tier/services, build-time descriptions, partial sprite/scaffolding rendering, and paused timer. Regression checks include unfinished tower healing/fire, housing limits, destroyed stakes/sites, and saving the first Cabin upgrade.
 - Roots: browser-checked a right-click work order, the muddy ground shader and the “Delivering root wood · 2/16” status before wood entered village stock. Regression checks cover one-time yields, shared jobs, full/partial deliveries, Stop, saved orders/cargo/mud, and unchanged rock/water clearing.
 - Direct review caught and fixed an overflow after saving a partial Logging Truck handoff: a bulldozer carrying 15 wood now unloads before digging another two.
+- Market deal alert: regression-checked new wood/lumber offers, expiry, dismissal, acceptance and save restoration. Rendered the new chime through real Web Audio: about 0.89 seconds of nonzero audio with no clipping; mute and audio-unlock gates are covered by the sound-engine test.
 
 Before release, repeat on physical iOS Safari and Android Chrome, including two-finger pinch and orientation changes.

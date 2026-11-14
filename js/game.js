@@ -1187,7 +1187,7 @@
         const crew = jacks().length + 2 * countKind('harv') + countKind('truck'), lum = G.count.sawmill > 0 && Math.random() < 0.6;
         const qty = lum ? 5 + crew * 3 + ((Math.random() * 4) | 0) : 16 + crew * 8 + ((Math.random() * 8) | 0);
         G.order = { kind: lum ? 'lumber' : 'wood', qty, got: 0, state: 'offer', ttl: 40, time: lum ? 150 : 120, bonus: Math.round(qty * (lum ? 9 : 2.5) / 5) * 5 };
-        LJ.sfx('click');
+        LJ.sfx('deal');
       }
     } else if (o.state === 'offer') {
       if ((o.ttl -= dt) <= 0) { G.order = null; G.orderCd = 40; }

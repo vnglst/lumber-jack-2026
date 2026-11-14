@@ -48,6 +48,7 @@ How to read it:
 | 35 | 14 Nov | Tapping through the story does not move the truck | Active |
 | 36 | 14 Nov | Normal fog reveal during the opening drive | Active |
 | 37 | 14 Nov | Slower working trucks | Active |
+| 38 | 14 Nov | Audible market deal notifications | Active |
 
 ---
 
@@ -459,3 +460,11 @@ How to read it:
 - Slow ordinary market and Logging Truck journeys, both loaded and returning empty.
 - *Decision: use 96 pixels/second on roads (previously 160), 60 on trails (100), and 36 on open ground (55). Trucks retain their carrying capacities, and roads remain the fastest route.*
 - The narrated arrival and its separate story/skip pacing are unchanged.
+
+## 38. Audible market deal notifications (14 Nov 2026)
+
+> Deals for a better price on wood/lumber should have a sound effect to make it more noticeable.
+
+- Play a noticeable, distinct sound when a new wood or lumber market offer appears.
+- *Decision: replace the ordinary button click with a short rising market chime. Play it once per new offer, not on every update, acceptance, dismissal or save restoration.*
+- Respect the existing mute and audio-unlock controls; prices, payouts and recorded voice volumes are unchanged.

@@ -38,6 +38,15 @@ LJ.SFX_DEFAULTS = {
       { "type": "tone", "wave": "triangle", "freq": 2637, "to": 0, "dur": 0.2, "vol": 0.05, "at": 0.07, "attack": 0.002, "vibRate": 18, "vibDepth": 0.01 }
     ]
   },
+  "deal": {
+    "desc": "Bright rising market chime: a new wood or lumber deal is available", "vol": 1, "jitter": 0, "repeat": 1, "gap": 0.1, "step": 0,
+    "layers": [
+      { "type": "tone", "wave": "triangle", "freq": 659, "to": 0, "dur": 0.3, "vol": 0.18, "at": 0, "attack": 0.003, "vibRate": 0, "vibDepth": 0 },
+      { "type": "tone", "wave": "triangle", "freq": 880, "to": 0, "dur": 0.35, "vol": 0.18, "at": 0.18, "attack": 0.003, "vibRate": 0, "vibDepth": 0 },
+      { "type": "tone", "wave": "triangle", "freq": 1319, "to": 0, "dur": 0.5, "vol": 0.18, "at": 0.36, "attack": 0.003, "vibRate": 0, "vibDepth": 0 },
+      { "type": "tone", "wave": "sine", "freq": 2637, "to": 0, "dur": 0.45, "vol": 0.05, "at": 0.36, "attack": 0.003, "vibRate": 0, "vibDepth": 0 }
+    ]
+  },
   "click": {
     "desc": "Soft wooden tok for buttons and orders", "vol": 1, "jitter": 0.05, "repeat": 1, "gap": 0.1, "step": 0,
     "layers": [
