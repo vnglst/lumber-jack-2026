@@ -4,7 +4,7 @@
   const TS = LJ.TS, T = LJ.T, STUMP = LJ.STUMP;
   const G = (LJ.G = {});
   const PRICE = (LJ.PRICE = { wood: 3, lumber: 10, stone: 6 });
-  const MAX_LEVEL = 10, WAGE = 20, PAY_EVERY = 60, SAW_TIME = 3.5;
+  const MAX_LEVEL = 10, WAGE = 20, PAY_EVERY = 60, SAW_TIME = 3.5, INTRO_BEAT_TIME = 5;
   // Share of the forest that must be cleared to complete each of the 10 levels. The last level needs every single tree.
   const FR = [0.005, 0.03, 0.07, 0.12, 0.19, 0.28, 0.4, 0.55, 0.74, 1];
   // Per species: seconds to chop with a plain axe, and wood yield. Oaks are slow but rich.
@@ -160,6 +160,14 @@
     G.base.pending = true; // Reserve the campsite; pitch the tent after the truck arrives.
     G.arrival = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, 'Truck 1', 'truck', 0);
     walkTo(G.arrival, c => c === w.start.y * W + w.start.x, 'return');
+    let distance = 0, px = G.arrival.x, py = G.arrival.y;
+    for (const n of G.arrival.path.slice().reverse()) {
+      const x = (n % W) * TS + 8, y = ((n / W) | 0) * TS + 10;
+      distance += Math.hypot(x - px, y - py); px = x; py = y;
+    }
+    // Give each short tutorial line five seconds, regardless of the map's road length.
+    G.arrival.introSpeed = distance / (LN.intro.length * INTRO_BEAT_TIME);
+    G.arrival.introT = 0; G.arrival.introBeat = -1;
     reveal(w.start.x - 1, w.start.y - 2, 9);
     for (let i = 0; i < w.N; i++) if (LJ.isRoad(w.type[i])) reveal(i % W, (i / W) | 0, 2.5); // the road to market is known land
     spawnCritters();
@@ -314,8 +322,8 @@
     return s;
   }
 
-  function stepPath(u, dt) {
-    let dist = speedOf(u) * dt;
+  function stepPath(u, dt, speed) {
+    let dist = (speed === undefined ? speedOf(u) : speed) * dt;
     while (dist > 0 && u.path.length) {
       const n = u.path[u.path.length - 1];
       if (!pass(n)) { u.path = []; u.state = 'think'; return; }
@@ -1188,10 +1196,14 @@
   LJ.update = function (dt) {
     if (G.arrival) {
       const truck = G.arrival;
-      stepPath(truck, dt);
+      const beat = Math.min(LN.intro.length - 1, Math.floor(truck.introT / INTRO_BEAT_TIME));
+      if (beat !== truck.introBeat) { truck.introBeat = beat; LJ.ui.introLine(LN.intro[beat], beat, LN.intro.length); }
+      truck.introT += dt;
+      stepPath(truck, dt, truck.introSpeed);
       LJ.ui.follow(truck.x, truck.y, dt);
       if (!truck.path.length) {
         G.arrival = null; G.base.pending = false;
+        LJ.ui.introLine(null);
         levelFootprint(G.base);
         const jack = addUnit(w.start.x + 1, w.start.y, 'Jack', 'jack', 0);
         G.sel = new Set([jack]);

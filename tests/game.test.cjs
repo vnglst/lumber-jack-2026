@@ -21,6 +21,24 @@ test('truck arrives before Jack pitches camp, across several maps', () => {
   }
 });
 
+test('the slow arrival tells its tutorial over 25 seconds, not at hauling speed', () => {
+  for (const seed of [1, 42, 12345]) {
+    const lj = game(seed, false), g = lj.G, lines = [];
+    lj.ui.introLine = text => lines.push(text);
+    const truck = g.arrival;
+    step(lj, 10);
+    assert.equal(g.arrival, truck);
+    assert.equal(g.base.pending, true);
+    assert.equal(g.time, 0); // No wages, enemies or work while the tutorial is playing.
+    step(lj, 14.5);
+    assert.equal(g.arrival, truck);
+    until(lj, () => !g.arrival, 1);
+    assert.deepEqual(lines, [...lj.LINES.intro, null]);
+    assert.ok(truck.introT >= 25 && truck.introT < 25.1);
+    assert.equal(lj.jackCount(), 1);
+  }
+});
+
 test('wood is deposited at camp before the truck loads and sells it', () => {
   const lj = game(), g = lj.G, jack = lj.jacks()[0];
   lj.cmd.stop([jack]);

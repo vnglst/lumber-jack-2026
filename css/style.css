@@ -166,6 +166,21 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 }
 @media (max-width: 900px) { #mini { display: none; } }
 
+/* The opening ride: one short story beat at a time, with room to see the road. */
+.arriving #hud > :not(#soundBtn):not(.spacer),
+.arriving #bottom, .arriving #order, .arriving #hint, .arriving #shop, .arriving #mini { display: none !important; }
+#intro {
+  position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px)); display: none; gap: 14px; align-items: center; padding: 16px 18px;
+  pointer-events: none;
+}
+#intro.open { display: flex; }
+#intro .portrait { flex: 0 0 48px; }
+#intro .portrait canvas { width: 48px; height: 48px; background: #24150a; border-radius: 4px; }
+#intro .nm { font-size: 12px; color: #f6c453; }
+#intro .nm span { margin-left: 10px; color: #c9ad7c; }
+#intro p { margin-top: 6px; font-size: 16px; line-height: 1.45; color: #fff3d6; }
+
 /* Ending */
 .cine #bottom, .cine #order, .cine #hint, .cine #shop, .cine #mini, .cine #helpBtn { display: none !important; }
 #cine {

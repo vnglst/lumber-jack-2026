@@ -203,6 +203,7 @@
 
     cv.addEventListener('pointerdown', e => {
       LJ.audioInit(); e.preventDefault();
+      if (G.arrival) return;
       try { cv.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
       const [wx, wy] = world(e), touch = e.pointerType !== 'mouse';
       let mode;
@@ -260,6 +261,7 @@
     let pinch = 0;
     cv.addEventListener('wheel', e => {
       e.preventDefault();
+      if (G.arrival) return;
       if (e.ctrlKey) {
         pinch += e.deltaY;
         if (Math.abs(pinch) > 30) { setZoom(zi + (pinch < 0 ? 1 : -1), e.clientX, e.clientY); pinch = 0; }
@@ -359,16 +361,16 @@
     modal(
       '<div class="logo"><span class="lumber">Lumber</span><span class="jack">Jack</span></div>' +
       '<p>One jack. One axe. An awful lot of trees.</p>' +
-      '<ul><li><b>Tap a tree</b> to send your jack. Jacks keep cutting the nearest trees they can see; when none are left in sight, they wait.</li>' +
+      (help ? '<ul><li><b>Tap a tree</b> to send your jack. Jacks keep cutting the nearest trees they can see; when none are left in sight, they wait.</li>' +
       '<li>Select jacks and <b>tap anywhere</b> to send them there. Keep tapping a tree being chopped to land extra whacks.</li>' +
       '<li>You arrive by <b>truck</b> and pitch your tent. Jacks carry wood back to camp; your truck sells the surplus at the market down the road west. Camp keeps 20 wood for building.</li>' +
       '<li>Upgrade your tent into a village and build houses and sawmills. Logging Trucks shuttle harvested wood from a forest clearing back to your village; market trucks sell it.</li>' +
       '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
       '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection.</li>' +
-      '<li>The game saves itself as you play.</li></ul>' +
+      '<li>The game saves itself as you play.</li></ul>' : '') +
       (canContinue
         ? '<div class="row"><button data-a="continue">Continue</button><button data-a="new" class="ghost">New game</button></div>'
-        : '<button>' + (help ? 'Back to work' : 'Start chopping') + '</button>'));
+        : '<button>' + (help ? 'Back to work' : 'Head to the forest') + '</button>'));
     if (!canContinue) return;
     const m = $('modal');
     m.querySelector('[data-a="continue"]').onclick = () => {
@@ -395,6 +397,17 @@
     $('shop').classList.remove('open');
     $('modal').classList.remove('open');
     G.paused = false;
+  };
+
+  ui.introLine = function (text, beat, total) {
+    const el = $('intro');
+    $('game').classList.toggle('arriving', !!text);
+    if (!text) { el.classList.remove('open'); el.innerHTML = ''; return; }
+    el.innerHTML = '<div class="portrait"></div><div><div class="nm">Jack · On the road <span>' + (beat + 1) + ' / ' + total + '</span></div><p></p></div>';
+    el.querySelector('.portrait').appendChild(iconCanvas(S.jack.axe.idle.r, 24));
+    el.querySelector('p').textContent = text;
+    el.classList.add('open');
+    LJ.voice.say(text, 'jack');
   };
 
   ui.cineLine = function (text) {
@@ -437,7 +450,7 @@
 
   // ---------- Per-frame UI ----------
   function hint() {
-    if (G.arrival) return 'Arriving at the forest… your truck will stop and Jack will pitch his tent.';
+    if (G.arrival) return '';
     if (G.levelDone || G.cine) return '';
     if (G.wallMode) return 'Drag to build a line of palisade. Enemies walk around open ends, so close the ring around what you want to protect.';
     if (G.place) return 'Pick a clear, explored spot the road can reach.';
@@ -568,7 +581,7 @@
     mctx.strokeRect(Math.round(G.cam.x / TS) + 0.5, Math.round(G.cam.y / TS) + 0.5, Math.round(vwW() / TS), Math.round(vwH() / TS));
   }
 
-  ui.reset = function () { panelSig = shopSig = orderSig = 'x'; $('overlay').innerHTML = ''; };
+  ui.reset = function () { panelSig = shopSig = orderSig = 'x'; $('overlay').innerHTML = ''; ui.introLine(null); };
 
   ui.tick = function (dt) {
     const sp = 260 * dt / (zoom / 3);
@@ -576,12 +589,12 @@
     if (keys.a || keys.arrowleft) mx--; if (keys.d || keys.arrowright) mx++;
     if (keys.w || keys.arrowup) my--; if (keys.s || keys.arrowdown) my++;
     // Edge scrolling: the mouse near a window edge moves the camera (not while dragging, in a menu or during the ending).
-    if (mouse && !G.cine && !G.drag && !$('modal').classList.contains('open')) {
+    if (mouse && !G.cine && !G.arrival && !G.drag && !$('modal').classList.contains('open')) {
       const E = 14;
       if (mouse[0] < E) mx--; else if (mouse[0] > innerWidth - E) mx++;
       if (mouse[1] < E) my--; else if (mouse[1] > innerHeight - E) my++;
     }
-    if ((mx || my) && !G.cine) panBy(mx * sp * zoom, my * sp * zoom);
+    if ((mx || my) && !G.cine && !G.arrival) panBy(mx * sp * zoom, my * sp * zoom);
     if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.remove('show');
     if ((miniT -= dt) <= 0) { miniT = 0.25; drawMini(); }
 

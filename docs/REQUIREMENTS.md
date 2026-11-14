@@ -35,6 +35,7 @@ How to read it:
 | 22 | 14 Nov | Logging trucks replace log depots | Active |
 | 23 | 14 Nov | Peaceful locals before later attacks | Active |
 | 24 | 14 Nov | Heavy vehicles scar the terrain | Active |
+| 25 | 14 Nov | Slow narrated arrival tutorial | Active |
 
 ---
 
@@ -247,6 +248,8 @@ How to read it:
 
 ## 19. Arrive by truck and store wood at camp (14 Nov 2026)
 
+**Status:** the arrival's pacing and presentation are refined by §25; camp logistics remain active.
+
 > When starting the game, you arrive in a truck that drives you to the forest, where you then set up your tent. Wood should be carried to the tent/village before it can be picked up by the truck.
 
 - A new game opens with a truck driving from the market to the forest, followed by Jack getting out and pitching the tent.
@@ -306,3 +309,17 @@ How to read it:
 - *Decision: market and Logging Trucks add 6 wear per tile crossing, bulldozers 10, and harvesters 8. Wear saturates at 255, never wrapping back to clean ground.*
 - *Decision: road tiles retain their road behavior while becoming dirty. Wooden bridges, water and rock are not painted as soil. Foot traffic still makes ordinary brown trails rather than black vehicle scars.*
 - Existing saved wear and lushness fields persist the damage; the save format does not change.
+
+## 25. Slow narrated arrival tutorial (14 Nov 2026)
+
+> Arrival at camp with truck should be a bit slower. This should be intro/tutorial. So tell the story while driving. No large wall of text when starting game.
+
+> Truck goes too fast.
+
+- Slow the opening truck ride substantially and tell the story while driving.
+- Explain camp, wood transport, hiring and basic commands in short successive captions.
+- Replace the startup instructions wall with a compact title and Start/Continue controls. Full instructions remain in Help.
+- Keep the mute control accessible during the narrated drive.
+- *Decision: the ride lasts about 25 seconds across different map seeds, giving five short lines five seconds each. Normal truck hauling speed is unchanged, and gameplay timers wait until camp is ready.*
+- *Decision: tutorial speech lives in `js/lines.js`, appears in the recording booth, and plays its recording when available.*
+- **Refines** §19's arrival presentation.

@@ -6,6 +6,13 @@
 // "{n}" stands for a number the game fills in; it counts as the same line whatever the number is.
 // Cues are sounds with no words (war cries, howls); the game plays them by id.
 LJ.LINES = {
+  intro: [
+    "That's the market behind us. One truck, one axe. Let's see if we can make a living out here.",
+    "We'll pitch our tent at the end of this road. Every log comes back to camp before it goes to market.",
+    "I'll haul the surplus to market. We'll keep twenty wood at camp to help build our village.",
+    "You've got $80 for another Jack. Open the Shop when we arrive—an extra pair of hands goes a long way.",
+    "Once the tent is up, tap a tree to get chopping. Select a Jack and tap the ground to send him somewhere."
+  ],
   normal: ['Yes, boss?', 'Ready to chop!', 'Timber?', 'Axe me anything.', "What'll it be?", 'Wood you like something?'],
   annoyed: ["I'm working here!", 'Stop poking me.', 'Do I poke YOU?', 'That flannel was clean.', "Trees don't cut themselves, you know."],
   funny: ["I'm a lumberjack and I'm NOT okay.", 'Poke me again and I unionize.', "Fun fact: I'm allergic to pollen.",
@@ -77,6 +84,7 @@ LJ.voiceGroups = function () {
     }
     if (items.length) groups.push({ id, who, title, hint, items });
   };
+  add('intro', 'jack', 'Jack: arriving at the forest', 'The story and tutorial during the opening truck ride.', L.intro);
   add('poke1', 'jack', 'Jack: tapped', 'Said when you tap a jack. The first three taps in a row.', L.normal);
   add('poke2', 'jack', 'Jack: tapped again', 'Taps four to six in a row. He is getting annoyed.', L.annoyed);
   add('poke3', 'jack', 'Jack: tapped too much', 'Seven or more taps in a row. He has had it.', L.funny);

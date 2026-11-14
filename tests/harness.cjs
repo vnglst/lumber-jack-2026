@@ -31,7 +31,7 @@ function game(seed = 42, arrive = true) {
   lj.Ground.prototype = { mark() {}, flush() {}, renderAll() {} };
   lj.sfx = () => {};
   lj.voice = { say() {}, cue() {} };
-  lj.ui = { toast() {}, follow() {}, levelUp() {}, gameOver() {} };
+  lj.ui = { toast() {}, follow() {}, levelUp() {}, gameOver() {}, introLine() {} };
   lj.newGame(seed);
   if (arrive) until(lj, () => !lj.G.arrival, 30);
   return lj;
