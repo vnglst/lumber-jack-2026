@@ -112,3 +112,50 @@ test('version 2 saves convert old depots into trucks without losing progress', (
   step(lj, 0.1);
   assert.equal(truck.state, 'shuttleLoad');
 });
+
+test('jacks beyond eight tiles still use a closer reachable collection truck', () => {
+  const { lj, g, truck, at } = loggingRoute(), w = g.world;
+  const jack = lj.jacks()[0], spot = at - 10;
+  for (let i = spot; i <= at; i++) { w.obj[i] = w.bld[i] = 0; w.type[i] = lj.T.ROAD; }
+  jack.tile = spot; jack.x = spot % w.W * 16 + 8; jack.y = ((spot / w.W) | 0) * 16 + 10;
+  jack.carry = 8; jack.hold = false; jack.state = 'think';
+  jack.task = { type: 'work', ax: spot % w.W, ay: (spot / w.W) | 0, first: -1 };
+  lj.update(0.05);
+  assert.equal(jack.dropId, truck.id);
+  until(lj, () => truck.carry === 8, 8);
+  assert.equal(jack.carry, 0);
+});
+
+test('partial trucks wait for approaching jacks, then deliver all collected wood', () => {
+  const { lj, g, truck, at } = loggingRoute(), w = g.world;
+  const jack = lj.jacks()[0], spot = at - 6;
+  for (let i = spot; i <= at; i++) { w.obj[i] = w.bld[i] = 0; w.type[i] = lj.T.GRASS; }
+  truck.carry = 8; truck.loadT = 7.9;
+  jack.tile = spot; jack.x = spot % w.W * 16 + 8; jack.y = ((spot / w.W) | 0) * 16 + 10;
+  jack.carry = 8; jack.hold = false; jack.state = 'think';
+  jack.task = { type: 'work', ax: spot % w.W, ay: (spot / w.W) | 0, first: -1 };
+  lj.update(0.05);
+  assert.equal(jack.dropId, truck.id);
+  const wood = g.wood;
+  until(lj, () => truck.carry === 16, 8);
+  lj.cmd.stop([jack]);
+  assert.equal(jack.carry, 0);
+  until(lj, () => g.wood === wood + 16, 40);
+});
+
+for (const unavailable of ['stopped', 'full', 'departed']) {
+  test('jacks fall back to camp when the collection truck is ' + unavailable, () => {
+    const { lj, g, truck, at } = loggingRoute();
+    const jack = lj.jacks()[0];
+    if (unavailable === 'stopped') lj.cmd.stop([truck]);
+    if (unavailable === 'full') truck.carry = lj.capOf(truck);
+    if (unavailable === 'departed') truck.state = 'shuttleDrop';
+    jack.tile = at; jack.x = truck.x; jack.y = truck.y; jack.carry = 8;
+    jack.hold = false; jack.state = 'think';
+    jack.task = { type: 'work', ax: at % g.world.W, ay: (at / g.world.W) | 0, first: -1 };
+    lj.update(0.05);
+    assert.equal(jack.dropId, null);
+    assert.equal(jack.state, 'toDrop');
+    assert.ok(jack.path.length);
+  });
+}
