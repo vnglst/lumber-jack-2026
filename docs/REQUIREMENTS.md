@@ -36,6 +36,7 @@ How to read it:
 | 23 | 14 Nov | Peaceful locals before later attacks | Active |
 | 24 | 14 Nov | Heavy vehicles scar the terrain | Active |
 | 25 | 14 Nov | Slow narrated arrival tutorial | Active |
+| 26 | 14 Nov | Quieter recorded voices | Active |
 
 ---
 
@@ -323,3 +324,10 @@ How to read it:
 - *Decision: the ride lasts about 25 seconds across different map seeds, giving five short lines five seconds each. Normal truck hauling speed is unchanged, and gameplay timers wait until camp is ready.*
 - *Decision: tutorial speech lives in `js/lines.js`, appears in the recording booth, and plays its recording when available.*
 - **Refines** §19's arrival presentation.
+
+## 26. Quieter recorded voices (14 Nov 2026)
+
+> voice sounds should be a bit lower in volume
+
+- Lower in-game recorded voice volume without modifying recordings or sound-effect volume.
+- *Decision: play recorded lines and wordless voice cues at 75% gain. Recording-booth previews stay unchanged.*

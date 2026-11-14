@@ -4,7 +4,7 @@
 (function () {
   const BASE = 'audio/voice/';
   const SAVED_KEY = 'lj.voice.savedAt'; // the recording booth bumps this when it saves, so open game tabs refresh
-  const MAX_VOICES = 4;
+  const MAX_VOICES = 4, VOICE_VOLUME = 0.75;
   let manifest = {}, ready = false;
   const buffers = new Map(); // key -> Promise<AudioBuffer|null>
   const channels = new Map(); // who -> the source node currently talking
@@ -41,10 +41,12 @@
       const prev = channels.get(who);
       if (prev) { try { prev.stop(); } catch (e) { /* already ended */ } }
       const src = out.ctx.createBufferSource();
+      const gain = out.ctx.createGain();
+      gain.gain.value = VOICE_VOLUME;
       src.buffer = buf;
       src.playbackRate.value = 0.97 + Math.random() * 0.07; // never exactly the same twice
-      src.connect(out.dest);
-      src.onended = () => { if (channels.get(who) === src) channels.delete(who); };
+      src.connect(gain); gain.connect(out.dest);
+      src.onended = () => { src.disconnect(); gain.disconnect(); if (channels.get(who) === src) channels.delete(who); };
       channels.set(who, src);
       src.start();
     });
