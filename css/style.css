@@ -58,7 +58,7 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 #payTxt:empty { display: none; }
 
 #order {
-  position: absolute; left: 8px; top: calc(60px + env(safe-area-inset-top)); width: 210px; padding: 8px 10px; display: none;
+  position: absolute; left: 8px; top: var(--panels-top, 100px); width: 210px; padding: 8px 10px; display: none;
   background: #f3e3b8; color: #3a2410; border: 2px solid #24150a; border-radius: 6px; box-shadow: 0 3px 0 rgba(0, 0, 0, .35);
   font-size: 14px; transform: rotate(-1.5deg);
 }
@@ -73,7 +73,7 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 #order button[data-act="yes"] { background: linear-gradient(#8be05e, #4fae34); color: #fff; }
 
 #hint {
-  position: absolute; left: 50%; top: calc(58px + env(safe-area-inset-top)); transform: translateX(-50%);
+  position: absolute; left: 50%; top: calc(var(--hud-bottom, 50px) + 8px); transform: translateX(-50%);
   max-width: min(560px, 92vw); padding: 5px 12px; border-radius: 6px; background: rgba(20, 12, 6, .72);
   font-size: 14px; font-weight: 600; text-align: center; pointer-events: none; color: #fff3d6;
 }
@@ -110,7 +110,7 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 #shopDot.on { display: block; }
 
 #shop {
-  position: absolute; right: 8px; top: 60px; width: 300px; max-height: calc(100% - 140px); overflow: auto;
+  position: absolute; right: 8px; top: var(--panels-top, 100px); width: 300px; max-height: calc(100% - var(--panels-top, 100px) - 100px); overflow: auto;
   padding: 10px; display: none;
 }
 #shop.open { display: block; }
@@ -153,10 +153,10 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
   .chip canvas { width: 20px; height: 20px; }
   .bar { width: 96px; }
   .hbtn { width: 34px; height: 34px; font-size: 15px; }
-  #hint { top: calc(92px + env(safe-area-inset-top)); font-size: 12px; }
-  #order { top: calc(130px + env(safe-area-inset-top)); width: 170px; font-size: 12px; }
+  #hint { font-size: 12px; }
+  #order { width: 170px; font-size: 12px; }
   #payTxt { display: none; }
-  #shop { left: 8px; right: 8px; width: auto; top: auto; bottom: 120px; max-height: 50%; }
+  #shop { left: 8px; right: 8px; width: auto; bottom: 120px; max-height: calc(100% - var(--panels-top, 100px) - 120px); }
   #toolbar button { width: 42px; height: 42px; }
 }
 

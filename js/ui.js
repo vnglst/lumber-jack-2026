@@ -7,6 +7,7 @@
   const ZOOMS = [1, 1.5, 2, 3, 4];
   const ICON_OF = { jack: 'jack', truck: 'truck', shuttle: 'shuttle', dozer: 'dozer', harv: 'harv', feller: 'feller' };
   let cv, zi = 3, zoom = 3, keys = {}, lastClickU = null, lastClickT = 0, toastT = 0, panelSig = '', shopSig = '', orderSig = '';
+  let hudBottom = -1, panelsTop = -1;
   let mini, mctx, mimg, miniT = 0, mouse = null; // mouse: last pointer position in window pixels, null when outside
 
   function iconCanvas(src, size) {
@@ -27,11 +28,27 @@
     document.querySelectorAll('[data-ic]').forEach(el => el.replaceWith(iconCanvas(S.icons[el.dataset.ic])));
     resetZoom();
     addEventListener('resize', resize);
+    // Text and newly unlocked resource chips can wrap the HUD without a window resize.
+    if (typeof ResizeObserver !== 'undefined') {
+      const layout = new ResizeObserver(layoutPanels);
+      layout.observe($('hud')); layout.observe($('hint'));
+    }
     bindPointer(); bindKeys(); bindButtons(); bindMini();
     addEventListener('pointermove', e => { if (e.pointerType === 'mouse') mouse = [e.clientX, e.clientY]; });
     document.addEventListener('mouseleave', () => { mouse = null; });
     addEventListener('blur', () => { mouse = null; });
   };
+
+  function layoutPanels() {
+    const hud = $('hud'), hint = $('hint');
+    if (!hud.getBoundingClientRect) return;
+    // Read both sizes before writing styles, and only write when geometry changes.
+    const bottom = Math.ceil(hud.getBoundingClientRect().bottom);
+    const hintHeight = hint.offsetHeight;
+    const below = bottom + 8 + (hintHeight ? hintHeight + 8 : 0);
+    if (bottom !== hudBottom) { $('game').style.setProperty('--hud-bottom', bottom + 'px'); hudBottom = bottom; }
+    if (below !== panelsTop) { $('game').style.setProperty('--panels-top', below + 'px'); panelsTop = below; }
+  }
 
   function resetZoom() { zi = innerWidth < 700 ? 2 : 3; zoom = ZOOMS[zi]; resize(); }
   function resize() {
@@ -42,6 +59,7 @@
     // Until the game has started, keep the jack in view however the window changes.
     if (G.world && G.time === 0 && G.units[0]) ui.centerOnStart();
     clampCam();
+    layoutPanels();
   }
 
   function clampCam() {
