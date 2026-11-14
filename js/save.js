@@ -51,7 +51,7 @@
   let lastSave = 0;
   LJ.saveGame = function () {
     const w = G.world, now = performance.now();
-    if (!w || G.cine || G.levelDone || now - lastSave < 1000) return; // hiding and closing a tab both fire: save once
+    if (!w || G.arrival || G.cine || G.levelDone || now - lastSave < 1000) return; // arrival is a short, replayable introduction
     lastSave = now;
     const s = { v: VERSION, seed: w.seed, world: {}, g: {}, jobs: [] };
     for (const k in LAYERS) s.world[k] = enc(w[k]);

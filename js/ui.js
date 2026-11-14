@@ -124,7 +124,7 @@
 
   function click(wx, wy, right, touch, shift) {
     if (G.cine) { if (G.cine.phase === 'talk') LJ.ending.next(); return; }
-    if (G.paused) return;
+    if (G.paused || G.arrival) return;
     if (G.place) {
       if (right) { G.place = null; return; }
       G.hover = [wx, wy];
@@ -304,7 +304,7 @@
 
   function bindButtons() {
     $('toolbar').addEventListener('click', e => {
-      const b = e.target.closest('button'); if (!b) return;
+      const b = e.target.closest('button'); if (!b || G.arrival) return;
       LJ.audioInit(); LJ.sfx('click');
       if (b.dataset.act === 'stop') LJ.cmd.stop([...G.sel]);
       else if (b.dataset.act === 'zoomin') setZoom(zi + 1);
@@ -313,7 +313,7 @@
     });
     $('shopClose').onclick = () => $('shop').classList.remove('open');
     $('shopList').addEventListener('click', e => {
-      const b = e.target.closest('button'); if (!b) return;
+      const b = e.target.closest('button'); if (!b || G.arrival) return;
       LJ.audioInit();
       const r = LJ.buy(b.dataset.id);
       if (r === 'wall') { $('shop').classList.remove('open'); ui.toast('Drag to build a palisade. Right-click or Done when finished.'); }
@@ -324,7 +324,7 @@
       } else if (r) ui.toast(b.dataset.id === 'jack' ? 'A new jack is on the way…' : LJ.VEH[b.dataset.id] ? 'A ' + b.dataset.name.toLowerCase() + ' is coming up the road!' : b.dataset.name + ' purchased!');
     });
     $('panel').addEventListener('click', e => {
-      const b = e.target.closest('button'); if (!b) return;
+      const b = e.target.closest('button'); if (!b || G.arrival) return;
       LJ.sfx('click');
       const sel = [...G.sel], a = b.dataset.act;
       if (a === 'sell') LJ.cmd.sell(sel);
@@ -361,7 +361,7 @@
       '<p>One jack. One axe. An awful lot of trees.</p>' +
       '<ul><li><b>Tap a tree</b> to send your jack. Jacks keep cutting the nearest trees they can see; when none are left in sight, they wait.</li>' +
       '<li>Select jacks and <b>tap anywhere</b> to send them there. Keep tapping a tree being chopped to land extra whacks.</li>' +
-      '<li>Wood sells at the <b>market</b>, at the end of the long road west. It is a long walk: stockpile at the tent, and buy trucks as soon as you can.</li>' +
+      '<li>You arrive by <b>truck</b> and pitch your tent. Jacks carry wood back to camp; your truck sells the surplus at the market down the road west. Camp keeps 20 wood for building.</li>' +
       '<li>Upgrade your tent into a village and build houses, sawmills and depots around it.</li>' +
       '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it.</li>' +
       '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection.</li>' +
@@ -437,6 +437,7 @@
 
   // ---------- Per-frame UI ----------
   function hint() {
+    if (G.arrival) return 'Arriving at the forest… your truck will stop and Jack will pitch his tent.';
     if (G.levelDone || G.cine) return '';
     if (G.wallMode) return 'Drag to build a line of palisade. Enemies walk around open ends, so close the ring around what you want to protect.';
     if (G.place) return 'Pick a clear, explored spot the road can reach.';
@@ -454,7 +455,7 @@
     const idle = LJ.jacks().filter(u => !u.task && !u.path.length && !u.hold && !u.fighting).length;
     if (idle && G.cleared < G.total) return idle + (idle > 1 ? ' jacks see' : ' jack sees') + ' no trees. Select them and tap near the forest to send them there.';
     if (!G.village) {
-      if (G.sold === 0 && G.wood === 0) return 'A jack carries ' + LJ.capOf() + ' wood, then walks the long road west to the market to sell it. Tap his tree to help him chop.';
+      if (G.sold === 0) return 'Jacks bring wood to the tent. Your truck sells wood above the 20-wood building reserve; switch to Stockpiling to keep it all.';
       if (!Object.keys(G.up).length && G.money >= 40) return 'You can afford an upgrade — open the Shop.';
       if (G.cleared >= 8) return 'Next: upgrade the tent to a Cabin ($' + Math.max(0, G.money) + '/120, wood ' + G.wood + '/20). ' +
         (G.stockpile ? 'Wood is being stockpiled at the tent.' : 'Tap “Selling” to stockpile wood instead.');
@@ -485,8 +486,7 @@
     const st = sel.length > 1 ? 'Carrying ' + cargo : LJ.statusOf(u) + (u.kind === 'dozer' ? '' : ' · ' + cargo + '/' + LJ.capOf(u));
     let btn = '';
     if (has('jack') && G.count.sawmill) btn += '<button data-act="saw">Saw lumber</button>';
-    if ((has('jack') || has('truck')) && G.village) btn += '<button data-act="sell">' + (has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market') + '</button>';
-    else if (has('jack') && cargo > 0) btn += '<button data-act="sell">Sell wood</button>';
+    if (has('jack') || has('truck')) btn += '<button data-act="sell">' + (has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market') + '</button>';
     p.innerHTML = '<div><div>' + title + '</div><div class="st">' + st + '</div></div>' + btn + '<button data-act="stop">Stop</button><button data-act="desel">✕</button>';
     const pic = iconCanvas(S.icons[ICON_OF[u.kind]], 12);
     pic.title = 'Show on the map (F)'; pic.style.cursor = 'pointer'; pic.onclick = () => ui.centerOnSelection();

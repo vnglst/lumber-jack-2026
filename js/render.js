@@ -34,6 +34,10 @@
     const bob = (u.path.length && Math.floor(u.walkT * 10) % 2) || (busy && Math.floor(G.time * 16) % 2) ? 1 : 0;
     const x = Math.round(u.x) - (img.width >> 1) - cx, y = Math.round(u.y) + 4 - img.height - cy - bob;
     if (!ghost && G.sel.has(u)) ctx.drawImage(S.ringL, Math.round(u.x) - 16 - cx, Math.round(u.y) - 4 - cy);
+    if (G.arrival === u) {
+      const rider = S.jack.axe.idle[u.dir > 0 ? 'r' : 'l'];
+      ctx.drawImage(rider, Math.round(u.x) - 7 - rider.ax - cx, Math.round(u.y) - 7 - rider.ay - cy - bob);
+    }
     ctx.drawImage(img, x, y);
     if (!ghost && u.state === 'chop' && u.target >= 0 && !u.path.length) bar(ctx, x + (img.width >> 1) - 7, y - 4, 12, 1 - G.world.hp[u.target], '#ffd84a');
   }
@@ -101,7 +105,7 @@
       if (dc && decoShown(w, i, dc)) list.push({ k: 12, i, tx, ty, dc, y: ty * TS + LJ.DECO[dc].y + ((hash(i, 5, s) * 5) | 0) - 2 });
     }
     for (const c of G.critters) list.push({ k: 13, c, y: c.y });
-    for (const b of G.buildings) if (!b.dead) list.push({ k: 2, b, y: (b.ty + b.h) * TS });
+    for (const b of G.buildings) if (!b.dead && !b.pending) list.push({ k: 2, b, y: (b.ty + b.h) * TS });
     list.push({ k: 5, y: w.roadY * TS + 1 });
     for (const u of G.units) list.push({ k: 3, u, y: u.y });
     for (const f of G.falls) list.push({ k: 4, f, y: f.y });

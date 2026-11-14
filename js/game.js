@@ -19,7 +19,7 @@
   // The starting tent grows into the village, one upgrade at a time.
   const TIERS = (LJ.TIERS = [
     { name: 'Tent', pop: 2, train: 10, sellMul: 1 },
-    { name: 'Cabin', level: 1, cost: { m: 120, w: 20 }, pop: 4, train: 10, sellMul: 1, desc: 'Stores wood near the forest, lets you hire jacks and brings in market orders.' },
+    { name: 'Cabin', level: 1, cost: { m: 120, w: 20 }, pop: 4, train: 10, sellMul: 1, desc: 'Room for more jacks, village training and market orders.' },
     { name: 'Lodge', level: 3, cost: { m: 600, l: 30 }, pop: 7, train: 5, sellMul: 1, desc: 'Room for 3 more jacks, and new jacks train twice as fast.' },
     { name: 'Town Hall', level: 6, cost: { m: 1800, l: 80 }, pop: 10, train: 5, sellMul: 1.2, desc: 'Room for 3 more jacks, and the market pays 20% more.' }
   ]);
@@ -132,7 +132,7 @@
       villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), sawMask: new Uint8Array(w.N), smokeT: 0,
       fog: new Uint8Array(w.N), fogDirty: true, fogT: 0, fogLeft: w.N, worldVer: 0,
       animals: [], graves: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
-      cine: null, suit: null, props: [], critters: [], dc: null, folkKilled: 0, wallMode: false, wallDrag: null
+      cine: null, suit: null, props: [], critters: [], dc: null, folkKilled: 0, wallMode: false, wallDrag: null, arrival: null
     });
     LJ.combat.reset();
     G.thr = FR.map(f => Math.max(1, Math.round(f * G.total)));
@@ -155,7 +155,10 @@
     G.money = 80; // Enough to hire a second jack before the first trip to market.
     G.base = addBuilding('base', w.base.tx, w.base.ty, 3, 3);
     ring(G.base, G.villMask);
-    addUnit(w.start.x, w.start.y, 'Jack', 'jack', 0);
+    ring(G.base, G.storeMask);
+    G.base.pending = true; // Reserve the campsite; pitch the tent after the truck arrives.
+    G.arrival = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, 'Truck 1', 'truck', 0);
+    walkTo(G.arrival, c => c === w.start.y * W + w.start.x, 'return');
     reveal(w.start.x - 1, w.start.y - 2, 9);
     for (let i = 0; i < w.N; i++) if (LJ.isRoad(w.type[i])) reveal(i % W, (i / W) | 0, 2.5); // the road to market is known land
     spawnCritters();
@@ -426,10 +429,9 @@
     else { endTask(u); u.idleVer = G.worldVer; if (Math.random() < 0.5) say(u, LJ.pick(Q_NONE)); } // nothing to do: don't look again until the world changes
   }
 
-  // Where does chopped wood go? Nearest storage if the settlement has any, else the camp pile (stockpiling) or the market road.
+  // All harvested wood goes through the settlement before it can be sold.
   function goDrop(u) {
-    const goal = G.village ? storeGoal : G.stockpile ? c => G.villMask[c] === 1 : exitGoal;
-    if (!walkTo(u, goal, 'toDrop', M.lost)) { u.wait = 2; u.state = 'think'; }
+    if (!walkTo(u, storeGoal, 'toDrop', M.lost)) { u.wait = 2; u.state = 'think'; }
   }
 
   function sell(u, wd, lum, st) {
@@ -451,10 +453,8 @@
 
   function deposit(u) {
     if (u.carry <= 0) return;
-    if (G.village || G.stockpile) {
-      G.wood += u.carry;
-      LJ.float(u.x, u.y - 18, '+' + u.carry + ' wood', '');
-    } else sell(u, u.carry, 0);
+    G.wood += u.carry;
+    LJ.float(u.x, u.y - 18, '+' + u.carry + ' wood', '');
     u.carry = 0;
   }
 
@@ -561,7 +561,7 @@
   function rebuildMasks() {
     G.villMask.fill(0); G.storeMask.fill(0); G.sawMask.fill(0);
     ring(G.base, G.villMask);
-    if (G.tier >= 1) ring(G.base, G.storeMask);
+    ring(G.base, G.storeMask);
     for (const b of G.buildings) if (!b.dead && BLD[b.kind].mask) ring(b, G[BLD[b.kind].mask]);
   }
 
@@ -729,7 +729,8 @@
         }
         break;
       case 'haulStore':
-        if (u.carry) { G.wood += u.carry; u.carry = 0; }
+        deposit(u);
+        if (G.stockpile && u.task && !u.task.once && u.kind === 'truck') { u.wait = 1; break; }
         if (loadUp(u)) think(u);
         else if (u.task && u.task.once) { say(u, M.noHaul); endTask(u); }
         else if (u.kind === 'jack') { // a jack goes back to chopping once storage is empty
@@ -770,7 +771,6 @@
   // Any new order clears a stop order ("hold"), which otherwise keeps automation from taking the unit over again.
   function setTask(u, task) {
     release(u);
-    if (u.load) { G.wood += u.load.w; G.lumber += u.load.l; G.stone += u.load.s || 0; u.load = null; }
     u.task = task; u.path = []; u.wait = 0; u.state = 'think'; u.hold = false;
   }
   const workTask = (ax, ay, first) => ({ type: 'work', ax, ay, first: first === undefined ? -1 : first });
@@ -805,17 +805,14 @@
         else say(u, M.cantGet);
       }
     },
-    // Without storage: walk whatever you carry to the market. With storage: become a hauler.
+    // Market haulers collect from the settlement, never directly from the forest.
     sell(units) {
       units = units.filter(u => u.kind === 'jack' || u.kind === 'truck');
       for (const u of units) {
-        if (G.village) {
-          const back = u.task && u.task.type === 'work' ? workTask(u.task.ax, u.task.ay) : null;
-          setTask(u, { type: 'haul', once: u.kind === 'truck' && !G.up.dispatch, resume: back });
-        }
-        else if (u.carry > 0) { setTask(u, null); if (!walkTo(u, exitGoal, 'sellRun', M.lost)) u.state = 'idle'; }
+        const back = u.task && u.task.type === 'work' ? workTask(u.task.ax, u.task.ay) : null;
+        setTask(u, { type: 'haul', once: u.kind === 'truck' && !G.up.dispatch, resume: back });
       }
-      if (G.village && units.length) say(units[0], units[0].kind === 'truck' ? Q_VEH.truck[0] : M.market);
+      if (units.length) say(units[0], units[0].kind === 'truck' ? Q_VEH.truck[0] : M.market);
     },
     hunt(units, a) {
       units = units.filter(u => u.kind === 'jack');
@@ -863,6 +860,7 @@
   const afford = c => G.money >= c.m && G.wood >= (c.w || 0) && G.lumber >= (c.l || 0);
   LJ.shopState = function (it) {
     const c = it.cost(), ct = costText(c);
+    if (G.arrival) return { st: 'locked', label: 'Arriving…', costText: ct };
     if ((!it.repeat && owned(it.id)) || (it.done && it.done())) return { st: 'owned', label: '✓', costText: ct };
     if (it.level > G.level) return { st: 'locked', label: 'Level ' + it.level, costText: ct };
     if (it.need && !owned(it.need)) return { st: 'locked', label: 'Needs ' + (it.need === 'cabin' ? 'Cabin' : SHOP.find(s => s.id === it.need).name), costText: ct };
@@ -897,7 +895,7 @@
 
   LJ.buy = function (id) {
     const it = SHOP.find(s => s.id === id);
-    if (!it || LJ.shopState(it).st !== 'ok') { LJ.sfx('no'); return false; }
+    if (G.arrival || !it || LJ.shopState(it).st !== 'ok') { LJ.sfx('no'); return false; }
     if (it.wall) { G.wallMode = true; return 'wall'; }
     if (it.place) { G.place = { kind: id, w: it.place[0], h: it.place[1] }; return 'place'; }
     pay(it.cost());
@@ -1114,6 +1112,21 @@
   }
 
   LJ.update = function (dt) {
+    if (G.arrival) {
+      const truck = G.arrival;
+      stepPath(truck, dt);
+      LJ.ui.follow(truck.x, truck.y, dt);
+      if (!truck.path.length) {
+        G.arrival = null; G.base.pending = false;
+        levelFootprint(G.base);
+        const jack = addUnit(w.start.x + 1, w.start.y, 'Jack', 'jack', 0);
+        G.sel = new Set([jack]);
+        setTask(truck, { type: 'haul', once: false });
+        LJ.sfx('build');
+        LJ.ui.toast('Camp is ready! Jacks bring wood here; your truck takes the surplus to market.');
+      }
+      return;
+    }
     G.time += dt;
     for (const u of G.units) {
       if (u.dead) continue;

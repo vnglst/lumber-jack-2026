@@ -29,6 +29,7 @@ How to read it:
 | 16 | 14 Nov | Remove the sound effects studio | Done |
 | 17 | 14 Nov | Requirements and decision log | Active |
 | 18 | 14 Nov | Faster start with an extra Jack | Active |
+| 19 | 14 Nov | Arrive by truck and store wood at camp | Active |
 
 ---
 
@@ -236,3 +237,13 @@ How to read it:
 - Hiring is available at the starting tent in level 1, without a Cabin upgrade.
 - The hired Jack immediately walks from the market along the road towards the settlement.
 - *Decision: start with $80 (the first hire's price), give the tent room for two jacks, and show a hiring hint. Cabin and later hires retain village training. Existing saves keep their money and progress.*
+
+## 19. Arrive by truck and store wood at camp (14 Nov 2026)
+
+> When starting the game, you arrive in a truck that drives you to the forest, where you then set up your tent. Wood should be carried to the tent/village before it can be picked up by the truck.
+
+- A new game opens with a truck driving from the market to the forest, followed by Jack getting out and pitching the tent.
+- Harvested wood must be deposited at the tent/village before market transport.
+- *Decision: the arrival truck stays as the first market truck, with no upkeep. It automatically sells surplus, retaining the existing 20-wood building reserve. Stockpiling pauses automatic loading. Later purchased trucks retain their existing orders and upkeep.*
+- *Decision: the short arrival sequence is replayed rather than saved midway; normal saves resume once camp is ready. Existing saves remain compatible.*
+- **Supersedes** the pre-village direct-to-market carrying in game plan §5.
