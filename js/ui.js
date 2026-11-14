@@ -9,6 +9,10 @@
   let cv, zi = 3, zoom = 3, keys = {}, lastClickU = null, lastClickT = 0, toastT = 0, panelSig = '', shopSig = '', orderSig = '';
   let hudBottom = -1, panelsTop = -1;
   let mini, mctx, mimg, miniT = 0, mouse = null; // mouse: last pointer position in window pixels, null when outside
+  let muted = false, idleI = 0, groups = {}, lastGroup = '', lastGroupT = 0, cursor = '';
+  const PING = 0.45; // seconds an order marker stays on the ground
+  ui.PING = PING;
+  ui.pings = [];     // { x, y, c, t }: where the last orders landed, drawn by render.js
 
   function iconCanvas(src, size) {
     const c = document.createElement('canvas');
@@ -34,6 +38,8 @@
       layout.observe($('hud')); layout.observe($('hint'));
     }
     bindPointer(); bindKeys(); bindButtons(); bindMini();
+    // A clicked button must not keep the keyboard: Space and Enter belong to the game, not to the last button pressed.
+    document.addEventListener('click', e => { const b = e.detail && e.target.closest('#hud button, #bottom button, #shop button'); if (b) b.blur(); });
     addEventListener('pointermove', e => { if (e.pointerType === 'mouse') mouse = [e.clientX, e.clientY]; });
     document.addEventListener('mouseleave', () => { mouse = null; });
     addEventListener('blur', () => { mouse = null; });
@@ -106,6 +112,26 @@
     ui.centerOn(sel.reduce((a, u) => a + u.x, 0) / sel.length, sel.reduce((a, u) => a + u.y, 0) / sel.length);
   };
 
+  ui.centerOnCamp = function () { const b = G.base; if (b && !G.cine) ui.centerOn((b.tx + b.w / 2) * TS, (b.ty + b.h / 2) * TS); };
+
+  const ping = (x, y, c) => ui.pings.push({ x, y, c, t: 0 });
+  const tilePing = (i, c) => ping((i % G.world.W) * TS + 8, ((i / G.world.W) | 0) * TS + 8, c);
+
+  // Jacks with nothing to do and no order to stay put.
+  const idleJacks = () => LJ.jacks().filter(u => !u.task && !u.path.length && !u.hold && !u.fighting);
+  function nextIdle() {
+    const idle = idleJacks();
+    if (!idle.length) { ui.toast('Every jack is busy.'); return; }
+    const u = idle[idleI++ % idle.length];
+    G.sel = new Set([u]); ui.centerOn(u.x, u.y);
+  }
+
+  function setShop(open) {
+    $('shop').classList.toggle('open', open);
+    $('game').classList.toggle('shopping', open); // small screens tuck the selection panel away under the shop
+  }
+  const shopOpen = () => $('shop').classList.contains('open');
+
   ui.toast = function (text) { const t = $('toast'); t.textContent = text; t.classList.add('show'); toastT = 2.6; };
 
   // ---------- Picking ----------
@@ -149,11 +175,23 @@
     }
     return best;
   }
+  const hutAt = (wx, wy, slack) => G.huts.find(h => h.alive && G.fog[h.tile] && Math.abs(wx - h.x) <= 17 + slack && wy >= h.y - 24 - slack && wy <= h.y + 4 + slack);
+  // What a click here would do, as a mouse cursor: pointer on things to select or work on, crosshair on things to attack or place.
+  function cursorAt(wx, wy) {
+    if (G.cine || G.arrival || G.paused) return 'default';
+    if (G.place || G.wallMode) return 'crosshair';
+    if (pickUnit(wx, wy, 0)) return 'pointer';
+    const beast = hutAt(wx, wy, 0) || pickAnimal(wx, wy, 0);
+    if (beast && LJ.seenPx(beast.x, beast.y)) return 'crosshair';
+    return treeAt(wx, wy) >= 0 ? 'pointer' : 'default';
+  }
+  function setCursor(c) { if (c !== cursor) cv.style.cursor = cursor = c; }
   const isExit = i => { const w = G.world, x = i % w.W, y = (i / w.W) | 0; return x <= 1 && Math.abs(y - w.roadY) <= 1; };
 
   function click(wx, wy, right, touch, shift) {
     if (G.cine) { if (G.cine.phase === 'talk') LJ.ending.next(); return; }
     if (G.paused || G.arrival) return;
+    if (shopOpen() && innerWidth <= 700) { setShop(false); return; } // on a phone the shop is a sheet: a tap beside it closes it
     if (G.place) {
       if (right) { G.place = null; return; }
       G.hover = [wx, wy];
@@ -167,6 +205,7 @@
     if (u) {
       const now = performance.now();
       if (lastClickU === u && now - lastClickT < 350) G.sel = new Set(G.units.filter(o => o.kind === u.kind));
+      else if (shift && G.sel.has(u)) G.sel.delete(u); // shift-click adds to the selection, or takes a unit out again
       else { if (!shift) G.sel.clear(); G.sel.add(u); LJ.poke(u); }
       lastClickU = u; lastClickT = now;
       LJ.sfx('click');
@@ -176,15 +215,14 @@
     let sel = [...G.sel];
     const doze = LJ.canDoze(idx) && G.fog[idx] && sel.some(s => s.kind === 'dozer');
     if (tr >= 0 && !doze && LJ.whack(tr)) return;
-    const hut = G.huts.find(h => h.alive && G.fog[h.tile] && Math.abs(wx - h.x) <= 17 + slack && wy >= h.y - 24 - slack && wy <= h.y + 4 + slack);
-    const beast = hut || pickAnimal(wx, wy, slack);
+    const beast = hutAt(wx, wy, slack) || pickAnimal(wx, wy, slack);
     if (beast && LJ.seenPx(beast.x, beast.y)) {
       if (!sel.some(s => s.kind === 'jack')) sel = LJ.jacks();
       G.sel = new Set(sel);
-      LJ.cmd.hunt(sel, beast); LJ.sfx('click');
+      LJ.cmd.hunt(sel, beast); LJ.sfx('click'); ping(beast.x, beast.y - 6, '#ff5a3a');
       return;
     }
-    if (doze) { LJ.cmd.dozeTo(sel, idx); LJ.sfx('click'); return; }
+    if (doze) { LJ.cmd.dozeTo(sel, idx); LJ.sfx('click'); tilePing(idx, '#ff9a2a'); return; }
     if (!sel.length) {
       if (tr < 0) return;
       // Nothing selected: grab the nearest jack so a single tap is enough to get going.
@@ -200,13 +238,13 @@
     else {
       // Anywhere else: walk there. Jacks and harvesters start on whatever trees they can see once they arrive.
       const to = walkableNear(idx);
-      if (to >= 0) { LJ.cmd.move(sel, to); LJ.sfx('click'); }
+      if (to >= 0) { LJ.cmd.move(sel, to); LJ.sfx('click'); tilePing(to, '#fff'); }
     }
   }
 
-  function boxSelect(d) {
+  function boxSelect(d, add) {
     const x0 = Math.min(d.x0, d.x1), x1 = Math.max(d.x0, d.x1), y0 = Math.min(d.y0, d.y1), y1 = Math.max(d.y0, d.y1);
-    G.sel = new Set(G.units.filter(u => u.x >= x0 && u.x <= x1 && u.y - 6 >= y0 && u.y - 6 <= y1));
+    G.sel = new Set([...(add ? G.sel : []), ...G.units.filter(u => u.x >= x0 && u.x <= x1 && u.y - 6 >= y0 && u.y - 6 <= y1)]);
   }
 
   // Tiles on a straight line between two tiles (for dragging out a palisade). Diagonal steps get an
@@ -251,6 +289,7 @@
     cv.addEventListener('pointermove', e => {
       if (e.pointerType === 'mouse') G.hover = world(e);
       const p = ptrs.get(e.pointerId);
+      if (e.pointerType === 'mouse') setCursor(p && p.moved && p.mode === 'pan' ? 'grabbing' : p ? cursor : cursorAt(G.hover[0], G.hover[1]));
       if (!p) return;
       if (p.mode === 'wall') { const [wx, wy] = world(e); G.wallDrag = tileLine(tileAt(p.wx, p.wy), tileAt(wx, wy)); return; }
       const dx = e.clientX - p.lx, dy = e.clientY - p.ly;
@@ -280,7 +319,7 @@
       if (p.mode === 'cmd' && G.wallMode && !p.moved) { G.wallMode = false; return; }
       if (!p.moved) click(p.wx, p.wy, p.mode === 'cmd', p.touch, p.shift);
       else if (G.drag) {
-        if (!G.paused && !G.cine) boxSelect(G.drag);
+        if (!G.paused && !G.cine) boxSelect(G.drag, p.shift);
         G.drag = null;
       }
     };
@@ -324,16 +363,59 @@
 
   function bindKeys() {
     addEventListener('keydown', e => {
-      keys[e.key.toLowerCase()] = true;
+      if (LJ.title.isOpen()) return;
+      const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+      if (!mod) keys[k] = true;
+      if ($('modal').classList.contains('open')) { // Escape takes a dialog's way out; Enter presses the focused button by itself
+        const out = $('modal').querySelector('[data-esc]');
+        if (e.key === 'Escape' && out) out.click();
+        return;
+      }
       if (G.cine) { if ((e.key === ' ' || e.key === 'Enter') && G.cine.phase === 'talk') LJ.ending.next(); return; }
-      if (G.arrival) { if ((e.key === ' ' || e.key === 'Enter') && !G.paused) { e.preventDefault(); LJ.skipIntroLine(); } return; }
-      if (e.key === 'f' || e.key === 'F' || e.key === ' ') { e.preventDefault(); ui.centerOnSelection(); }
-      if (e.key === '+' || e.key === '=') setZoom(zi + 1);
-      if (e.key === '-' || e.key === '_') setZoom(zi - 1);
-      if (e.key === 'Escape') { G.sel.clear(); G.place = null; G.wallMode = false; G.wallDrag = null; $('shop').classList.remove('open'); }
+      if (G.arrival) {
+        if ((e.key === ' ' || e.key === 'Enter') && !G.paused) { e.preventDefault(); LJ.skipIntroLine(); }
+        else if (e.key === 'Escape') ui.showMenu();
+        return;
+      }
+      if (mod) { if (k === 'a') { e.preventDefault(); G.sel = new Set(LJ.jacks()); } return; } // leave the browser's own shortcuts alone
+      const digit = /^Digit([1-9])$/.exec(e.code);
+      if (digit) { group(digit[1], e.shiftKey); return; }
+      if (k === 'f' || k === ' ') { e.preventDefault(); ui.centerOnSelection(); }
+      else if (k === 'h' || k === 'home') ui.centerOnCamp();
+      else if (k === 'tab') { e.preventDefault(); nextIdle(); }
+      else if (k === 'b') setShop(!shopOpen());
+      else if (k === 'm') $('game').classList.toggle('mini-on');
+      else if (k === 'x') LJ.cmd.stop([...G.sel]);
+      else if (k === 'p') ui.showMenu();
+      else if (k === '+' || k === '=') setZoom(zi + 1);
+      else if (k === '-' || k === '_') setZoom(zi - 1);
+      else if (k === 'escape') {
+        // Back out one step at a time; with nothing left to back out of, Escape opens the menu.
+        if (G.place || G.wallMode) { G.place = null; G.wallMode = false; G.wallDrag = null; }
+        else if (shopOpen()) setShop(false);
+        else if (G.sel.size) G.sel.clear();
+        else ui.showMenu();
+      }
     });
     addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
     addEventListener('blur', () => { keys = {}; });
+  }
+
+  // Numbered groups: Shift+digit remembers the selection, the digit recalls it, the digit twice also jumps there.
+  // (Ctrl/Cmd+digit belongs to the browser's tabs.)
+  function group(n, assign) {
+    if (assign) {
+      if (!G.sel.size) return;
+      groups[n] = [...G.sel];
+      ui.toast('Group ' + n + ': ' + G.sel.size + (G.sel.size > 1 ? ' units' : ' unit') + '. Press ' + n + ' to select it.');
+      return;
+    }
+    const alive = (groups[n] || []).filter(u => G.units.includes(u));
+    if (!alive.length) return;
+    G.sel = new Set(alive);
+    const now = performance.now();
+    if (lastGroup === n && now - lastGroupT < 400) ui.centerOnSelection();
+    lastGroup = n; lastGroupT = now;
   }
 
   function bindButtons() {
@@ -343,16 +425,18 @@
       if (b.dataset.act === 'stop') LJ.cmd.stop([...G.sel]);
       else if (b.dataset.act === 'zoomin') setZoom(zi + 1);
       else if (b.dataset.act === 'zoomout') setZoom(zi - 1);
-      else if (b.dataset.act === 'shop') $('shop').classList.toggle('open');
+      else if (b.dataset.act === 'shop') setShop(!shopOpen());
+      else if (b.dataset.act === 'idle') nextIdle();
+      else if (b.dataset.act === 'map') $('game').classList.toggle('mini-on');
     });
-    $('shopClose').onclick = () => $('shop').classList.remove('open');
+    $('shopClose').onclick = () => setShop(false);
     $('shopList').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b || G.arrival) return;
       LJ.audioInit();
       const r = LJ.buy(b.dataset.id);
-      if (r === 'wall') { $('shop').classList.remove('open'); ui.toast('Drag to build a palisade. Right-click or Done when finished.'); }
+      if (r === 'wall') { setShop(false); ui.toast('Drag to build a palisade. Right-click or Done when finished.'); }
       else if (r === 'place') {
-        $('shop').classList.remove('open');
+        setShop(false);
         if (!G.hover) G.hover = [G.cam.x + vwW() / 2, G.cam.y + vwH() / 2];
         ui.toast('Pick a clear spot for the ' + b.dataset.name.toLowerCase());
       } else if (r) ui.toast(b.dataset.id === 'base' ? 'Village upgrade started — watch the yellow construction bar.' : b.dataset.id === 'jack' ? 'A new jack is on the way…' : LJ.VEH[b.dataset.id] ? 'A ' + b.dataset.name.toLowerCase() + ' is coming up the road!' : b.dataset.name + ' purchased!');
@@ -375,19 +459,57 @@
     $('cine').addEventListener('click', () => LJ.ending.next());
     $('again').onclick = () => ui.restart();
     $('stockBtn').onclick = () => { G.stockpile = !G.stockpile; LJ.sfx('click'); ui.toast(G.stockpile ? 'Wood is now stockpiled at the camp' : 'Wood is now sold at the market'); };
-    $('soundBtn').onclick = () => { LJ.audioInit(); $('soundBtn').style.opacity = LJ.toggleMute() ? 0.4 : 1; };
+    $('soundBtn').onclick = toggleSound;
+    $('menuBtn').onclick = () => ui.showMenu();
     $('findsBtn').onclick = () => { if (!G.cine && !G.arrival) ui.showFinds(); };
     $('helpBtn').onclick = () => { if (!G.cine) ui.showHelp(); };
   }
 
+  function toggleSound() {
+    LJ.audioInit();
+    muted = LJ.toggleMute();
+    $('soundBtn').style.opacity = muted ? 0.4 : 1;
+    $('soundBtn').title = muted ? 'Sound is off' : 'Sound is on';
+  }
+
   // ---------- Dialogs ----------
-  function modal(html, onOk) {
+  // A dialog pauses the game. Each button names its action in data-a (a plain button is "ok"); pressing one closes the
+  // dialog, resumes the game and then runs the action, which may open the next dialog. The button marked data-esc is
+  // also the Escape key, as is a dialog's only button.
+  function dialog(html, acts) {
     const m = $('modal');
-    m.innerHTML = '<div class="dialog">' + html + '</div>';
+    m.innerHTML = '<div class="dialog" role="dialog" aria-modal="true">' + html + '</div>';
     m.classList.add('open');
     G.paused = true;
-    m.querySelector('button').onclick = () => { LJ.audioInit(); LJ.sfx('click'); m.classList.remove('open'); if (onOk) onOk(); G.paused = false; };
+    const buttons = [...m.querySelectorAll('button')];
+    for (const b of buttons) {
+      b.onclick = () => {
+        LJ.audioInit(); LJ.sfx('click');
+        m.classList.remove('open'); G.paused = false;
+        const run = acts[b.dataset.a || 'ok'];
+        if (run) run();
+      };
+    }
+    if (buttons.length === 1) buttons[0].dataset.esc = '';
+    (m.querySelector('[data-esc]') || buttons[0]).focus({ preventScroll: true });
   }
+  // The common case: one message, one button.
+  const modal = (html, onOk) => dialog(html, { ok: onOk });
+
+  ui.showMenu = function () {
+    if (G.cine || LJ.title.isOpen() || $('modal').classList.contains('open')) return;
+    dialog('<h1>Paused</h1><div class="menu">' +
+      '<button data-a="resume" data-esc>Back to work</button>' +
+      '<button data-a="help" class="ghost">How to play</button>' +
+      '<button data-a="sound" class="ghost">Sound: ' + (muted ? 'off' : 'on') + '</button>' +
+      '<button data-a="fresh" class="ghost">New game</button></div>' +
+      '<p class="fine">The game saves itself as you play.</p>', {
+      help: ui.showHelp,
+      sound: () => { toggleSound(); ui.showMenu(); },
+      fresh: () => dialog('<h1>Start a new game?</h1><p>This forest and everything you built in it will be replaced by a fresh one.</p>' +
+        '<div class="row"><button data-a="yes">Start a new game</button><button data-a="no" class="ghost" data-esc>Keep playing</button></div>', { yes: ui.restart, no: ui.showMenu })
+    });
+  };
 
   ui.showFinds = function () {
     const found = G.finds.filter(f => f.found);
@@ -398,17 +520,19 @@
 
   // The how-to-play dialog behind the ? button.
   ui.showHelp = function () {
+    const row = (what, mouse, touch, key) => '<tr><th>' + what + '</th><td>' + mouse + '</td><td>' + touch + '</td><td>' + key + '</td></tr>';
     modal(
-    '<div class="logo"><span class="lumber">Lumber</span><span class="jack">Jack</span></div>' +
-    '<p>One jack. One axe. An awful lot of trees.</p>' +
-    '<ul><li><b>Tap a tree</b> to send your jack. Jacks keep cutting the nearest trees they can see; when none are left in sight, they wait.</li>' +
-    '<li>Select jacks and <b>tap anywhere</b> to send them there. Keep tapping a tree being chopped to land extra whacks.</li>' +
-    '<li>You arrive by <b>truck</b> and pitch your tent. Jacks carry wood back to camp; your truck sells the surplus at the market down the road west. Camp keeps 20 wood for building.</li>' +
-    '<li>Upgrade your tent into a village and build houses and sawmills. Logging Trucks shuttle harvested wood from a forest clearing back to your village; market trucks sell it.</li>' +
-    '<li>Jacks learn through work. Select one to see his rank and XP: experience improves chopping, processing, carrying and walking.</li>' +
-    '<li>The map is unexplored. The forest bites back: jacks heal near home; tap an animal to hunt it. Forest villages defend themselves if you approach. Tap a hut to attack it and permanently stop its reinforcements.</li>' +
-    '<li>Scroll with two fingers on a trackpad (or the mouse wheel), the screen edges, WASD/arrow keys or the minimap. Pinch, the − + buttons or the − + keys zoom. F jumps to your selection. Pan past the forest edges into the black margin to bring edge tiles clear of the UI.</li>' +
-    '<li>The game saves itself as you play.</li></ul><button>Back to work</button>');
+    '<h1>How to play</h1>' +
+    '<ul><li><b>Clear the forest.</b> Send a jack to a tree and he keeps cutting whatever he can see. Wood goes back to camp; your truck sells the surplus at the market down the road west.</li>' +
+    '<li><b>Grow the camp.</b> The Shop has tools, more jacks, buildings and machines. Upgrade the tent into a village; sawmills turn wood into lumber, Logging Trucks fetch wood from deep in the forest.</li>' +
+    '<li><b>Mind the forest.</b> The map is unexplored and it bites back. Jacks heal near home and learn through work. Forest villages defend themselves; destroying a hut stops its reinforcements for good.</li></ul>' +
+    '<table class="keys"><tr><td></td><th>Mouse</th><th>Touch</th><th>Keys</th></tr>' +
+    row('Select', 'Click a unit, drag a box. Shift adds. Double-click takes every unit of that kind.', 'Tap a unit. Double-tap takes every unit of that kind.', 'Ctrl/⌘+A all jacks. Shift+1–9 saves a group, 1–9 recalls it.') +
+    row('Order', 'Click or right-click a tree, animal, hut, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things.', 'X stops. Esc deselects.') +
+    row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
+    row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch.', '− and +') +
+    row('Menus', 'Shop is in the toolbar, ≡ pauses.', 'Shop is in the toolbar, ≡ pauses.', 'B shop. Esc backs out one step, then pauses.') +
+    '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels.</p><button>Back to work</button>');
   };
 
   // The opening screen. It is shown once, at boot, over a fresh game that is paused and waiting.
@@ -438,7 +562,7 @@
 
   ui.cineStart = function () {
     $('game').classList.add('cine');
-    $('shop').classList.remove('open');
+    setShop(false);
     $('modal').classList.remove('open');
     G.paused = false;
   };
@@ -518,8 +642,8 @@
     if (sel.length && sel.every(u => u.kind === 'truck') && !G.up.dispatch) return 'Tap the market sign (or “Haul run”) to send the truck on a trip.';
     if (!G.village && LJ.jackCount() < LJ.popCap() && G.money >= LJ.SHOP.find(it => it.id === 'jack').cost().m) return 'Hire an extra Jack in the Shop — he starts walking to your tent right away.';
     if (G.cleared === 0 && !tasks('work')) return 'Tap a tree to send your jack to work.';
-    const idle = LJ.jacks().filter(u => !u.task && !u.path.length && !u.hold && !u.fighting).length;
-    if (idle && G.cleared < G.total) return idle + (idle > 1 ? ' jacks see' : ' jack sees') + ' no trees. Select them and tap near the forest to send them there.';
+    const idle = idleJacks().length;
+    if (idle && G.cleared < G.total) return idle + (idle > 1 ? ' jacks see' : ' jack sees') + ' no trees. Find them with the idle button (Tab) and tap near the forest to send them there.';
     if (!G.village) {
       if (G.sold === 0) return 'Jacks bring wood to the tent. Your truck sells wood above the 20-wood building reserve; switch to Stockpiling to keep it all.';
       if (!Object.keys(G.up).length && G.money >= 40) return 'You can afford an upgrade — open the Shop.';
@@ -641,7 +765,7 @@
     mctx.strokeRect(Math.round(G.cam.x / TS) + 0.5, Math.round(G.cam.y / TS) + 0.5, Math.round(vwW() / TS), Math.round(vwH() / TS));
   }
 
-  ui.reset = function () { panelSig = shopSig = orderSig = 'x'; $('overlay').innerHTML = ''; ui.introLine(null); };
+  ui.reset = function () { panelSig = shopSig = orderSig = 'x'; groups = {}; ui.pings.length = 0; $('overlay').innerHTML = ''; ui.introLine(null); };
 
   ui.tick = function (dt) {
     const sp = 260 * dt / (zoom / 3);
@@ -657,6 +781,12 @@
     if ((mx || my) && !G.cine && !G.arrival) panBy(mx * sp * zoom, my * sp * zoom);
     if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.remove('show');
     if ((miniT -= dt) <= 0) { miniT = 0.25; drawMini(); }
+    for (const p of ui.pings) p.t += dt;
+    while (ui.pings.length && ui.pings[0].t >= PING) ui.pings.shift();
+    const idle = G.arrival ? 0 : idleJacks().length;
+    $('idleBtn').style.display = idle ? '' : 'none';
+    if ($('idleN').textContent !== String(idle)) $('idleN').textContent = idle;
+    $('stopBtn').disabled = !G.sel.size;
 
     const set = (el, v) => { if (el.textContent !== String(v)) el.textContent = v; };
     set($('c-money').querySelector('b'), G.money.toLocaleString('en-US'));

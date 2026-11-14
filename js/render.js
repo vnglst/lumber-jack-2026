@@ -241,6 +241,16 @@
       ctx.fillRect(x + 12, y + 15, 4, 1); ctx.fillRect(x + 15, y + 12, 1, 4);
     }
 
+    // Order markers: four corners closing in on the spot an order was given for
+    for (const p of LJ.ui.pings) {
+      const d = Math.round(9 - 6 * p.t / LJ.ui.PING), x = Math.round(p.x - cx), y = Math.round(p.y - cy);
+      ctx.fillStyle = p.c;
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+        ctx.fillRect(x + sx * d - (sx > 0 ? 2 : 0), y + sy * d, 3, 1);
+        ctx.fillRect(x + sx * d, y + sy * d - (sy > 0 ? 2 : 0), 1, 3);
+      }
+    }
+
     // Tiles queued for the bulldozer
     ctx.fillStyle = '#ff9a2a';
     for (const u of G.units) {

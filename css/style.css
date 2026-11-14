@@ -127,6 +127,13 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
 #toolbar .sep { width: 2px; height: 30px; background: var(--tar); }
 #shopDot { position: absolute; right: -5px; top: -5px; width: 14px; height: 14px; border-radius: 1px; background: var(--lichen); border: 2px solid var(--tar); display: none; }
 #shopDot.on { display: block; }
+#toolbar button:disabled { opacity: .45; cursor: default; }
+#idleBtn canvas { width: 24px; height: 24px; }
+#idleBtn .count {
+  position: absolute; right: -6px; top: -6px; min-width: 18px; height: 18px; padding: 1px 3px 0; display: grid; place-items: center;
+  font-size: 12px; background: var(--ochre); color: var(--tar); border: 2px solid var(--tar); border-radius: 1px;
+}
+#toolbar #mapBtn { display: none; }
 
 #shop {
   position: absolute; right: 8px; top: var(--panels-top, 100px); width: 300px; max-height: calc(100% - var(--panels-top, 100px) - 100px); overflow: auto;
@@ -154,6 +161,18 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
 .dialog p { font-size: 15px; font-weight: 600; line-height: 1.45; margin: 8px 0; color: var(--trim); }
 .dialog ul { text-align: left; font-size: 14px; font-weight: 600; line-height: 1.5; margin: 10px 0 14px 18px; color: var(--chalk); }
 .dialog button { font-size: 18px; padding: 10px 28px; margin-top: 6px; }
+.dialog li b { color: var(--ochre); }
+.dialog p.fine { font-size: 12px; color: var(--chalk); }
+.dialog .menu { display: flex; flex-direction: column; gap: 8px; max-width: 260px; margin: 14px auto 10px; }
+.dialog .menu button { margin: 0; }
+/* The controls table in How to play. Columns for input the device doesn't have are left out. */
+.dialog:has(.keys) { max-width: 700px; }
+.keys { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; font-weight: 600; line-height: 1.35; margin: 4px 0 10px; }
+.keys th, .keys td { padding: 6px 8px; vertical-align: top; border-top: 2px solid var(--red-deep); color: var(--trim); }
+.keys th { color: var(--ochre); white-space: nowrap; }
+.keys tr:first-child > * { border-top: 0; }
+@media not (any-pointer: fine) { .keys tr > :nth-child(2), .keys tr > :nth-child(4) { display: none; } }
+@media not (any-pointer: coarse) { .keys tr > :nth-child(3) { display: none; } }
 
 .float { position: absolute; left: 0; top: 0; font-size: 15px; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; white-space: nowrap; will-change: transform; }
 .float.money { color: var(--ochre); }
@@ -175,7 +194,8 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
   #hint { font-size: 12px; }
   #order { width: 170px; font-size: 12px; }
   #payTxt { display: none; }
-  #shop { left: 8px; right: 8px; width: auto; bottom: 120px; max-height: calc(100% - var(--panels-top, 100px) - 120px); }
+  #shop { left: 8px; right: 8px; width: auto; top: auto; bottom: 70px; max-height: min(55%, calc(100% - var(--panels-top, 100px) - 78px)); }
+  .shopping #panel { display: none; }
   #toolbar button { width: 42px; height: 42px; }
 }
 
@@ -185,10 +205,15 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
   border: 2px solid var(--tar); outline: 2px solid var(--trim); outline-offset: -4px; box-shadow: 0 3px 0 rgba(0, 0, 0, .4); border-radius: 2px;
   background: var(--tar); cursor: pointer; touch-action: none;
 }
-@media (max-width: 900px) { #mini { display: none; } }
+@media (max-width: 900px) {
+  /* Small screens keep the minimap behind the map button. */
+  #mini { display: none; width: 156px; height: 108px; bottom: calc(126px + env(safe-area-inset-bottom)); }
+  .mini-on #mini { display: block; }
+  #toolbar #mapBtn { display: grid; }
+}
 
 /* The opening ride: one short story beat at a time, with room to see the road. */
-.arriving #hud > :not(#soundBtn):not(.spacer),
+.arriving #hud > :not(#soundBtn):not(#menuBtn):not(.spacer),
 .arriving #bottom, .arriving #order, .arriving #hint, .arriving #shop, .arriving #mini { display: none !important; }
 #intro {
   position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -204,7 +229,7 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
 #intro .more { margin-top: 4px; font-size: 12px; color: var(--chalk); font-weight: 600; text-align: right; }
 
 /* Ending */
-.cine #bottom, .cine #order, .cine #hint, .cine #shop, .cine #mini, .cine #helpBtn { display: none !important; }
+.cine #bottom, .cine #order, .cine #hint, .cine #shop, .cine #mini, .cine #helpBtn, .cine #menuBtn { display: none !important; }
 #cine {
   position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
   width: min(620px, calc(100vw - 32px)); display: none; gap: 14px; align-items: center; padding: 16px 18px 14px; cursor: pointer;

@@ -59,6 +59,7 @@ How to read it:
 | 46 | 14 Nov | Sharing, installation and analytics | Active |
 | 47 | 14 Nov | Map-edge navigation and black padding | Active |
 | 48 | 14 Nov | An interface of its own: painted boards, not Stardew wood | Active |
+| 49 | 14 Nov | Predictable navigation and controls | Active |
 
 ---
 
@@ -600,3 +601,23 @@ How to read it:
 - *Decision: ochre yellow marks money, names and XP; spruce green marks progress and "accept"; a chip turns white with red figures when in debt. The market order is a white notice with a red edge, no longer a tilted parchment note.*
 - *Decision: colours live in CSS custom properties at the top of `css/style.css`, so later interface work shares them. The logo keeps its lettering, repainted white and ochre.*
 - World art, sprites, the opening-screen scene, the recording booth and all behaviour are unchanged. The offline shell cache is bumped to v2 so installed copies pick up the new stylesheet.
+
+## 49. Predictable navigation and controls (14 Nov 2026)
+
+> Improve navigation & UX in the game. It should be easy and predictable as users are used to for these kind of games.
+
+- Controls follow the conventions of strategy and management games, on mouse, touch and keyboard, and every action gives visible feedback.
+- **Pause menu**: the ≡ button, Esc or P pauses and offers Back to work, How to play, Sound on/off and New game. New game asks for confirmation first.
+- **Escape backs out one step at a time**: a dialog, then placement or palisade mode, then the shop, then the selection, and only then the pause menu. Enter presses a dialog's main button.
+- **Feedback**: a move, attack or bulldoze order leaves a short marker where it landed (white, red, orange). The mouse cursor shows what a click will do: pointer on units and trees, crosshair on animals, huts and while placing, a grabbing hand while dragging the map.
+- **Selection**: Shift-click adds or removes a unit, Shift-drag adds a box, Ctrl/⌘+A selects every jack, Shift+1–9 saves a group and 1–9 recalls it (twice jumps to it).
+- **Finding things**: an idle-jack button with a count (Tab) cycles through jacks with nothing to do and centres on them; H or Home jumps to camp; F or Space still jumps to the selection.
+- **More keys**: B opens the shop, X stops the selection, M toggles the minimap. Toolbar tooltips name their keys. The Stop button is a square rather than a cross, and is dimmed with nothing selected.
+- **Phones**: a map button shows the minimap, which small screens did not have. The shop opens as a sheet above the toolbar, hides the selection panel while open and closes when the map is tapped.
+- **How to play** is three short paragraphs and a controls table. The table only shows the columns for the input the device has.
+- *Decision: keep §11's trackpad model: two-finger scroll and the wheel pan, pinch and the buttons zoom.*
+- *Decision: a click or tap on open ground still moves the selection, and right-click does the same. Touch has no second button, and one rule for both is easier to learn than two. Deselect with Esc, the ✕ in the panel or an empty box.*
+- *Decision: groups use Shift+digit to save because browsers reserve Ctrl/⌘+digit for switching tabs. Groups last for the session and are not saved.*
+- *Decision: a clicked button gives the keyboard back, so Space and Enter never re-trigger the last button pressed.*
+- *Decision: the idle hint now points to the idle button. Idle means no task, no path, not told to stop and not fighting, the same rule the hint already used.*
+- Saves and game rules are unchanged. The offline shell cache is bumped to v3.
