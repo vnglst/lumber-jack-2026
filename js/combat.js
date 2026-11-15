@@ -1,7 +1,7 @@
 'use strict';
 // Combat: laser bursts, arrows, guard towers, and the forest folk who resist the logging in waves.
 (function () {
-  const TS = LJ.TS, G = LJ.G;
+  const TS = LJ.TS, G = LJ.G, colOf = LJ.colOf, rowOf = LJ.rowOf;
   const C = (LJ.combat = {});
   const BOLT_SPEED = 520, ARROW_SPEED = 210, TOWER_RANGE = 8 * TS, FOLK_RANGE = 80;
   const HOSTILE_LEVEL = (C.HOSTILE_LEVEL = 5);
@@ -12,7 +12,7 @@
     C.clearShots();
     G.wave = { hostile: false, next: 0, n: 0, active: null };
     G.huts = G.world.huts.map(tile => ({
-      kind: 'hut', tile, x: (tile % G.world.W) * TS + 8, y: ((tile / G.world.W) | 0) * TS + 10,
+      kind: 'hut', tile, x: colOf(tile) * TS + 8, y: rowOf(tile) * TS + 10,
       hp: 200, max: 200, alive: G.world.deco[tile] === 8, angry: false, spawnCd: 0
     }));
   };
@@ -135,10 +135,9 @@
     return best;
   }
   function goalFor(tg) {
-    const w = G.world;
-    if (tg.u) { const tx = tg.u.tile % w.W, ty = (tg.u.tile / w.W) | 0; return c => Math.abs((c % w.W) - tx) <= 1 && Math.abs(((c / w.W) | 0) - ty) <= 1; }
+    if (tg.u) { const tx = colOf(tg.u.tile), ty = rowOf(tg.u.tile); return c => Math.abs(colOf(c) - tx) <= 1 && Math.abs(rowOf(c) - ty) <= 1; }
     const b = tg.b;
-    return c => { const x = c % w.W, y = (c / w.W) | 0; return x >= b.tx - 1 && x <= b.tx + b.w && y >= b.ty - 1 && y <= b.ty + b.h; };
+    return c => { const x = colOf(c), y = rowOf(c); return x >= b.tx - 1 && x <= b.tx + b.w && y >= b.ty - 1 && y <= b.ty + b.h; };
   }
 
   // Walks an enemy along its path; returns the palisade tile in the way, or -1. Used by wolves and bears too.
@@ -148,7 +147,7 @@
     while (dist > 0 && a.path.length) {
       const n = a.path[a.path.length - 1];
       if (w.wall[n]) return n;
-      const px = (n % w.W) * TS + 8, py = ((n / w.W) | 0) * TS + 10, dx = px - a.x, dy = py - a.y, d = Math.hypot(dx, dy);
+      const px = colOf(n) * TS + 8, py = rowOf(n) * TS + 10, dx = px - a.x, dy = py - a.y, d = Math.hypot(dx, dy);
       if (Math.abs(dx) > 0.01) a.dir = dx > 0 ? 1 : -1;
       if (d <= dist) { a.x = px; a.y = py; dist -= d; a.path.pop(); a.tile = n; }
       else { a.x += (dx / d) * dist; a.y += (dy / d) * dist; dist = 0; }
@@ -192,9 +191,9 @@
   // ---------- Waves ----------
   const folkStats = lv => ({ hp: 22 + lv * 4, dmg: 5 + lv * 0.8, speed: 38 + lv, cd: Math.max(1.2, 1.9 - lv * 0.05) });
   function addFolk(tile, home, extra) {
-    const st = folkStats(G.level), W = G.world.W;
+    const st = folkStats(G.level);
     G.animals.push(Object.assign({
-      kind: 'native', x: (tile % W) * TS + 4 + Math.random() * 8, y: ((tile / W) | 0) * TS + 8 + Math.random() * 4, tile, home,
+      kind: 'native', x: colOf(tile) * TS + 4 + Math.random() * 8, y: rowOf(tile) * TS + 8 + Math.random() * 4, tile, home,
       path: [], hp: st.hp, max: st.hp, dmg: st.dmg, speed: st.speed * (0.9 + Math.random() * 0.2), cd: st.cd,
       shootCd: Math.random() * 2, retarget: Math.random(), repath: Math.random(), aim: 0, hitCd: 0, dir: 1, walkT: Math.random(), alive: true
     }, extra));
@@ -228,14 +227,14 @@
     const reach = new Uint8Array(w.N), st = [];
     for (let y = b.ty - 1; y <= b.ty + b.h; y++) for (let x = b.tx - 1; x <= b.tx + b.w; x++) { const i = y * Wd + x; if (LJ.wildPass(i)) { reach[i] = 1; st.push(i); } }
     while (st.length) {
-      const c = st.pop(), cx = c % Wd, cy = (c / Wd) | 0;
+      const c = st.pop(), cx = colOf(c), cy = rowOf(c);
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = cx + dx, ny = cy + dy, n = ny * Wd + nx;
         if (nx >= 0 && ny >= 0 && nx < Wd && ny < w.H && !reach[n] && LJ.wildPass(n)) { reach[n] = 1; st.push(n); }
       }
     }
     const ok = i => {
-      const x = i % Wd, y = (i / Wd) | 0;
+      const x = colOf(i), y = rowOf(i);
       if (Math.hypot(x - b.tx, y - b.ty) < 18) return false;
       if (G.units.some(u => Math.hypot(u.x / TS - x, u.y / TS - y) < 8)) return false;
       let trees = 0;
@@ -253,7 +252,7 @@
     wv.n++;
     const late = treesLeft() < G.total * 0.02;
     const size = Math.max(3, Math.min(late ? 6 : 28, Math.round((2 + G.level * 1.2 + wv.n * 0.6) * (0.75 + Math.random() * 0.5))));
-    const x0 = at % Wd, y0 = (at / Wd) | 0;
+    const x0 = colOf(at), y0 = rowOf(at);
     for (let k = 0; k < size; k++) {
       let i = at;
       for (let t = 0; t < 12; t++) {

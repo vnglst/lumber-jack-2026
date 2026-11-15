@@ -1,7 +1,7 @@
 // Regressions for the problems the full-campaign playtest (tests/campaign.cjs) turned up.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { game, step, until, finishConstruction } = require('./harness.cjs');
+const { game, step, until, finishConstruction, put: stand } = require('./harness.cjs');
 
 // A quiet game with an open, explored meadow south-east of the camp; (x, y) is its centre.
 function meadow(seed) {
@@ -15,7 +15,7 @@ function meadow(seed) {
     w.obj[n] = 0; w.deco[n] = 0; w.type[n] = lj.T.GRASS; g.fog[n] = 1;
   }
   const at = (dx, dy) => (y + dy) * w.W + x + dx;
-  const put = (u, tile) => { u.tile = tile; u.x = (tile % w.W) * 16 + 8; u.y = ((tile / w.W) | 0) * 16 + 10; u.path = []; };
+  const put = (u, tile) => stand(u, tile, w);
   return { lj, g, w, at, put, jack: lj.jacks()[0] };
 }
 const wolf = { kind: 'wolf', alive: false, x: 0, y: 0 };

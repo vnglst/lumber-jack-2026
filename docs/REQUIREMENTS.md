@@ -62,6 +62,7 @@ How to read it:
 | 49 | 14 Nov | Predictable navigation and controls | Active |
 | 50 | 14 Nov | Music for the opening, play and other scenes | Active |
 | 51 | 15 Nov | Full-campaign playtest: dead ends removed, losses made recoverable | Active |
+| 52 | 15 Nov | Codebase review and refactor | Active |
 
 ---
 
@@ -665,3 +666,17 @@ How to read it:
 - **Observed, not changed** (judgment calls for a person): money piles up once everything is bought (about €28,000 unspent at the end); guard towers make little measurable difference; after the last hut falls only wildlife remains for the final minutes; a style that never attacks huts can end with a few trees it cannot reach.
 - A scripted player finds dead ends and balance cliffs. It cannot judge fun, and a person has not played these changes through.
 - Added eight regression tests, each failing on the previous code. Saves are compatible; a falling-back jack reloads into the job he left. The offline shell cache is bumped to v5.
+
+## 52. Codebase review and refactor (15 Nov 2026)
+
+> Review codebase and refactor to improve.
+
+- Review the code and improve its structure without changing how the game plays.
+- *Decision: behaviour must be provably unchanged. Whole campaigns from the scripted player (§51) are deterministic per map seed, so the reports for three seeds were saved before the refactor and compared after every step; all stayed byte-identical, alongside the 142 tests.*
+- *Decision: move the peaceful wildlife (reindeer, squirrels, swans, the forest folk pottering about their huts) and the butterflies out of `game.js` into `js/critters.js`. None of it affects the rules, and `game.js` drops from 1,483 to about 1,380 lines. The two updates are still called at their original points in the frame, so the order of random draws is the same.*
+- *Decision: name the tile arithmetic. `colOf(i)` and `rowOf(i)` replace about 80 hand-written `i % W` and `(i / W) | 0` in `game.js` and `combat.js`; `midX(i)` and `feetY(i)` give the pixel where a unit on a tile stands. The inner loop of the path search keeps plain arithmetic.*
+- *Decision: remove dead code: the `sellRun` unit state, which nothing ever set, and four exports nothing read (`LJ.chip`, `LJ.RESERVE`, `LJ.sightOf` and locals left unused by the helpers). `LJ.tileOfPx` stays, now used by `critters.js`.*
+- *Decision: say things once: `LJ.hireCost()` for the price of the next jack (was spelled out in three places), `modalOpen()` in `ui.js`, and one `put` helper in the test harness for standing a unit on a tile.*
+- *Decision: add `make test` (syntax check plus tests) and `make playtest SEEDS="1 2 3"`; list them in the README and the notes for coding agents, which no longer say there is no test suite.*
+- *Decision: leave the larger files' shape alone. Splitting the shop, building placement or the opening drive out of `game.js`, or the minimap and hints out of `ui.js`, would mean exporting a dozen private helpers each; that trades one kind of clutter for another without a clear gain.*
+- Rules, saves and the interface are unchanged. The offline shell lists the new script and is bumped to v6.

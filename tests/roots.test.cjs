@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { game, step, until, finishConstruction, storage } = require('./harness.cjs');
+const { game, step, until, finishConstruction, storage, put: position } = require('./harness.cjs');
 
 function dozerGame() {
   const lj = game(), g = lj.G;
@@ -10,10 +10,6 @@ function dozerGame() {
   assert.ok(lj.buy('dozer'));
   lj.cmd.stop(g.units);
   return { lj, g, w: g.world, dozer: g.units.find(u => u.kind === 'dozer') };
-}
-
-function position(u, tile, w) {
-  u.tile = tile; u.x = tile % w.W * 16 + 8; u.y = ((tile / w.W) | 0) * 16 + 10;
 }
 
 function clearing() {

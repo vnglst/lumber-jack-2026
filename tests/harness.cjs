@@ -17,7 +17,7 @@ function game(seed = 42, arrive = true) {
     setInterval() {}, addEventListener() {}, document: { addEventListener() {} }
   });
   ctx.window = ctx;
-  for (const name of ['util', 'lines', 'world', 'game', 'discoveries', 'combat', 'ending', 'save']) {
+  for (const name of ['util', 'lines', 'world', 'game', 'critters', 'discoveries', 'combat', 'ending', 'save']) {
     if (name === 'world') {
       ctx.LJ.sprites = {
         trees: [[{ ay: 64 }]], base: Array.from({ length: 4 }, () => ({ width: 48, height: 48 })),
@@ -60,4 +60,9 @@ function finishConstruction(lj) {
   until(lj, () => !lj.G.buildings.some(b => !b.dead && b.construction), 60);
 }
 
-module.exports = { game, step, until, finishConstruction, storage: lj => contexts.get(lj).localStorage };
+// Sets a unit down on a tile, the way the game stands units: mid-tile across, feet a little below the middle.
+function put(u, tile, w) {
+  u.tile = tile; u.x = (tile % w.W) * 16 + 8; u.y = ((tile / w.W) | 0) * 16 + 10;
+}
+
+module.exports = { game, step, until, finishConstruction, put, storage: lj => contexts.get(lj).localStorage };

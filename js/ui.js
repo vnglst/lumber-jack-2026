@@ -131,6 +131,7 @@
     $('game').classList.toggle('shopping', open); // small screens tuck the selection panel away under the shop
   }
   const shopOpen = () => $('shop').classList.contains('open');
+  const modalOpen = () => $('modal').classList.contains('open');
 
   ui.toast = function (text) { const t = $('toast'); t.textContent = text; t.classList.add('show'); toastT = 2.6; };
 
@@ -366,7 +367,7 @@
       if (LJ.title.isOpen()) return;
       const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
       if (!mod) keys[k] = true;
-      if ($('modal').classList.contains('open')) { // Escape takes a dialog's way out; Enter presses the focused button by itself
+      if (modalOpen()) { // Escape takes a dialog's way out; Enter presses the focused button by itself
         const out = $('modal').querySelector('[data-esc]');
         if (e.key === 'Escape' && out) out.click();
         return;
@@ -497,7 +498,7 @@
   const modal = (html, onOk) => dialog(html, { ok: onOk });
 
   ui.showMenu = function () {
-    if (G.cine || LJ.title.isOpen() || $('modal').classList.contains('open')) return;
+    if (G.cine || LJ.title.isOpen() || modalOpen()) return;
     dialog('<h1>Paused</h1><div class="menu">' +
       '<button data-a="resume" data-esc>Back to work</button>' +
       '<button data-a="help" class="ghost">How to play</button>' +
@@ -635,7 +636,7 @@
     if (G.wave.active && !G.wave.active.retreating) return 'The forest folk are attacking! Guard towers and jacks with laser pistols can hold them off.';
     if (nw !== null && nw < 30) return 'War drums in the forest… the next war party arrives in ' + mmss(nw) + '.';
     if (G.wave.hostile && !G.count.tower && G.level >= 3) return 'The forest folk will be back. Build Guard Towers and a palisade around the village.';
-    if (LJ.noCrew()) return 'Your crew is gone. Hire a jack in the Shop to carry on' + (G.money < LJ.SHOP.find(it => it.id === 'jack').cost().m ? ', once your truck has sold enough to pay for one.' : '.');
+    if (LJ.noCrew()) return 'Your crew is gone. Hire a jack in the Shop to carry on' + (G.money < LJ.hireCost() ? ', once your truck has sold enough to pay for one.' : '.');
     if (G.money < 0) return "You're in debt: hired jacks and machines slack off until you're back in the black.";
     if (G.stockpile) return 'Stockpiling: automatic market loading is paused. Jacks and Logging Trucks still deliver to camp. Tap “Stockpiling” to resume selling.';
     const tasks = t => G.units.some(u => u.task && u.task.type === t), sel = [...G.sel];
@@ -643,7 +644,7 @@
     if (sel.length && sel.every(u => u.kind === 'dozer')) return 'Tap a stump, rock or river tile. Nearby roots and rocks are cleared automatically; recovered root wood is delivered to camp.';
     if (sel.length && sel.every(u => u.kind === 'shuttle')) return 'Tap a clearing near your jacks to set a logging route. This truck collects wood there, delivers it to the village, and returns.';
     if (sel.length && sel.every(u => u.kind === 'truck') && !G.up.dispatch) return 'Tap the market sign (or “Haul run”) to send the truck on a trip.';
-    if (!G.village && LJ.jackCount() < LJ.popCap() && G.money >= LJ.SHOP.find(it => it.id === 'jack').cost().m) return 'Hire an extra Jack in the Shop — he starts walking to your tent right away.';
+    if (!G.village && LJ.jackCount() < LJ.popCap() && G.money >= LJ.hireCost()) return 'Hire an extra Jack in the Shop — he starts walking to your tent right away.';
     if (G.cleared === 0 && !tasks('work')) return 'Tap a tree to send your jack to work.';
     const idle = idleJacks().length;
     if (idle && G.cleared < G.total) return idle + (idle > 1 ? ' jacks see' : ' jack sees') + ' no trees. Find them with the idle button (Tab) and tap near the forest to send them there.';
@@ -776,7 +777,7 @@
     if (keys.a || keys.arrowleft) mx--; if (keys.d || keys.arrowright) mx++;
     if (keys.w || keys.arrowup) my--; if (keys.s || keys.arrowdown) my++;
     // Edge scrolling: the mouse near a window edge moves the camera (not while dragging, in a menu or during the ending).
-    if (mouse && !G.cine && !G.arrival && !G.drag && !$('modal').classList.contains('open')) {
+    if (mouse && !G.cine && !G.arrival && !G.drag && !modalOpen()) {
       const E = 14;
       if (mouse[0] < E) mx--; else if (mouse[0] > innerWidth - E) mx++;
       if (mouse[1] < E) my--; else if (mouse[1] > innerHeight - E) my++;
