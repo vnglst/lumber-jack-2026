@@ -1,5 +1,20 @@
 # Animal sound credits
 
+## Audio licensing
+
+Audio is excluded from the repository's MIT license. The downloaded creature
+recordings and their adaptations described below retain CC0 1.0. Personal
+recordings are all rights reserved by their respective performers, including
+the dialogue, forest-folk cues and the personal replacement of `wolf_snarl.wav`.
+Permission to play these recordings as part of this game does not grant a
+separate license to reuse or redistribute them in other projects.
+
+The published game includes downloadable recordings and the public
+Koen & Tibo credits. Before adding a new personal recording, obtain the
+performer's permission to publish it with the game.
+
+## Downloaded creature recordings
+
 The eight original animal recordings preserved in `audio/voice-defaults/` are adapted from **80 CC0 creature SFX** by **rubberduck** (2018), published on OpenGameArt:
 
 - Source page: https://opengameart.org/content/80-cc0-creature-sfx

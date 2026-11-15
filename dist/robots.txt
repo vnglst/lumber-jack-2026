@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /voices.html
+Disallow: /sprites.html
+Disallow: /api/
+Sitemap: https://lumber-jack.koenvangilst.nl/sitemap.xml

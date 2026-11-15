@@ -35,6 +35,14 @@ def write_manifest():
 
 
 class NoCache(http.server.SimpleHTTPRequestHandler):
+    def send_head(self):
+        path = pathlib.Path(self.translate_path(self.path))
+        relative = path.relative_to(ROOT)
+        if any(part.startswith('.') for part in relative.parts) or not path.resolve().is_relative_to(ROOT):
+            self.send_error(404)
+            return None
+        return super().send_head()
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
@@ -93,4 +101,4 @@ if __name__ == "__main__":
     print(f"Lumberjack: http://localhost:{port}  (Ctrl+C to stop)")
     print(f"Recording booth: http://localhost:{port}/voices.html")
     print(f"Testing playground: http://localhost:{port}/playground.html")
-    http.server.ThreadingHTTPServer(("", port), handler).serve_forever()
+    http.server.ThreadingHTTPServer(("127.0.0.1", port), handler).serve_forever()

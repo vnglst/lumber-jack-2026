@@ -87,6 +87,9 @@ How to read it:
 | 74 | 15 Nov | Menus as one stack of screens; pixel-art icon buttons | Active |
 | 75 | 15 Nov | Fade in the initial welcome screen | Active |
 | 76 | 15 Nov | Review the startup fade before pushing | Done |
+| 77 | 15 Nov | Separate development from the production package | Active |
+| 78 | 15 Nov | Publishing safeguards and licensing | Active |
+| 79 | 15 Nov | Document the Coolify static release flow | Active |
 
 ---
 
@@ -962,3 +965,33 @@ How to read it:
 - Review the startup fade (§75) before publishing it.
 - *Decision: fix one finding. Giving the title's children explicit visible status kept the invisible welcome screen intercepting game input after it closed. Once ready, the children now inherit the parent's visibility, preserving its existing close transition and releasing game input afterward.*
 - A focused isolated-browser check failed before the fix and passed afterward at desktop, narrow portrait and landscape sizes. It checks the fade in progress, reduced motion, child visibility after closing and clicks reaching the underlying game. The real game also boots, displays the welcome screen and starts a new game with the title no longer intercepting input. An isolated headless browser resolved the verification blocker recorded in §75; a screenshot was inspected, but nobody judged the fade's feel in motion.
+
+## 77. Separate development from the production package (15 Nov 2026)
+
+> Yes split game development from production deployment!
+
+- Separate the local development tools from the files published as the game.
+- *Decision: `make dist` packages the resources referenced by `index.html`, install icons, social artwork, service worker, search metadata, license notices and manifest-listed voice recordings. It copies files unchanged into `dist/`, removing stale output. Exclude the recording booth, playground, sprite viewer, development scripts, internal docs, tests, repository metadata and unlisted audio takes.*
+- *Decision: `make` remains the development workflow; its server binds to loopback and refuses hidden paths and files outside the source root. `make preview` serves only the static package with no recording API. `make release` checks the source and prepares the package for inclusion in a release commit.*
+
+## 78. Publishing safeguards and licensing (15 Nov 2026)
+
+> Do other recommendations as well.
+>
+> Production deploy should be just html.
+>
+> MIT for code and original artwork; reserve personal voice recordings
+
+- Apply the remaining publishing recommendations from the source review.
+- *Decision: production is a static HTML/CSS/JavaScript site with assets and audio; no Python process, application backend or recording API. Packaging remains a local release step.*
+- Ignore environment files, private-key files and Python cache files. Add the MIT license for code, documentation and original artwork, explicitly excluding audio. Keep downloaded creature recordings and adaptations under CC0 and personal recordings under their performers' reserved rights.
+- Document the public credits, Git author email, downloadable voices, performer permissions and the production analytics-domain check. Dashboard registration remains an account-side check.
+
+## 79. Document the Coolify static release flow (15 Nov 2026)
+
+> Deployment happens on coolify, check repo in parent folder. Document how it’s deployed without providing details about actual infrastructure and servers.
+
+- Check the existing deployment workflow and describe it without publishing infrastructure or server details.
+- *Decision: document immutable source selection, the source updater, Coolify deployment, release verification and rollback. Generated `dist/` belongs in a release commit so hosting only needs to copy static files.*
+- *Finding: the current hosting recipe copies only `index.html`, `css`, `js` and `audio`; it omits the PWA files and icons and includes developer scripts. Document the required hosting transition to checking `dist/index.html` and copying only `dist/.`. The hosting checkout has unrelated edits, so leave it untouched; no deployment or push is part of this change.*
+- Checked: all 201 JavaScript tests and six deployment checks pass. The hidden-file regression failed against the original development server. The 82-file package boots and starts a game in an isolated browser, serves the production assets, returns 404 for the tested development/private paths and restores the saved campaign after an offline reload without page errors. Analytics dashboard registration and listening to recordings remain manual checks.

@@ -12,11 +12,13 @@ The design is in [docs/GAME-PLAN.md](docs/GAME-PLAN.md), the original brief, and
 make
 ```
 
-Opens the game at http://localhost:5173 (needs Python 3). No build step and no dependencies: it is plain HTML, CSS and JavaScript, so any static file server works too.
+Opens the development game at http://localhost:5173 (needs Python 3). The server binds to this computer only and includes the recording API. There is no compilation step or dependency installation: the game is plain HTML, CSS and JavaScript.
 
 The game saves itself in the browser as you play. Tap **?** in the game for the controls. Share it from the opening screen. On supported browsers, **Install game** adds it to your device; on iPhone/iPad use Safari's Share → Add to Home Screen. After one online visit, the game works offline (recorded voices need a connection).
 
-Publish the repository as a static site at `https://lumber-jack.koenvangilst.nl/` over HTTPS. The manifest, social metadata and self-hosted Plausible use that domain. Add this domain in the existing Plausible dashboard if it is not registered yet. Before each release, bump `CACHE` in `sw.js` whenever the HTML, CSS or game scripts change, and include any new game scripts in `CORE`. An update waits until all game tabs close; reopen to use it. For local development, use the browser's service-worker **Bypass for network** option (or unregister it) to see live edits after the first visit.
+Production is a static site deployed through Coolify. Run `make release` to check and package the game into `dist/`; publish only that directory. Production needs no Python process, recording API, application server or credentials. See [deployment and release checks](docs/DEPLOYMENT.md) for the release flow and the hosting copy change required for `dist/`.
+
+Before each release, bump `CACHE` in `sw.js` whenever the HTML, CSS or game scripts change, and include any new game scripts in `CORE`. An update waits until all game tabs close; reopen to use it. For local development, use the browser's service-worker **Bypass for network** option (or unregister it) to see live edits after the first visit.
 
 ## Other commands
 
@@ -26,6 +28,9 @@ Publish the repository as a static site at `https://lumber-jack.koenvangilst.nl/
 | `make check` | Syntax-check every script (needs Node) |
 | `make test` | Syntax-check, then run the tests |
 | `make playtest` | Play whole campaigns with a scripted player and report how they went |
+| `make dist` | Copy the production game files into `dist/` |
+| `make preview` | Package and serve `dist/` locally, with no recording API |
+| `make release` | Check the source and prepare the production package |
 | `make help` | List the commands |
 
 `sprites.html` shows every sprite in the game.
@@ -47,4 +52,11 @@ js/            game code (loaded in order by index.html)
 audio/voice/   voice recordings made in the booth
 docs/          game plan, requirements and concept art
 tools/         dev server (also saves recordings from the booth)
+dist/          generated static release; include with a release commit
 ```
+
+## License
+
+Code, documentation and original artwork use the [MIT license](LICENSE).
+Personal voice recordings remain all rights reserved by their performers.
+Downloaded creature audio retains CC0 1.0; see [audio credits and licensing](audio/CREDITS.md).
