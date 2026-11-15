@@ -91,6 +91,7 @@ How to read it:
 | 78 | 15 Nov | Publishing safeguards and licensing | Active |
 | 79 | 15 Nov | Document the Coolify static release flow | Active |
 | 80 | 15 Nov | Switch hosting to the static package | Active |
+| 81 | 15 Nov | Lynx and wolverine join the wildlife | Active |
 
 ---
 
@@ -1007,3 +1008,20 @@ How to read it:
 - *Decision: the hosting recipe requires `dist/index.html` and copies only `dist/.`. Packaging stays in the game repository; production serves static files. Use a clean hosting checkout to preserve unrelated local edits.*
 - Update the deployment guide to describe the active release flow without infrastructure or server details.
 - Verified: Coolify finished deployment of hosting commit `a85bc92`. All 80 packaged game files match the committed release byte for byte; the hosting-generated robots file and sitemap are valid. Ten tested development/private paths return 404. The game HTML, manifest and service worker require cache revalidation. The existing local hosting edits remain untouched.
+
+## 81. Lynx and wolverine join the wildlife (15 Nov 2026)
+
+> Add the Eurasian lynx as one of the wild animals that attacks. Also add another attacking animal.
+
+- The Eurasian lynx attacks, alongside wolves and bears.
+- A second new attacking animal. *Decision: the wolverine. With the wolf, bear and lynx it completes Finland's four large carnivores, in keeping with the setting.*
+- *Decision: each animal plays differently rather than being a recoloured wolf.*
+  - *Lynx, from level 3: hunts alone. A third faster than a wolf of the same level and a fifth frailer, bites a fifth harder, and its first pounce does double damage. It still creeps closer before charging, as all wildlife does. Pelt €25.*
+  - *Wolverine, from level 6: comes in pairs. Sixty per cent tougher than a wolf, bites a quarter harder, slightly slower, and tears through a palisade three times as fast, which matters now that palisades are solid (§61). Pelt €30.*
+- *Decision: about one encounter in seven is a lynx from level 3 and one in seven a wolverine from level 6. Bears keep their odds (§4), and wolves are whatever is left, never less than a fifth. Levels 1 and 2 remain wolves only. The level-up messages at levels 3 and 6 announce the newcomers.*
+- *Decision: per-animal differences move into the `FOE` table (relative health, damage and speed, group size, odds by level, arrival cue and warning), replacing the bear special cases in the spawn code.*
+- *Decision: both are drawn in code in the existing style: a tawny, spotted, long-legged lynx with black ear tufts, a white chest and a short tail; a low, dark wolverine with a pale flank band and a raised bushy tail. Each has two walking frames.*
+- *Decision: sound. Each gets a synthesized arrival effect now (a rising yowl, a rattling growl) and two cues in the recording booth (appear or bite, and death), which stay silent until recorded, like any unrecorded cue. Jacks have new lines for being pounced on or bitten. Both animals are in the review playground.*
+- *Measured with the scripted player (§51): careful play finishes 12 of 12 maps and slow play 8 of 8, at the same pace, with about 10 deaths a game instead of 8 or 9. Over six campaigns there were 45 wolf, 20 bear, 11 lynx and 5 wolverine encounters.*
+- Not judged by a person: how the two animals look in motion, and the synthesized sounds, which nobody has listened to.
+- Added five tests. Saves are unaffected (wildlife is not saved). The offline shell cache is bumped.

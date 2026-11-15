@@ -19,7 +19,7 @@
   let toastT = 0;
   function toast(msg, ms) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || 2600); }
   const has = key => LJ.voice.has(key);
-  const shown = it => (it.cue ? (({ wolf: 'Wolf · ', bear: 'Bear · ' })[it.cue.who] || '') + it.cue.label : it.text.replace('{n}', '12,345')); // the game fills in the real tree count
+  const shown = it => (it.cue ? (({ wolf: 'Wolf · ', bear: 'Bear · ', lynx: 'Lynx · ', wolverine: 'Wolverine · ' })[it.cue.who] || '') + it.cue.label : it.text.replace('{n}', '12,345')); // the game fills in the real tree count
   const getDevice = () => { try { return localStorage.getItem(DEVICE_KEY) || ''; } catch (e) { return ''; } };
   const setDevice = id => { try { localStorage.setItem(DEVICE_KEY, id); } catch (e) { /* ignore */ } };
 

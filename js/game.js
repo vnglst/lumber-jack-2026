@@ -156,9 +156,24 @@
     return -1;
   });
   // Everything that attacks the operation. wild: roams as wildlife (the forest folk come in waves instead).
+  // For wildlife: chance(level) that an encounter is this animal (wolves are whatever is left over), group(pack, crew)
+  // how many come, hp/dmg/speed relative to a wolf of that level, appear the cue when they turn up, warn the message.
+  // pounce multiplies an animal's first bite; wallDmg is what one bite does to a palisade.
   const FOE = (LJ.FOE = {
-    wolf: { pelt: 15, wild: true, wallDmg: 6, hit: LN.hit.wolf, cry: 'wolf_snarl', die: 'wolf_yelp', death: n => n + ' was eaten by a wolf.' },
-    bear: { pelt: 40, wild: true, wallDmg: 6, hit: LN.hit.bear, cry: 'bear_roar', die: 'bear_groan', death: n => n + ' was eaten by a bear.' },
+    wolf: { pelt: 15, wild: true, wallDmg: 6, hit: LN.hit.wolf, cry: 'wolf_snarl', die: 'wolf_yelp', death: n => n + ' was eaten by a wolf.',
+      hp: 1, dmg: 1, speed: 1, group: (pack, crew) => Math.min(pack, Math.max(1, crew - 1)), appear: 'wolf_howl',
+      warn: n => (n > 1 ? 'A wolf pack is on the prowl!' : 'A wolf is on the prowl!') },
+    // The lynx hunts alone: quick and fragile, and its first pounce lands twice as hard.
+    lynx: { pelt: 25, wild: true, wallDmg: 4, hit: LN.hit.lynx, cry: 'lynx_yowl', die: 'lynx_hiss', death: n => n + ' was killed by a lynx.',
+      chance: level => (level >= 3 ? 0.15 : 0), hp: 0.8, dmg: 1.2, speed: 1.35, pounce: 2, group: () => 1, appear: 'lynx_yowl', sfx: 'yowl',
+      warn: (n, name) => 'A lynx is stalking ' + name + '!' },
+    // Wolverines are small, tough and afraid of nothing. They come in pairs and tear through palisades.
+    wolverine: { pelt: 30, wild: true, wallDmg: 18, hit: LN.hit.wolverine, cry: 'wolverine_growl', die: 'wolverine_squeal', death: n => n + ' was mauled by a wolverine.',
+      chance: level => (level >= 6 ? 0.15 : 0), hp: 1.6, dmg: 1.25, speed: 0.95, group: (pack, crew) => (crew > 2 ? 2 : 1), appear: 'wolverine_growl', sfx: 'growl',
+      warn: n => (n > 1 ? 'Wolverines! They fear nothing, and palisades barely slow them.' : 'A wolverine! It fears nothing, and palisades barely slow it.') },
+    bear: { pelt: 40, wild: true, wallDmg: 6, hit: LN.hit.bear, cry: 'bear_roar', die: 'bear_groan', death: n => n + ' was eaten by a bear.',
+      chance: level => (level >= 4 ? Math.min(0.5, (level - 3) * 0.1) : 0), hp: 2.5, dmg: 1.8, speed: 0.85, group: () => 1, appear: 'bear_roar',
+      warn: (n, name) => 'A bear is coming for ' + name + '!' },
     native: { pelt: 0, wild: false, wallDmg: 9, hit: LN.hit.native, cry: 'folk_shout', die: 'folk_hurt', death: n => n + ' was shot by the forest folk.' }
   });
   // Enemies go round palisades when they can, and through them (hacking) when they must.
@@ -168,25 +183,32 @@
   function wild(level) {
     return {
       every: [Math.max(30, 104 - level * 10), Math.max(45, 134 - level * 11)],
-      pack: Math.min(5, 1 + (level >> 1)), hp: 30 + level * 9, dmg: 6 + level * 1.6, speed: 56 + level * 2.5,
-      bearChance: level >= 4 ? Math.min(0.5, (level - 3) * 0.1) : 0
+      pack: Math.min(5, 1 + (level >> 1)), hp: 30 + level * 9, dmg: 6 + level * 1.6, speed: 56 + level * 2.5
     };
   }
+  // Which animal an encounter brings, for a random number r in [0, 1): the rarer animals first, wolves otherwise.
+  LJ.wildKind = function (level, r) {
+    for (const kind of ['bear', 'wolverine', 'lynx']) {
+      r -= FOE[kind].chance(level);
+      if (r < 0) return kind;
+    }
+    return 'wolf';
+  };
   // Shared by ordinary encounters and the isolated review playground.
   LJ.spawnWildAt = function (kind, tile, count) {
     if (!FOE[kind] || !FOE[kind].wild || tile < 0 || tile >= w.N) return;
-    const cfg = wild(G.level), bear = kind === 'bear';
+    const cfg = wild(G.level), f = FOE[kind];
     for (let k = 0; k < count; k++) {
       G.animals.push({
         kind, x: midX(tile) + k * 7, y: feetY(tile), tile, home: tile, path: [], target: null,
-        hp: cfg.hp * (bear ? 2.5 : 1), max: cfg.hp * (bear ? 2.5 : 1), dmg: cfg.dmg * (bear ? 1.8 : 1),
-        speed: cfg.speed * (bear ? 0.85 : 1) * (1 - k * 0.06), repath: k * 0.3, atkCd: 0, dir: 1, walkT: 0, alive: true, flee: false
+        hp: cfg.hp * f.hp, max: cfg.hp * f.hp, dmg: cfg.dmg * f.dmg,
+        speed: cfg.speed * f.speed * (1 - k * 0.06), repath: k * 0.3, atkCd: 0, dir: 1, walkT: 0, alive: true, flee: false
       });
     }
   };
   LJ.danger = level => [
-    '', '', 'Wolves now hunt in packs.', 'Bears have woken up. They are not happy.', 'The forest folk are taking up their bows.',
-    'The animals are getting desperate.', 'Something in the forest is angry.', 'The packs are bigger than ever.',
+    '', '', 'Wolves now hunt in packs, and a lynx has been seen at the forest edge.', 'Bears have woken up. They are not happy.', 'The forest folk are taking up their bows.',
+    'The animals are getting desperate. Wolverines have come down from the fells.', 'Something in the forest is angry.', 'The packs are bigger than ever.',
     'Whatever is left of the forest is fighting back.', 'Every last tree has to go.'][level - 1] || '';
 
   // Takes a world into use: search buffers, and the whole game state reset to a fresh start on it.
@@ -826,11 +848,11 @@
       if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) continue;
       const i = y * W + x;
       if (!isTree(i) || !bfs(i, c => c === tgt.tile, wildPass)) continue; // they come out of the living forest
-      const n = Math.min(cfg.pack, Math.max(1, js.length - 1));
-      const bear = Math.random() < cfg.bearChance;
-      LJ.spawnWildAt(bear ? 'bear' : 'wolf', i, bear ? 1 : n);
-      LJ.voice.cue(bear ? 'bear_roar' : 'wolf_howl');
-      LJ.ui.toast(bear ? 'A bear is coming for ' + tgt.name + '!' : n > 1 ? 'A wolf pack is on the prowl!' : 'A wolf is on the prowl!');
+      const kind = LJ.wildKind(G.level, Math.random()), f = FOE[kind], n = f.group(cfg.pack, js.length);
+      LJ.spawnWildAt(kind, i, n);
+      LJ.voice.cue(f.appear);
+      if (f.sfx) LJ.sfx(f.sfx);
+      LJ.ui.toast(f.warn(n, tgt.name));
       return;
     }
   }
@@ -851,7 +873,7 @@
       const t = a.target, d = Math.hypot(t.x - a.x, t.y - a.y);
       if (d < 16) {
         a.dir = t.x > a.x ? 1 : -1;
-        if (a.atkCd <= 0) { a.atkCd = 0.8; hurtUnit(t, a.dmg, a); }
+        if (a.atkCd <= 0) { a.atkCd = 0.8; hurtUnit(t, a.dmg * (a.bitten ? 1 : FOE[a.kind].pounce || 1), a); a.bitten = true; } // the first bite of an ambush
         return;
       }
       goal = t.tile;
