@@ -93,6 +93,8 @@ How to read it:
 | 80 | 15 Nov | Switch hosting to the static package | Active |
 | 81 | 15 Nov | Lynx and wolverine join the wildlife | Active |
 | 82 | 15 Nov | Playful motion in menus and the interface | Active |
+| 83 | 15 Nov | Playground source stays current | Active |
+| 84 | 15 Nov | Every playground scene in the test suite | Active |
 
 ---
 
@@ -1044,3 +1046,20 @@ How to read it:
 - Checked in a browser at desktop and phone sizes and with reduced motion: 24 checks of which animation each element runs, the order and timing of the rows, input during an animation, and that reduced motion switches everything off; the 41 menu behaviour checks of §74 still pass.
 - Not judged by a person: how it feels. Animation was verified as rules and timings and one frame caught mid-flight, not watched.
 - Game rules and saves are unchanged. The offline shell cache is bumped.
+
+## 83. Playground source stays current (15 Nov 2026)
+
+> Playground is not always working:
+
+- Fix the scene preparation failure shown in the screenshot: `LJ.spawnWildAt is not a function` when loading a wolf pack.
+- *Decision: reproduced the exact message in an isolated browser by keeping an older game API in the active service worker's cache. Current playground fixtures were loading alongside cached production scripts. Serve the playground shell and all its dependencies through the development server's `/__playground__/` URL space, which even an older cache-first worker leaves on the network. Keep campaign saves and the installed game's cache intact. Restart the development server after updating it.*
+- Development-only files change; no production shell, game rules or save shape changes, so no offline cache bump is needed.
+- Verified the same cached-script reproduction passes after the fix. The boot regression test fails against the pinned base `2013cec`. Server tests cover the source alias and continued rejection of private files; worker tests cover bypass of every shell asset.
+
+## 84. Every playground scene in the test suite (15 Nov 2026)
+
+> check all playground, make them part of test suite.
+
+- Check every scene offered by the playground, including lynx and wolverine, and run those checks through `make test`.
+- *Decision: derive scene coverage from the actual menu, require explicit outcome assertions for new scenes, and exercise 444 setups/replays across seeds 1, 42 and 999, all four equipment choices, all ten level announcements and early/middle/late encounter levels. Verify animal kinds/counts, defenders, raids, arrival, ending, equipment and campaign-save isolation. Exercise real combat for all five animal encounter scenes and the full ending separately.*
+- Browser checks pass with the stale production cache active: all ten scenes with all four equipment choices, all ten level announcements, full ending/restart, pause/resume, narrow portrait/landscape controls and campaign-save isolation; no page errors. These checks verify behavior, not whether the game is fun or how the audio sounds.

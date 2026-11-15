@@ -36,7 +36,9 @@ class DevelopmentServer(unittest.TestCase):
             def end_headers(self): pass
             def log_message(self, *args): pass
 
-        for path in ['/.git', '/%2egit', '/.env', '/.claude/launch.json', '/index.html']:
+        for path in ['/.git', '/%2egit', '/.env', '/.claude/launch.json', '/index.html',
+                     '/__playground__/.git/config', '/__playground__/%2eenv',
+                     '/__playground__/index.html', '/__playground__/js/game.js']:
             with self.subTest(path=path):
                 handler = Handler.__new__(Handler)
                 handler.directory = str(ROOT)
@@ -48,7 +50,15 @@ class DevelopmentServer(unittest.TestCase):
                 file = handler.send_head()
                 if file:
                     file.close()
-                self.assertEqual(handler.status, 200 if path == '/index.html' else 404)
+                public = path in ['/index.html', '/__playground__/index.html', '/__playground__/js/game.js']
+                self.assertEqual(handler.status, 200 if public else 404)
+
+    def test_playground_alias_serves_current_source(self):
+        server = load('serve')
+        handler = server.NoCache.__new__(server.NoCache)
+        handler.directory = str(ROOT)
+        for asset in ['index.html', 'js/game.js', 'css/style.css', 'audio/voice/manifest.json']:
+            self.assertEqual(Path(handler.translate_path('/__playground__/' + asset)), ROOT / asset)
 
 
 class ProductionPackage(unittest.TestCase):

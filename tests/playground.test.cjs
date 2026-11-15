@@ -5,6 +5,10 @@ const vm = require('node:vm');
 const path = require('node:path');
 const { game, step, until, storage } = require('./harness.cjs');
 const source = fs.readFileSync(path.join(__dirname, '../js/playground-scenes.js'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '../playground.html'), 'utf8');
+// Read the menu itself so a newly offered scene cannot silently miss suite coverage.
+const scenes = [...html.match(/<select id="review-scene">([\s\S]*?)<\/select>/)[1].matchAll(/value="([^"]+)"/g)].map(m => m[1]);
+const encounters = { wolf: ['wolf', 1], pack: ['wolf', 3], lynx: ['lynx', 1], wolverine: ['wolverine', 2], bear: ['bear', 1] };
 
 function playground(seed = 42) {
   const lj = game(seed);
@@ -14,6 +18,37 @@ function playground(seed = 42) {
   vm.runInNewContext(source, { LJ: lj });
   return lj;
 }
+
+test('playground boot loads its shell and every dependency outside the production cache URL space', async () => {
+  const elements = new Map(), scripts = [...fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8').matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map(m => ({
+    src: m[1], getAttribute() { return this.src; }, remove() { this.removed = true; }
+  }));
+  let base, fetched;
+  const shell = {
+    querySelectorAll: () => scripts,
+    querySelector: () => ({ insertAdjacentHTML: (_, markup) => { base = markup.match(/href="([^"]+)"/)[1]; } }),
+    createElement: () => ({}),
+    body: { appendChild: script => scripts.push(script) },
+    documentElement: { outerHTML: '<html></html>' }
+  };
+  await vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/playground.js'), 'utf8'), {
+    document: { getElementById: id => {
+      if (!elements.has(id)) elements.set(id, { addEventListener() {} });
+      return elements.get(id);
+    } },
+    URL, location: { href: 'https://game.test/playground.html' },
+    fetch: async url => { fetched = String(url); return { ok: true, text: async () => '' }; },
+    DOMParser: class { parseFromString() { return shell; } }, setInterval() {}
+  });
+  assert.equal(fetched, 'https://game.test/__playground__/index.html');
+  assert.equal(base, 'https://game.test/__playground__/');
+  for (const script of scripts.filter(s => !s.removed)) {
+    assert.ok(new URL(script.src, base).pathname.startsWith('/__playground__/'), script.src);
+  }
+  for (const name of ['save', 'main', 'site']) assert.ok(scripts.find(s => s.src === 'js/' + name + '.js').removed);
+  for (const name of ['playground-scenes', 'playground-frame']) assert.ok(scripts.some(s => s.src === 'js/' + name + '.js'));
+  assert.ok(elements.get('review-game').srcdoc.startsWith('<!doctype html>'));
+});
 
 test('playground stages every level with matching physical tree progress and ordinary shop unlocks', () => {
   const lj = playground();
@@ -32,7 +67,7 @@ test('playground stages every level with matching physical tree progress and ord
 
 test('playground uses live wolves, bears, hut defenders and raiding parties', () => {
   const lj = playground();
-  for (const [scene, kind, count] of [['wolf', 'wolf', 1], ['pack', 'wolf', 3], ['bear', 'bear', 1]]) {
+  for (const [scene, [kind, count]] of Object.entries(encounters)) {
     lj.playground.load({ scene, level: 5, seed: 42 });
     assert.equal(lj.G.animals.length, count);
     assert.ok(lj.G.animals.every(a => a.kind === kind && a.alive && a.hp > 0));
@@ -50,6 +85,40 @@ test('playground uses live wolves, bears, hut defenders and raiding parties', ()
   assert.ok(lj.G.wave.active);
   assert.ok(lj.G.animals.some(a => a.wave));
 });
+
+for (const scene of scenes) {
+  test('playground menu scene: ' + scene + ' loads and replays across seeds and equipment', () => {
+    const lj = playground(), store = storage(lj);
+    store.setItem('lumberjack-save', 'campaign sentinel');
+    for (const seed of [1, 42, 999]) for (const gear of ['axe', 'chainsaw', 'laser', 'scope']) {
+      const levels = scene === 'level' ? [1,2,3,4,5,6,7,8,9,10] : [1, 5, 10];
+      for (const level of levels) {
+        const label = JSON.stringify({ scene, seed, gear, level });
+        assert.equal(typeof lj.playground.load({ scene, seed, gear, level }), 'string', label);
+        const g = lj.G;
+        assert.equal(g.world.seed, seed, label);
+        assert.equal(store.getItem('lumberjack-save'), 'campaign sentinel', label);
+        if (scene === 'arrival') { assert.ok(g.arrival, label); continue; }
+        assert.ok(!g.arrival && !g.paused, label);
+        assert.equal(g.up.chainsaw, gear === 'chainsaw', label);
+        assert.equal(g.up.rifles, gear === 'laser' || gear === 'scope', label);
+        assert.equal(g.up.scope, gear === 'scope', label);
+        if (encounters[scene]) {
+          const [kind, count] = encounters[scene];
+          assert.equal(g.animals.length, count, label);
+          assert.ok(g.animals.every(a => a.kind === kind && a.alive && a.hp > 0), label);
+        } else if (scene === 'hut') {
+          assert.equal(g.animals.filter(a => a.defender).length, 2, label);
+        } else if (scene === 'raid') {
+          assert.ok(g.wave.active && g.animals.some(a => a.wave), label);
+        } else if (scene === 'ending') {
+          assert.equal(g.cine.phase, 'walk', label);
+        } else assert.equal(scene, 'level', 'Add outcome assertions for the new menu scene');
+        step(lj, 0.1);
+      }
+    }
+  });
+}
 
 test('opening and ending replay never alter campaign storage, including restart hooks', () => {
   const lj = playground(), store = storage(lj);
