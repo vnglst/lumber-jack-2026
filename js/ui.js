@@ -23,13 +23,15 @@
     x.drawImage(src, (c.width - w) >> 1, (c.height - h) >> 1, w, h);
     return c;
   }
+  // Replaces every <i data-ic> placeholder under root with the icon it names from the sprite sheet.
+  ui.icons = root => root.querySelectorAll('[data-ic]').forEach(el => el.replaceWith(iconCanvas(S.icons[el.dataset.ic])));
   const mmss = t => { t = Math.max(0, Math.ceil(t)); return ((t / 60) | 0) + ':' + String(t % 60).padStart(2, '0'); };
   const vwW = () => innerWidth / zoom, vwH = () => innerHeight / zoom;
 
   ui.init = function () {
     cv = LJ.cv = $('view'); LJ.ctx = cv.getContext('2d');
     mini = $('mini'); mctx = mini.getContext('2d');
-    document.querySelectorAll('[data-ic]').forEach(el => el.replaceWith(iconCanvas(S.icons[el.dataset.ic])));
+    ui.icons(document);
     resetZoom();
     addEventListener('resize', resize);
     // Text and newly unlocked resource chips can wrap the HUD without a window resize.
@@ -135,7 +137,7 @@
     $('game').classList.toggle('shopping', open); // small screens tuck the selection panel away under the shop
   }
   const shopOpen = () => $('shop').classList.contains('open');
-  const modalOpen = () => $('modal').classList.contains('open');
+  const modalOpen = (ui.modalOpen = () => $('modal').classList.contains('open'));
   const compact = () => innerWidth <= 900 || typeof matchMedia === 'function' && matchMedia('(pointer: coarse) and (max-height: 500px)').matches;
   function closeMap() { $('game').classList.remove('mini-on'); $('mapBtn').setAttribute('aria-expanded', 'false'); }
 
@@ -522,6 +524,9 @@
     $('soundBtn').title = 'Sound settings (all sound ' + (muted ? 'off' : 'on') + ')';
   }
 
+  ui.toggleSound = toggleSound;
+  ui.muted = () => muted;
+
   // ---------- Dialogs ----------
   // A dialog pauses the game. Each button names its action in data-a (a plain button is "ok"); pressing one closes the
   // dialog, resumes the game and then runs the action, which may open the next dialog. The button marked data-esc is
@@ -547,99 +552,6 @@
   }
   // The common case: one message, one button.
   const modal = (html, onOk) => dialog(html, { ok: onOk });
-
-  ui.showMenu = function () {
-    if (G.cine || LJ.title.isOpen() || modalOpen()) return;
-    dialog('<h1>Paused</h1><div class="menu">' +
-      '<button data-a="resume" data-esc>Back to work</button>' +
-      '<button data-a="help" class="ghost">How to play</button>' +
-      '<button data-a="audio" class="ghost" title="Music, sound and volume controls">Sound settings</button>' +
-      '<button data-a="credits" class="ghost" title="Creator and audio credits">Credits</button>' +
-      '<button data-a="fresh" class="ghost">New game</button></div>' +
-      '<p class="fine">The game saves itself as you play.</p>', {
-      help: ui.showHelp,
-      audio: () => ui.showAudioSettings(true),
-      credits: () => ui.showCredits(true),
-      fresh: () => dialog('<h1>Start a new game?</h1><p>This forest and everything you built in it will be replaced by a fresh one.</p>' +
-        '<div class="row"><button data-a="yes">Start a new game</button><button data-a="no" class="ghost" data-esc>Keep playing</button></div>', { yes: ui.restart, no: ui.showMenu })
-    });
-  };
-
-  ui.showAudioSettings = function (fromMenu = false) {
-    if (modalOpen() || LJ.title.isOpen()) return;
-    const wasPaused = G.paused;
-    const toggle = (id, name, on) => '<div class="audio-toggle"><label for="audio-' + id + '">' + name + '</label>' +
-      '<output id="audio-' + id + '-state" for="audio-' + id + '">' + (on ? 'On' : 'Off') + '</output>' +
-      '<input id="audio-' + id + '" type="checkbox"' + (on ? ' checked' : '') + '></div>';
-    dialog('<h1>Sound settings</h1><div class="audio-settings">' +
-      toggle('master', 'All sound', !muted) + toggle('music', 'Music', LJ.music.isOn()) +
-      ['music', 'effects'].map(kind => {
-        const name = kind === 'music' ? 'Music' : 'Sound effects', value = Math.round(LJ.volumeOf(kind) * 100);
-        return '<div class="volume-control"><label for="volume-' + kind + '">' + name + ' volume</label><output for="volume-' + kind + '">' + value + '%</output>' +
-          '<input id="volume-' + kind + '" data-volume="' + kind + '" type="range" min="0" max="100" step="1" value="' + value + '"></div>';
-      }).join('') + '<p class="fine">Sound effects include voices and wildlife.</p></div><button data-a="back" data-esc title="' + (fromMenu ? 'Back to paused menu' : 'Return to the game') + ' (Escape)">Back</button>', {
-      back: () => {
-        if (fromMenu) { ui.showMenu(); $('modal').querySelector('[data-a="audio"]').focus({ preventScroll: true }); }
-        else { G.paused = wasPaused; $('soundBtn').focus({ preventScroll: true }); }
-      }
-    });
-    $('audio-master').onchange = e => {
-      if (e.target.checked === muted) toggleSound();
-      $('audio-master-state').value = muted ? 'Off' : 'On';
-    };
-    $('audio-music').onchange = e => {
-      LJ.audioInit();
-      if (e.target.checked !== LJ.music.isOn()) LJ.music.toggle();
-      $('audio-music-state').value = LJ.music.isOn() ? 'On' : 'Off';
-    };
-    $('modal').querySelectorAll('[data-volume]').forEach(input => {
-      input.oninput = () => {
-        LJ.audioInit(); LJ.setVolume(input.dataset.volume, Number(input.value) / 100);
-        input.parentElement.querySelector('output').value = input.value + '%';
-      };
-    });
-  };
-
-  ui.showCredits = function (fromMenu = false) {
-    const welcome = LJ.title.isOpen();
-    if (modalOpen() || (!welcome && !fromMenu)) return;
-    if (welcome) $('title').inert = true;
-    modal('<h1>Credits</h1><p>Made by <a href="https://koenvangilst.nl/" target="_blank" rel="noopener">Koen van Gilst</a>.</p>' +
-      '<p>Koen &amp; Tibo for play testing the game and the voice recordings.</p>' +
-      '<p><a href="https://github.com/vnglst/lumber-jack-2026" target="_blank" rel="noopener">Source code</a></p>' +
-      '<p>Playful animal voices adapted from <a href="https://opengameart.org/content/80-cc0-creature-sfx" target="_blank" rel="noopener">80 CC0 creature SFX</a> by rubberduck, under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0 1.0</a>.</p>' +
-      '<p class="fine">Shortened, pitched and softened for this forest. Human dialogue and forest-folk voices were recorded for Lumberjack.</p>' +
-      '<button>Back</button>', () => {
-        $('modal').classList.remove('welcome');
-        if (welcome) { $('title').inert = false; G.paused = true; $('creditsBtn').focus({ preventScroll: true }); }
-        else ui.showMenu();
-      });
-    $('modal').classList.toggle('welcome', welcome);
-  };
-
-  ui.showFinds = function () {
-    const found = G.finds.filter(f => f.found);
-    modal('<h1>Forest finds</h1><p>' + found.length + ' / ' + G.finds.length + ' recovered. Explore for golden glints, clear the tree above them, then bring a Jack or machine nearby.</p>' +
-      '<ul>' + Object.values(LJ.discoveries.recipes).map(r => '<li><b>' + r.name + '</b>: ' + r.desc + (G.recipes.includes(r.id) ? ' <b>Recovered ✓</b>' : ' — still hidden') + '</li>').join('') + '</ul>' +
-      '<p>Gold and lost cash boxes fund the operation. Recipe bonuses apply to your whole crew as soon as they are recovered.</p><button>Back to the forest</button>');
-  };
-
-  // The how-to-play dialog behind the ? button.
-  ui.showHelp = function () {
-    const row = (what, mouse, touch, key) => '<tr><th>' + what + '</th><td>' + mouse + '</td><td>' + touch + '</td><td>' + key + '</td></tr>';
-    modal(
-    '<h1>How to play</h1>' +
-    '<ul><li><b>Clear the forest.</b> Send a jack to a tree and he keeps cutting whatever he can see. Wood goes back to camp; your truck sells the surplus at the market down the road west.</li>' +
-    '<li><b>Grow the camp.</b> The Shop has tools, more jacks, buildings and machines. With Pickaxes, jacks mine ore from glinting rocks; it sells well and the late machines need it. Upgrade the tent into a village; sawmills turn wood into lumber, Logging Trucks fetch wood from deep in the forest.</li>' +
-    '<li><b>Mind the forest.</b> The map is unexplored and it bites back. Jacks heal near home, fall back there by themselves when badly hurt, and learn through work. Forest villages defend themselves; destroying a hut stops its reinforcements for good.</li></ul>' +
-    '<table class="keys"><tr><td></td><th>Mouse</th><th>Touch</th><th>Keys</th></tr>' +
-    row('Select', 'Click a unit, drag a box. Shift adds. Double-click takes every unit of that kind.', 'Tap a unit. Double-tap takes every unit of that kind.', 'Ctrl/⌘+A all jacks. Shift+1–9 saves a group, 1–9 recalls it.') +
-    row('Order', 'Click or right-click a tree, animal, hut, a glinting ore rock, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things. Selected-unit icons: saw lumber, cart to market, square to stop, × to deselect.', 'X stops. Esc deselects.') +
-    row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
-    row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch.', '− and +') +
-    row('Menus', 'Shop is in the toolbar. ≡ pauses. Sound settings opens music/sound switches and volumes; ♪ opens it directly.', 'Camp opens resources, progress and tips. Tap the selected unit’s name for status and XP. Market opens order details. Map shows the minimap and zoom buttons. ≡ → Sound settings (or ♪ in Camp) opens music/sound switches and volumes.', 'B shop. Esc backs out one step, then pauses.') +
-    '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels.</p><button>Back to work</button>');
-  };
 
   // The opening screen. It is shown once, at boot, over a fresh game that is paused and waiting.
   ui.showTitle = function () {
@@ -792,17 +704,18 @@
       experience = '<div class="experience" title="Earn XP by felling trees, processing lumber and delivering goods. Higher ranks improve work, carrying and walking.">' +
         rank.name + ' · ' + Math.floor(u.xp || 0) + (next ? '/' + next.xp + ' XP' : ' XP · max') + (bonus ? ' · +' + bonus + '% work' : '') + '</div>';
     }
-    const action = (act, label, path, tip) => '<button data-act="' + act + '" title="' + (tip || label) + '" aria-label="' + label + '">' +
-      '<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">' + path + '</svg><span class="action-label">' + (act === 'desel' ? '✕' : label) + '</span></button>';
+    const action = (act, icon, label, tip) => '<button data-act="' + act + '" title="' + (tip || label) + '" aria-label="' + label + '">' +
+      '<i data-ic="' + icon + '"></i><span class="action-label">' + label + '</span></button>';
     let btn = '';
-    if (has('jack') && G.count.sawmill) btn += action('saw', 'Saw lumber', '<path d="M3 9h13l5 4-3 5-3-3-2 2-2-2-2 2-2-2-2 2-2-2zM17 11l2 2-1 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>');
-    if (has('jack') || has('truck')) btn += action('sell', has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market', '<path d="M2 4h3l3 12h11l3-9H6M9 11h11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="10" cy="20" r="2" fill="currentColor"/><circle cx="18" cy="20" r="2" fill="currentColor"/>');
-    btn += action('stop', 'Stop', '<path d="M6 6h12v12H6z" fill="currentColor"/>', 'Stop the selected units (X)');
-    btn += action('desel', 'Deselect', '<path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.5"/>', 'Deselect (Esc)');
+    if (has('jack') && G.count.sawmill) btn += action('saw', 'saw', 'Saw lumber');
+    if (has('jack') || has('truck')) btn += action('sell', 'market', has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market');
+    btn += action('stop', 'stop', 'Stop', 'Stop the selected units (X)');
+    btn += action('desel', 'close', 'Deselect', 'Deselect (Esc)');
     p.innerHTML = '<button class="unit-peek mobile-only" data-act="details" title="Selected unit details and experience" aria-label="Selected unit details" aria-expanded="' + $('game').classList.contains('unit-details-open') + '"><span>' + title + '</span><small>' + st + '</small></button>' +
       '<div class="unit-info"><div>' + title + '</div><div class="st">' + st + '</div>' + experience + '</div><div class="unit-actions">' + btn + '</div>';
+    ui.icons(p);
     const pic = iconCanvas(S.icons[ICON_OF[u.kind]], 12);
-    pic.title = 'Show on the map (F)'; pic.style.cursor = 'pointer'; pic.onclick = () => ui.centerOnSelection();
+    pic.className = 'portrait'; pic.title = 'Show on the map (F)'; pic.style.cursor = 'pointer'; pic.onclick = () => ui.centerOnSelection();
     p.prepend(pic);
   }
 
