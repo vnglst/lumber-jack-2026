@@ -415,7 +415,6 @@ button { transition: transform 90ms ease-out, background-color 120ms ease-out, b
 }
 .hbtn:active canvas, #toolbar button:active canvas, #panel .unit-actions button:active canvas, .menu-item:active canvas, .dialog .nav:active canvas { transform: scale(.82); }
 @keyframes ui-arrive { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes dialog-arrive { from { opacity: 0; transform: translateY(4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes dot-pop { from { transform: scale(.6); } to { transform: scale(1); } }
 #shop.open, #title.open .row button { animation: ui-arrive 160ms ease-out; }
 
