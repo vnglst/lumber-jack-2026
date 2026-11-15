@@ -72,6 +72,9 @@ How to read it:
 | 59 | 15 Nov | Creator and source-code credits | Active |
 | 60 | 15 Nov | Agent notes from the interface, playtest and refactor sessions | Active |
 | 61 | 15 Nov | Palisades block every unit | Active |
+| 62 | 15 Nov | Credits open inside the welcome screen | Refined by 63 |
+| 63 | 15 Nov | Credits also open from settings | Active |
+| 64 | 15 Nov | Separate music and effects volumes | Active |
 
 ---
 
@@ -711,6 +714,8 @@ How to read it:
 
 ## 55. Playful animal voices (15 Nov 2026)
 
+**Status:** credits access and presentation are superseded by §62 and §63; animal audio and provenance remain active.
+
 > Not real sounds, playful and suitable for this game
 
 - Use expressive cartoon animal voices that suit the game's pixel art and humor.
@@ -744,6 +749,8 @@ How to read it:
 
 ## 59. Creator and source-code credits (15 Nov 2026)
 
+**Status:** the standalone credits page and welcome footer links are replaced by the popup in §62 and §63; creator and source-code links remain in that popup.
+
 > Add credits with link to my website and source code.
 
 - Link to Koen van Gilst's website and the game's source repository from the welcome screen and credits page.
@@ -771,3 +778,30 @@ How to read it:
 - *Decision: refuse placement on occupied tiles so construction cannot embed a unit in a solid wall. Existing saved walls gain the blocking behavior without a save-format change; destroying a section opens the route again.*
 - *Decision: the ending cancels palisade placement and prevents new wall construction, keeping the visitor's planned route clear.*
 - Bump the offline shell for the changed movement and interface scripts. Regression checks cover every player unit kind, wildlife, enemies, live route obstruction, deliberate gaps and saved walls.
+
+## 62. Credits open inside the welcome screen (15 Nov 2026)
+
+> The credits are a dead link, should be an in-game popup, only on the welcome screen. Don't show credits anywhere else. Only as in welcome / new game screen.
+
+**Status:** §63 adds access from the in-game settings menu.
+
+- Replace navigation to a standalone page with a credits button and an in-game popup on the welcome screen.
+- Keep creator, source-code and licensed animal-audio attribution inside the popup; remove the credits link from gameplay Help and remove the standalone page.
+- *Decision: reuse the game's dialog style. The welcome screen stays visible behind the popup and gameplay stays paused; Back and Escape close it and return focus to Credits. Keep developer-facing source and processing details in `audio/CREDITS.md`.*
+
+## 63. Credits also open from settings (15 Nov 2026)
+
+> There should also be a credits popup from the settings menu in-game.
+
+- Offer the same credits popup from the in-game pause/settings menu, in addition to the welcome screen.
+- *Decision: closing credits from settings returns to the paused settings menu. Credits have no separate page or gameplay Help link.*
+- **Supersedes** §62's restriction to the welcome screen alone.
+
+## 64. Separate music and effects volumes (15 Nov 2026)
+
+> There should be settings to change the volume of the music and the in-game sound fx.
+
+- Add independently adjustable Music and Sound effects volume sliders to settings, with immediate feedback and percentage values.
+- *Decision: the effects slider controls synthesized effects, voices and animal recordings together. Music and its echo use their own volume bus; the existing global mute still silences both buses. Default 100% preserves the existing mix.*
+- *Decision: remember both values in browser preferences (`lumberjack-audio-volume`), independently of campaign saves and the existing music on/off preference. Clamp values to 0–100%, tolerate blocked/invalid storage, and smooth changes over 20 ms to avoid clicks.*
+- Refresh the offline shell for the popup, settings and mixer changes; the credits popup works offline without fetching a separate page.

@@ -73,8 +73,25 @@
 
   // ---------- game API ----------
   const VOLUME = 0.8;
+  const VOLUME_KEY = 'lumberjack-audio-volume', volumes = { music: 1, effects: 1 }, buses = {};
+  try {
+    const saved = JSON.parse(localStorage.getItem(VOLUME_KEY));
+    for (const kind of Object.keys(volumes)) if (saved && typeof saved[kind] === 'number' && Number.isFinite(saved[kind])) volumes[kind] = LJ.clamp(saved[kind], 0, 1);
+  } catch (e) { /* blocked or invalid storage: keep the default mix */ }
   let ac = null, master = null, muted = false;
   const last = {};
+
+  LJ.volumeOf = kind => volumes[kind];
+  LJ.setVolume = function (kind, value) {
+    if (!Object.hasOwn(volumes, kind) || typeof value !== 'number' || !Number.isFinite(value)) return;
+    volumes[kind] = LJ.clamp(value, 0, 1);
+    if (ac && buses[kind]) {
+      const gain = buses[kind].gain, now = ac.currentTime, current = gain.value;
+      gain.cancelScheduledValues(now); gain.setValueAtTime(current, now);
+      gain.linearRampToValueAtTime(volumes[kind], now + 0.02);
+    }
+    try { localStorage.setItem(VOLUME_KEY, JSON.stringify(volumes)); } catch (e) { /* settings still work without storage */ }
+  };
 
   LJ.audioInit = function () {
     if (!ac) {
@@ -83,6 +100,9 @@
         const comp = ac.createDynamicsCompressor(); // keeps stacked sounds from clipping
         master = ac.createGain(); master.gain.value = muted ? 0 : VOLUME;
         master.connect(comp); comp.connect(ac.destination);
+        for (const kind of Object.keys(volumes)) {
+          buses[kind] = ac.createGain(); buses[kind].gain.value = volumes[kind]; buses[kind].connect(master);
+        }
       } catch (e) { ac = null; }
     }
     if (ac && ac.state === 'suspended') ac.resume();
@@ -94,16 +114,15 @@
     if (now - (last[n] || 0) < 80) return;
     last[n] = now;
     const def = LJ.SFX_DEFAULTS[n];
-    if (def) schedule(ac, master, def, ac.currentTime + 0.005);
+    if (def) schedule(ac, buses.effects, def, ac.currentTime + 0.005);
   };
 
   // Mute silences everything on the master gain, the music included.
   LJ.toggleMute = function () { muted = !muted; if (master) master.gain.value = muted ? 0 : VOLUME; return muted; };
 
-  // Where other sound code (voice.js) plays: the game's context and master gain, or null while muted or not yet unlocked.
-  // bus() is the same without the mute check, for the music, which keeps its place while muted.
+  // Voices share the effects volume. Music, including its echo, uses a separate bus and keeps its place while muted.
   LJ.synth = {
-    live: () => (ac && !muted ? { ctx: ac, dest: master } : null),
-    bus: () => (ac ? { ctx: ac, dest: master } : null)
+    live: () => (ac && !muted ? { ctx: ac, dest: buses.effects } : null),
+    bus: () => (ac ? { ctx: ac, dest: buses.music } : null)
   };
 })();
