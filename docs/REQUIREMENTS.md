@@ -72,6 +72,7 @@ How to read it:
 | 59 | 15 Nov | Creator and source-code credits | Active |
 | 60 | 15 Nov | Agent notes from the interface, playtest and refactor sessions | Active |
 | 61 | 15 Nov | Ore: mining, and ore in the shop and the market | Active |
+| 62 | 15 Nov | Northern lights mirrored in the lake; playtest with ore | Active |
 
 ---
 
@@ -781,3 +782,17 @@ How to read it:
 - *Decision: save format 9 stores ore in stock, on jacks and left in each rock, and a mining jack reloads into his job. Formats 2 to 8 remain loadable and gain the seeded veins in whatever rock is still standing.*
 - Not judged by a person: whether mining is fun, and the look of the ore on a phone-sized screen, where the HUD now wraps to one more chip.
 - Added eight tests (`tests/ore.test.cjs`). The offline shell lists the new script and its cache version is bumped.
+
+## 62. Northern lights mirrored in the lake; playtest with ore (15 Nov 2026)
+
+> Northern lights should be reflected in the water.
+> Test game mechanics when done. Make sure game is still engaging and enjoyable.
+
+- The northern lights on the opening screen are reflected in the lake.
+- *Decision: this was a bug, not a missing feature. The scene already drew each curtain a second time as a reflection, but the mirror formula placed every row below the near shore, where it was discarded, so the lake never showed any of it. The reflection is now a true mirror about the horizon, squeezed to fit the lake, with the lights' bright lower edge just below the far shore, their tops reaching towards the viewer, and ripples that widen as they come closer. It is a little brighter than the old, invisible setting.*
+- *Measured in a browser: aurora-coloured pixels in the lake went from 0% to about 6%, against 16% in the sky. Added a test that every row of the lights is mirrored between the two shores.*
+- Playtest the whole game again with ore (the previous entry) in place.
+- *Measured with the scripted player (§51), now mining: careful play finishes 12 of 12 maps in 26 to 44 minutes with about 7 deaths; a slow player 8 of 8 with about 9. Before ore: 16 of 16 in 26 to 48 minutes with about 8 deaths. Pacing per level is unchanged, with no stalls, debt or game overs.*
+- *Measured: ore is a real choice. A player who never mines finishes 8 of 8, but without most ore-priced upgrades loses about 25 jacks instead of 7 and ends with a third of the money. On each map 60 to 100% of the ore is extracted, the 92 needed for upgrades is always reachable, and the rest is sold. The first ore-priced upgrade arrives between minute 14 and 23 depending on where the veins lie.*
+- *Decision: no rule changes from this playtest.*
+- Not judged by a person: whether the reflection looks right in motion, and whether mining is enjoyable to play. A scripted player finds dead ends and balance problems; it cannot tell fun.
