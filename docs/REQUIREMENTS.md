@@ -92,6 +92,7 @@ How to read it:
 | 79 | 15 Nov | Document the Coolify static release flow | Active |
 | 80 | 15 Nov | Switch hosting to the static package | Active |
 | 81 | 15 Nov | Lynx and wolverine join the wildlife | Active |
+| 82 | 15 Nov | Playful motion in menus and the interface | Active |
 
 ---
 
@@ -1025,3 +1026,21 @@ How to read it:
 - *Measured with the scripted player (§51): careful play finishes 12 of 12 maps and slow play 8 of 8, at the same pace, with about 10 deaths a game instead of 8 or 9. Over six campaigns there were 45 wolf, 20 bear, 11 lynx and 5 wolverine encounters.*
 - Not judged by a person: how the two animals look in motion, and the synthesized sounds, which nobody has listened to.
 - Added five tests. Saves are unaffected (wildlife is not saved). The offline shell cache is bumped.
+
+## 82. Playful motion in menus and the interface (15 Nov 2026)
+
+> Add playfull animations to interface elements like menus.
+
+- Menus and other interface elements move in a playful way.
+- *Decision: one idea throughout: things arrive like boards dropped into place, with a little overshoot, then stay still. Every animation is short and runs once.*
+  - *Menus: the sheet drops in at a slight angle and settles; on a phone it rises from the bottom edge. Its rows are dealt in one after another, each icon popping a beat after its row, all within 0.4 seconds; Back and Close pop in last. Opening a screen from another slides the new one in from the right, Back slides it from the left, and coming back the list is simply there rather than dealt again.*
+  - *Messages (level up, game over): the heading is stamped on.*
+  - *Counters: money, wood, lumber, stone, ore, crew and the idle count hop when they change; the level badge turns a somersault on a new level.*
+  - *Shop: its rows are dealt in when it opens, not each time a price or stock change redraws the list.*
+  - *Also: the selection panel hops up from the toolbar, messages drop in, the sound switches snap over with a bounce, and a menu row's name nudges sideways when pointed at. The icon wiggle and squash from §74 stay.*
+- *Decision: motion never delays input. Buttons work from the first frame, there is no closing animation to wait for, and a row can be pressed while it is still arriving.*
+- *Decision: with the system's reduced-motion setting, none of this plays.*
+- Refines §58 (subtle interface animations): its quiet fades for the shop and title buttons remain; dialogs, the panel and the toast now use the livelier motion.
+- Checked in a browser at desktop and phone sizes and with reduced motion: 24 checks of which animation each element runs, the order and timing of the rows, input during an animation, and that reduced motion switches everything off; the 41 menu behaviour checks of §74 still pass.
+- Not judged by a person: how it feels. Animation was verified as rules and timings and one frame caught mid-flight, not watched.
+- Game rules and saves are unchanged. The offline shell cache is bumped.
