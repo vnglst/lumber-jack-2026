@@ -65,6 +65,23 @@ test('a jack standing on a hemmed-in building site still steps out of the new bu
   assert.equal(lj.tryPlace(at(0, 0) % w.W, (at(0, 0) / w.W) | 0), true);
   assert.equal(w.bld[jack.tile], 0, 'not inside the building');
   assert.ok(lj.pass(jack.tile));
+  assert.ok(lj.bfs(g.exitIdx, c => c === jack.tile), 'and still on ground the road reaches');
+});
+
+test('a jack moved off a building site is not set down on ground the road cannot reach', () => {
+  const { lj, g, w, at, put, jack } = meadow();
+  g.money = 5000; g.wood = 500;
+  put(jack, at(0, 0));
+  // Rock all round the 2x2 site except its south side. One free tile off its north-east corner is walled in by
+  // more rock: it is the first free tile a search through anything finds, and nothing can walk out of it.
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -1; dx <= 3; dx++) {
+    const site = dx >= 0 && dx <= 1 && dy >= 0 && dy <= 1, south = dy === 2 && dx >= 0 && dx <= 1, nook = dx === 2 && dy === -1;
+    if (!site && !south && !nook) w.type[at(dx, dy)] = lj.T.ROCK;
+  }
+  g.place = { kind: 'bunk', w: 2, h: 2 };
+  assert.equal(lj.tryPlace(at(0, 0) % w.W, (at(0, 0) / w.W) | 0), true);
+  assert.notEqual(jack.tile, at(2, -1), 'not in the walled-in nook');
+  assert.ok(lj.bfs(g.exitIdx, c => c === jack.tile), 'on ground the road reaches');
 });
 
 test('a hauler who cannot reach the market puts his load back into stock', () => {

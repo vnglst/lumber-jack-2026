@@ -66,6 +66,7 @@ How to read it:
 | 53 | 15 Nov | Sourced animal sound effects | Active |
 | 54 | 15 Nov | More efficient agent instructions | Active |
 | 55 | 15 Nov | Playful animal voices | Active |
+| 56 | 15 Nov | Review before pushing: displaced units stay on connected ground | Active |
 
 ---
 
@@ -712,3 +713,11 @@ How to read it:
 - *Decision: peaceful animal calls come only from explored, on-screen critters that have not vanished. One shared 10–20-second interval and lower volume keep the forest lively without crowding the music or dialogue. They pause with gameplay and stay silent in the opening drive and ending.*
 - *Decision: use the existing voice mixer, global mute and editable recording-booth pipeline. The transient call timer resets on new games and loading; the save format is unchanged. Recorded sounds still require a connection, following the existing offline policy.*
 - *Decision: show audio credits and previews through a link in Help; retain the original archive URL, filename mapping, CC0 license and edits in `audio/CREDITS.md`. Bump the offline shell to v7 for the changed scripts and credits page.*
+
+## 56. Review before pushing: displaced units stay on connected ground (15 Nov 2026)
+
+> Review, commit and push.
+
+- Review the unpushed playtest and refactor work before it goes to the remote.
+- *Decision: one finding. §51 moves a unit off a hemmed-in building site by searching through anything for the nearest free tile, which could set him down in a walled-in nook or across water. From a site the road reaches, he is now set down only on ground the road still reaches. Added a regression test that fails on the previous code.*
+- The rest of the review found nothing to change. Whole scripted campaigns are still byte-identical to the pre-refactor baseline. The offline shell cache is bumped to v8.
