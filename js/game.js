@@ -557,7 +557,8 @@
   // All harvested wood goes through the settlement before it can be sold.
   function goDrop(u) {
     u.dropId = null;
-    const trucks = G.units.filter(t => !t.dead && !t.hold && t.kind === 'shuttle' && t.state === 'shuttleLoad' && !t.path.length && t.carry < capOf(t));
+    // Ore only comes off at camp, so a jack with ore on his back skips the logging trucks.
+    const trucks = u.ore ? [] : G.units.filter(t => !t.dead && !t.hold && t.kind === 'shuttle' && t.state === 'shuttleLoad' && !t.path.length && t.carry < capOf(t));
     const goal = c => {
       if (storeGoal(c)) return true;
       const t = trucks.find(t => Math.abs(colOf(c) - colOf(t.tile)) <= 1 && Math.abs(rowOf(c) - rowOf(t.tile)) <= 1);

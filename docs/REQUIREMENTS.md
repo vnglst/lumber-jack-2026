@@ -71,6 +71,7 @@ How to read it:
 | 58 | 15 Nov | Subtle interface animations | Active |
 | 59 | 15 Nov | Creator and source-code credits | Active |
 | 60 | 15 Nov | Agent notes from the interface, playtest and refactor sessions | Active |
+| 61 | 15 Nov | Ore: mining, and ore in the shop and the market | Active |
 
 ---
 
@@ -759,3 +760,24 @@ How to read it:
 - *Decision: code. The checklist for a new script includes the test harness; a new unit task lists the five places it touches; the placement and movement invariants from §51 and §56 are stated; a `misc` voice line must be added to a booth group by hand (the notes said this was automatic); interface conventions from §48 and §49 are recorded.*
 - *Decision: tools. Short, single-purpose shell commands, so they match the user's allow rules; plain git diffs past the external diff tool; zsh word splitting.*
 - No game code changes.
+
+## 61. Ore: mining, and ore in the shop and the market (15 Nov 2026)
+
+> Allow extracting ore from rocks and using it as a resource. Integrate this in the gameplay, shop and general economy.
+
+- Some rocks hold ore. It can be extracted, is a resource alongside wood, lumber and stone, and matters in play, in the shop and in the economy.
+- *Decision: veins are seeded from the map seed in a separate random stream (`js/ore.js`), like the forest finds, so map generation and existing maps are unchanged. Nine veins per map, each a small cluster of rock tiles beside ground that can be walked up to, 5 to 10 ore per tile: 240 to 400 ore on a map. Explored ore shows as glinting orange metal in the boulders and in orange on the minimap.*
+- **Extracting:**
+  - *Decision: Pickaxes (level 3, €120) let jacks mine. Tap a glinting rock with jacks selected, or with nobody selected to send the nearest jack. Without pickaxes the tap explains what is needed.*
+  - *Decision: one ore takes three seconds (faster with rank, slower in debt, like other work) and earns 2 XP. Ore is heavy: a jack carries six, takes them to camp and comes back, and keeps on with any ore in sight of the spot. Jacks never start mining by themselves; trees stay their default work.*
+  - *Decision: a mined-out rock crumbles to gravel and leaves one stone, so mining can also open a way through ore-bearing rock a level before the bulldozer. A bulldozer clearing an ore rock brings in its ore with the stone.*
+- **Shop:**
+  - *Decision: ore is a fourth cost alongside money, wood and lumber. Overcharged Lasers now also need 10 ore, Steam Sawmills 20, Turbo Harvesters 25 and Mega Haulers 25. New: Steel Axe Heads (level 4, €200 + 12 ore, needs Pickaxes), jacks chop 20% faster. In all 92 ore, a quarter to a third of a map's supply. Money prices are unchanged.*
+- **Economy:**
+  - *Decision: ore sells at the market for €14 (wood 3, stone 6, lumber 10). Trucks and hauling jacks load it first. Camp keeps 25 ore back for upgrades, as it keeps wood and lumber; Stockpiling keeps everything.*
+  - *Decision: once pickaxes are owned and ore is in stock or in sight, about one market order in five asks for ore: 8 to 14 of it within three minutes, bonus €10 each. An active order may use the reserve.*
+  - *Decision: an ore chip joins the HUD once pickaxes are owned. The selection panel, hints, How to play and the level-up list cover mining.*
+- **Measured** with the scripted player (§51), which now buys pickaxes and keeps two jacks mining while upgrades still need ore: six of six maps finish in 29 to 44 minutes, the same pace as before, with pickaxes bought around minute 5 to 7 and the ore-priced upgrades spread from minute 12 to 30. A player who never mines still finishes four of four, without most of those upgrades and with more losses.
+- *Decision: save format 9 stores ore in stock, on jacks and left in each rock, and a mining jack reloads into his job. Formats 2 to 8 remain loadable and gain the seeded veins in whatever rock is still standing.*
+- Not judged by a person: whether mining is fun, and the look of the ore on a phone-sized screen, where the HUD now wraps to one more chip.
+- Added eight tests (`tests/ore.test.cjs`). The offline shell lists the new script and its cache version is bumped.
