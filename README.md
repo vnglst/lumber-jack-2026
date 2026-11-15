@@ -24,6 +24,8 @@ Publish the repository as a static site at `https://lumber-jack.koenvangilst.nl/
 | --- | --- |
 | `make` | Start the game and open it in the browser |
 | `make check` | Syntax-check every script (needs Node) |
+| `make test` | Syntax-check, then run the tests |
+| `make playtest` | Play whole campaigns with a scripted player and report how they went |
 | `make help` | List the commands |
 
 `sprites.html` shows every sprite in the game.

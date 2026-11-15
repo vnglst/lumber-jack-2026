@@ -60,6 +60,11 @@
     tower: { name: 'Guard Tower', size: [2, 2], build: 20, max: 6, sight: 13, heals: true, hp: 320 }
   });
   let w, W, H, vis, par, q, stamp = 0;
+  // A tile is an index into the map's layers. Its column and row, and where a unit standing on it is drawn:
+  // the middle of the tile across, its feet a little below the middle.
+  const colOf = i => i % W, rowOf = i => (i / W) | 0;
+  const midX = i => colOf(i) * TS + 8, feetY = i => rowOf(i) * TS + 10;
+  LJ.colOf = colOf; LJ.rowOf = rowOf;
 
   const jacks = () => G.units.filter(u => u.kind === 'jack');
   const countKind = k => G.units.filter(u => u.kind === k).length;
@@ -71,12 +76,12 @@
   const canChop = u => u.kind === 'jack' || !!VEH[u.kind].chop;
   const maxHpOf = (LJ.maxHpOf = u => u.kind === 'jack' ? 100 : VEH[u.kind].hp);
   const atSawmill = u => {
-    const x = u.tile % W, y = (u.tile / W) | 0;
+    const x = colOf(u.tile), y = rowOf(u.tile);
     return G.buildings.find(b => b.kind === 'sawmill' && buildingReady(b) && x >= b.tx - 1 && x <= b.tx + b.w && y >= b.ty - 1 && y <= b.ty + b.h);
   };
   // How far a unit looks for trees (and how much fog it lifts around itself), in tiles.
   const sightOf = u => (VEH[u.kind] && VEH[u.kind].sight ? VEH[u.kind].sight : u.kind === 'jack' ? 6 + (G.up.foreman ? 3 : 0) : 5);
-  LJ.jackCount = jackCount; LJ.popCap = popCap; LJ.WAGE = WAGE; LJ.jacks = jacks; LJ.countKind = countKind; LJ.sightOf = sightOf;
+  LJ.jackCount = jackCount; LJ.popCap = popCap; LJ.WAGE = WAGE; LJ.jacks = jacks; LJ.countKind = countKind;
 
   const vehItem = (id, level, m, desc, icon) => ({
     id, name: VEH[id].name, desc: desc + ' Upkeep €' + VEH[id].wage + ' per payday.', icon, level, need: 'cabin', repeat: true,
@@ -86,6 +91,7 @@
     id, name: BLD[id].name, desc: desc + ' Builds in ' + BLD[id].build + ' seconds.', icon, level, need: 'cabin', repeat: true, place: BLD[id].size,
     cost, can: () => buildingCount(id) < BLD[id].max, full: 'Max ' + BLD[id].max
   });
+  const hireCost = (LJ.hireCost = () => SHOP.find(it => it.id === 'jack').cost().m); // what the next jack costs
   const nextTier = () => TIERS[Math.min(G.tier + 1, TIERS.length - 1)];
   const SHOP = (LJ.SHOP = [
     { id: 'base', icon: 'village', repeat: true, done: () => G.tier >= TIERS.length - 1,
@@ -178,16 +184,6 @@
     // Money that must have been earned (in total) before a level counts as complete. The last level only needs the trees gone.
     G.quota = G.thr.map((t, i) => (i && i < MAX_LEVEL - 1 ? Math.round((t * 14) / 100) * 100 : 0));
   }
-  function spawnButterflies(seed) {
-    const r = LJ.rng(seed + 5);
-    for (let i = 0; i < 400 && G.bflies.length < 60; i++) {
-      const x = (r() * W) | 0, y = (r() * H) | 0;
-      if (w.type[y * W + x] === T.GRASS && w.lush[y * W + x] > 0.5) {
-        G.bflies.push({ x: x * TS + 8, y: y * TS + 8, tx: x * TS + 8, ty: y * TS + 8, t: 0, col: ['#fff', '#ffd84a', '#ff9ad0', '#9ad0ff'][(r() * 4) | 0], ph: r() * 6 });
-      }
-    }
-  }
-
   LJ.newGame = function (seed) {
     seed = seed || ((Math.random() * 1e9) | 0);
     begin(LJ.genWorld(seed, 12));
@@ -195,21 +191,21 @@
     G.base = addBuilding('base', w.base.tx, w.base.ty, 3, 3, true); // Reserve the hidden campsite until the truck arrives.
     ring(G.base, G.villMask);
     ring(G.base, G.storeMask);
-    G.arrival = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, 'Truck 1', 'truck', 0);
+    G.arrival = addUnit(colOf(G.exitIdx), rowOf(G.exitIdx), 'Truck 1', 'truck', 0);
     const parking = w.start.y * W + w.start.x;
     G.arrival.path = bfs(G.arrival.tile, c => c === parking, i => pass(i) && (LJ.isRoad(w.type[i]) || i === parking), true);
     G.arrival.state = 'return';
     let distance = 0, px = G.arrival.x, py = G.arrival.y;
     for (const n of G.arrival.path.slice().reverse()) {
-      const x = (n % W) * TS + 8, y = ((n / W) | 0) * TS + 10;
+      const x = midX(n), y = feetY(n);
       distance += Math.hypot(x - px, y - py); px = x; py = y;
     }
     // Each line gets reading time for its length. The story is told on the road, so the truck's speed is set to make
     // the ride last as long as the story; the how-to-play lines follow at camp, with the truck parked.
     const story = LN.intro.reduce((sum, line) => sum + beatTime(line), 0);
     Object.assign(G.arrival, { introSpeed: distance / story, introV: 0, introBeat: -1, introLeft: 0 });
-    spawnCritters();
-    spawnButterflies(seed);
+    LJ.critters.spawn();
+    LJ.critters.spawnButterflies(seed);
     G.ground.renderAll();
   };
 
@@ -247,16 +243,16 @@
     for (const b of oldDepots) {
       const tile = b.ty * W + b.tx;
       const u = addUnit(b.tx, b.ty, 'Logging Truck ' + (countKind('shuttle') + 1), 'shuttle', VEH.shuttle.wage);
-      u.task = { type: 'shuttle', ax: tile % W, ay: (tile / W) | 0 }; u.state = 'think';
+      u.task = { type: 'shuttle', ax: colOf(tile), ay: rowOf(tile) }; u.state = 'think';
     }
-    G.critters = d.critters.map(c => Object.assign(makeCritter(c.kind, c.x, c.y, c.dir, Math.random() * 4), { home: c.home }));
+    G.critters = d.critters.map(c => Object.assign(LJ.critters.make(c.kind, c.x, c.y, c.dir, Math.random() * 4), { home: c.home }));
     for (const c of G.critters) if (c.kind === 'native') {
       if (c.home === undefined) { const h = LJ.nearest(G.huts, c.x, c.y, Infinity); if (h) c.home = h.tile; }
       const h = LJ.combat.hutAt(c.home);
       if (!h || h.angry) c.gone = true;
     }
-    if (G.level < LJ.combat.HOSTILE_LEVEL && !G.critters.some(c => c.kind === 'native')) spawnPeacefulFolk(LJ.rng(w.seed + 9));
-    spawnButterflies(d.seed);
+    if (G.level < LJ.combat.HOSTILE_LEVEL && !G.critters.some(c => c.kind === 'native')) LJ.critters.spawnFolk(LJ.rng(w.seed + 9));
+    LJ.critters.spawnButterflies(d.seed);
     G.ground.renderAll();
     return true;
   };
@@ -378,7 +374,7 @@
     while (dist > 0 && u.path.length) {
       const n = u.path[u.path.length - 1];
       if (!pass(n)) { u.path = []; u.state = 'think'; return; }
-      const tx = (n % W) * TS + 8, ty = ((n / W) | 0) * TS + 10;
+      const tx = midX(n), ty = feetY(n);
       const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy);
       if (Math.abs(dx) > 0.01) u.dir = dx > 0 ? 1 : -1;
       if (d <= dist) {
@@ -406,7 +402,7 @@
   }
 
   function markAround(i, r) {
-    const cx = i % W, cy = (i / W) | 0;
+    const cx = colOf(i), cy = rowOf(i);
     for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
       if (x >= 0 && y >= 0 && x < W && y < H) G.ground.mark(y * W + x);
     }
@@ -442,7 +438,7 @@
     let found = -1, sawClaimed = false;
     const K = four ? 4 : 8;
     const path = bfs(u.tile, c => {
-      const cx = c % W, cy = (c / W) | 0;
+      const cx = colOf(c), cy = rowOf(c);
       for (let k = 0; k < K; k++) {
         const nx = cx + DX[k], ny = cy + DY[k];
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
@@ -458,7 +454,7 @@
   }
   const seenTreeNear = (ax, ay, R) => n => {
     if (!isTree(n) || !G.fog[n]) return false;
-    const dx = (n % W) - ax, dy = ((n / W) | 0) - ay;
+    const dx = colOf(n) - ax, dy = rowOf(n) - ay;
     return dx * dx + dy * dy <= R * R;
   };
   // Visits the explored tiles within R tiles of (ax, ay); stops early (returning true) as soon as fn returns true.
@@ -486,11 +482,11 @@
     if (t.type === 'hunt') {
       const a = t.a;
       if (!a.alive) { if (t.resume) { setTask(u, t.resume); think(u); } else endTask(u); return; }
-      const ax = a.tile % W, ay = (a.tile / W) | 0;
+      const ax = colOf(a.tile), ay = rowOf(a.tile);
       // A hut stands still among the trees: anywhere within reach of the weapon will do. If there is no such spot,
       // say so and go back to work instead of waiting for ever. Animals move, so for them it is worth waiting.
       const reach = a.kind === 'hut' ? Math.max(1, Math.floor((weaponRange() - 12) / TS)) : 1;
-      if (walkTo(u, c => Math.hypot((c % W) - ax, ((c / W) | 0) - ay) <= reach + 0.5, 'hunt')) return;
+      if (walkTo(u, c => Math.hypot(colOf(c) - ax, rowOf(c) - ay) <= reach + 0.5, 'hunt')) return;
       if (a.kind !== 'hut') { u.wait = 0.4; u.state = 'think'; return; }
       say(u, M.cantReach);
       if (t.resume) { setTask(u, t.resume); think(u); } else endTask(u);
@@ -545,7 +541,7 @@
     const trucks = G.units.filter(t => !t.dead && !t.hold && t.kind === 'shuttle' && t.state === 'shuttleLoad' && !t.path.length && t.carry < capOf(t));
     const goal = c => {
       if (storeGoal(c)) return true;
-      const t = trucks.find(t => Math.abs(c % W - t.tile % W) <= 1 && Math.abs(((c / W) | 0) - ((t.tile / W) | 0)) <= 1);
+      const t = trucks.find(t => Math.abs(colOf(c) - colOf(t.tile)) <= 1 && Math.abs(rowOf(c) - rowOf(t.tile)) <= 1);
       if (!t) return false;
       u.dropId = t.id; return true;
     };
@@ -594,7 +590,7 @@
   }
 
   function fell(t, u) {
-    const tx = t % W, ty = (t / W) | 0, bx = LJ.treeX(w, t), by = LJ.treeY(w, t);
+    const tx = colOf(t), ty = rowOf(t), bx = LJ.treeX(w, t), by = LJ.treeY(w, t);
     G.falls.push({ sp: w.obj[t], v: w.variant[t], t: 0, dir: u.x <= bx ? 1 : -1, x: bx, y: by });
     u.carry += SPECIES[w.obj[t]].y + (w.variant[t] === 2 ? 1 : 0);
     w.obj[t] = STUMP; w.claim[t] = 0; G.cleared++; G.worldVer++;
@@ -624,10 +620,9 @@
   function chip(x, y, col) {
     G.parts.push({ x, y, vx: (Math.random() - 0.5) * 50, vy: -20 - Math.random() * 40, t: 0, life: 0.5 + Math.random() * 0.3, col });
   }
-  LJ.chip = chip;
 
   // Storage holds back a little for building (bunkhouses, upgrades); everything above that goes to market.
-  const RESERVE = (LJ.RESERVE = { wood: 20, lumber: 30 });
+  const RESERVE = { wood: 20, lumber: 30 };
   // Take goods from storage for a market run. Lumber and stone first; raw wood only if nobody is sawing it.
   function loadUp(u) {
     const cap = capOf(u), o = G.order, orderOf = k => o && o.state === 'active' && o.kind === k;
@@ -713,7 +708,7 @@
   const WALL_HP = 60, WALL_COST = (LJ.WALL_COST = { m: 4, w: 2 });
   LJ.canWall = i => {
     if (i < 0 || i >= w.N || w.wall[i] || w.bld[i] || isTree(i) || !G.fog[i] || LJ.combat.hutAt(i)) return false;
-    const t = w.type[i], x = i % W, y = (i / W) | 0;
+    const t = w.type[i], x = colOf(i), y = rowOf(i);
     return (t === T.GRASS || t === T.DIRT || t === T.MUD || t === T.GRAVEL || t === T.ROAD) && !nearMarket(x, y);
   };
   LJ.buildWalls = function (tiles) {
@@ -730,8 +725,8 @@
   LJ.damageWall = function (i, dmg) {
     if (!w.wall[i]) return;
     w.wall[i] = Math.max(0, w.wall[i] - dmg);
-    chip((i % W) * TS + 8, ((i / W) | 0) * TS + 6, '#b07a44'); LJ.sfx('thud');
-    if (!w.wall[i]) { delete G.wallSites[i]; G.worldVer++; for (let k = 0; k < 6; k++) dust((i % W) * TS + 8, ((i / W) | 0) * TS + 14); }
+    chip(midX(i), rowOf(i) * TS + 6, '#b07a44'); LJ.sfx('thud');
+    if (!w.wall[i]) { delete G.wallSites[i]; G.worldVer++; for (let k = 0; k < 6; k++) dust(midX(i), rowOf(i) * TS + 14); }
   }
 
   // Jacks defend themselves against anything in reach. Returns true while they are busy fighting.
@@ -762,7 +757,7 @@
   function spawnPack() {
     const cfg = wild(G.level), js = jacks();
     if (!js.length) return;
-    const tgt = LJ.pick(js), tx = tgt.tile % W, ty = (tgt.tile / W) | 0;
+    const tgt = LJ.pick(js), tx = colOf(tgt.tile), ty = rowOf(tgt.tile);
     for (let tries = 0; tries < 120; tries++) {
       const ang = Math.random() * 6.283, d = 16 + Math.random() * 8;
       const x = Math.round(tx + Math.cos(ang) * d), y = Math.round(ty + Math.sin(ang) * d);
@@ -832,7 +827,7 @@
   // truck with goods that would sell for enough.
   function crewLost() {
     if (G.arrival || G.cine || !noCrew()) return false;
-    const hire = SHOP.find(it => it.id === 'jack').cost().m;
+    const hire = hireCost();
     if (G.money >= hire) return false;
     const worth = (wd, lum, st) => wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone;
     let goods = worth(Math.max(0, G.wood - RESERVE.wood), Math.max(0, G.lumber - RESERVE.lumber), G.stone);
@@ -842,7 +837,7 @@
 
   // Jacks heal quickly near buildings that heal (the village, guard towers).
   function healsAt(tile) {
-    const x = tile % W, y = (tile / W) | 0;
+    const x = colOf(tile), y = rowOf(tile);
     return G.buildings.some(b => buildingReady(b) && BLD[b.kind].heals && Math.abs(x - b.tx - b.w / 2) <= 4 && Math.abs(y - b.ty - b.h / 2) <= 4);
   }
   const nearHome = u => healsAt(u.tile);
@@ -875,7 +870,7 @@
     switch (u.state) {
       case 'idle': break;
       case 'toTree':
-        if (isTree(u.target)) { u.state = 'chop'; u.swing = 0; face(u, (u.target % W) * TS + 8); }
+        if (isTree(u.target)) { u.state = 'chop'; u.swing = 0; face(u, midX(u.target)); }
         else { release(u); think(u); }
         break;
       case 'chop': {
@@ -884,7 +879,7 @@
         u.swing += dt;
         if (u.swing > (u.kind === 'jack' && !G.up.chainsaw ? 0.5 : 0.2)) {
           u.swing = 0; LJ.sfx(u.kind === 'jack' && !G.up.chainsaw ? 'chop' : 'saw');
-          chip((t % W) * TS + 8, ((t / W) | 0) * TS + 8, '#e6c88a');
+          chip(midX(t), rowOf(t) * TS + 8, '#e6c88a');
         }
         w.hp[t] -= (dt * effort(u)) / chopTime(t, u);
         if (w.hp[t] <= 0) { fell(t, u); u.target = -1; think(u); }
@@ -944,7 +939,7 @@
         }
         break;
       case 'toDoze':
-        if (canDoze(u.target)) { u.state = 'doze'; u.sawT = 0; face(u, (u.target % W) * TS + 8); }
+        if (canDoze(u.target)) { u.state = 'doze'; u.sawT = 0; face(u, midX(u.target)); }
         else { release(u); think(u); }
         break;
       case 'doze': {
@@ -963,7 +958,7 @@
             LJ.float(u.x, u.y - 18, '+' + rule.amount + ' ' + rule.resource + (rule.muddy ? ' from roots' : ''), '');
           }
           LJ.sfx('rock');
-          if (u.task && u.task.job) { u.task.job.tiles.delete(t); u.task.ax = t % W; u.task.ay = (t / W) | 0; } // the work spot follows the clearing
+          if (u.task && u.task.job) { u.task.job.tiles.delete(t); u.task.ax = colOf(t); u.task.ay = rowOf(t); } // the work spot follows the clearing
           release(u); think(u);
         }
         break;
@@ -986,7 +981,7 @@
     chop(units, tree) {
       units = units.filter(canChop);
       if (!units.length) return;
-      units.forEach((u, k) => workAt(u, tree % W, (tree / W) | 0, k === 0 ? tree : -1));
+      units.forEach((u, k) => workAt(u, colOf(tree), rowOf(tree), k === 0 ? tree : -1));
       if (Math.random() < 0.5) say(units[0], LJ.pick(units[0].kind === 'jack' ? Q_ACK : Q_VEH[VEH[units[0].kind].voice || units[0].kind]));
     },
     // Clear roots and bulldoze rock/water along the route to a target.
@@ -1000,7 +995,7 @@
       const tiles = [...path.filter(blocked), idx].filter(canDoze);
       if (!tiles.length) { LJ.cmd.move(dz, idx); return true; }
       const job = { tiles: new Set(tiles) };
-      for (const u of dz) setTask(u, { type: 'doze', job, ax: idx % W, ay: (idx / W) | 0 });
+      for (const u of dz) setTask(u, { type: 'doze', job, ax: colOf(idx), ay: rowOf(idx) });
       say(dz[0], LJ.pick(Q_VEH.dozer));
       return true;
     },
@@ -1008,7 +1003,7 @@
     move(units, idx) {
       for (const u of units) {
         const path = bfs(u.tile, c => c === idx);
-        if (path && u.kind === 'shuttle') { setTask(u, { type: 'shuttle', ax: idx % W, ay: (idx / W) | 0 }); think(u); }
+        if (path && u.kind === 'shuttle') { setTask(u, { type: 'shuttle', ax: colOf(idx), ay: rowOf(idx) }); think(u); }
         else if (path) {
           setTask(u, { type: 'move' }); u.path = path; u.state = 'move';
           if (u.kind === 'jack') { u.fighting = false; LJ.combat.cancelBurst(u); }
@@ -1048,7 +1043,7 @@
     if (G.time - u.lastWhack < 0.25) return true;
     u.lastWhack = G.time; u.swing = 0.3;
     w.hp[t] -= 0.09;
-    for (let i = 0; i < 5; i++) chip((t % W) * TS + 8, ((t / W) | 0) * TS + 8, '#ffe9a8');
+    for (let i = 0; i < 5; i++) chip(midX(t), rowOf(t) * TS + 8, '#ffe9a8');
     LJ.sfx('chop');
     if (w.hp[t] <= 0) { fell(t, u); u.target = -1; think(u); }
     return true;
@@ -1085,7 +1080,7 @@
 
   function spawnVehicle(kind) {
     const n = countKind(kind) + 1;
-    const u = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, VEH[kind].name + (VEH[kind].max > 1 ? ' ' + n : ''), kind, VEH[kind].wage);
+    const u = addUnit(colOf(G.exitIdx), rowOf(G.exitIdx), VEH[kind].name + (VEH[kind].max > 1 ? ' ' + n : ''), kind, VEH[kind].wage);
     // Delivered by road; drives up to storage to park.
     walkTo(u, storeGoal, 'return');
     say(u, LJ.pick(Q_VEH[VEH[kind].voice || kind]));
@@ -1116,7 +1111,7 @@
     else if (id === 'jack') {
       if (G.village) G.village.queue.push({ t: TIERS[G.tier].train, total: TIERS[G.tier].train });
       else {
-        const u = addUnit(G.exitIdx % W, (G.exitIdx / W) | 0, NAMES[G.jackN++ % NAMES.length], 'jack', WAGE);
+        const u = addUnit(colOf(G.exitIdx), rowOf(G.exitIdx), NAMES[G.jackN++ % NAMES.length], 'jack', WAGE);
         walkTo(u, c => G.villMask[c] === 1, 'return');
         say(u, M.duty);
       }
@@ -1171,7 +1166,7 @@
     for (const u of G.units) {
       if (w.bld[u.tile]) {
         const pth = bfs(u.tile, n => pass(n), () => true);
-        if (pth && pth.length) { u.tile = pth[0]; u.x = (u.tile % W) * TS + 8; u.y = ((u.tile / W) | 0) * TS + 10; }
+        if (pth && pth.length) { u.tile = pth[0]; u.x = midX(u.tile); u.y = feetY(u.tile); }
       } else if (!u.path.some(n => w.bld[n])) continue;
       u.path = []; if (u.state !== 'idle') u.state = 'think';
     }
@@ -1198,7 +1193,7 @@
       case 'chop': return 'Chopping';
       case 'toTree': return 'Walking to a tree';
       case 'toDrop': return u.dropId != null ? 'Carrying wood to logging truck' : 'Carrying wood to camp';
-      case 'sellRun': case 'haulExit': return 'Hauling to market';
+      case 'haulExit': return 'Hauling to market';
       case 'haulStore': return moving ? 'Fetching goods' : 'Waiting for goods';
       case 'toSaw': return 'Walking to the sawmill';
       case 'saw': return G.wood < 2 ? 'Sawing (out of wood!)' : 'Sawing lumber';
@@ -1254,7 +1249,7 @@
         let spot = -1;
         for (let i = 0; i < w.N && spot < 0; i++) if (G.villMask[i] && pass(i) && i > (v.ty + v.h) * W) spot = i;
         if (spot < 0) spot = G.villMask.findIndex((m, i) => m && pass(i));
-        const u = addUnit(spot % W, (spot / W) | 0, NAMES[G.jackN++ % NAMES.length], 'jack', WAGE);
+        const u = addUnit(colOf(spot), rowOf(spot), NAMES[G.jackN++ % NAMES.length], 'jack', WAGE);
         say(u, M.duty);
         LJ.sfx('build');
       }
@@ -1299,100 +1294,19 @@
       if (u.idleVer === G.worldVer) continue; // found nothing to do last time, and nothing has changed since
       if (G.up.dispatch && u.kind === 'truck' && stock >= 15) setTask(u, { type: 'haul', once: false });
       else if (canChop(u)) {
-        const tx = u.tile % W, ty = (u.tile / W) | 0;
+        const tx = colOf(u.tile), ty = rowOf(u.tile);
         if (anyTreeNear(tx, ty, sightOf(u))) { workAt(u, tx, ty); think(u); }
       } else if (u.kind === 'dozer') {
-        const tx = u.tile % W, ty = (u.tile / W) | 0, targets = dozeTargetsNear(tx, ty, sightOf(u));
+        const tx = colOf(u.tile), ty = rowOf(u.tile), targets = dozeTargetsNear(tx, ty, sightOf(u));
         if (targets.length) { setTask(u, { type: 'doze', job: { tiles: new Set(targets) }, ax: tx, ay: ty }); think(u); }
         else u.idleVer = G.worldVer;
       }
     }
   }
 
-  // ---------- Peaceful wildlife: reindeer and squirrels that flee from people and vanish with the forest, and swans on the water ----------
-  function spawnCritters() {
-    const r = LJ.rng(w.seed + 9);
-    spawnPeacefulFolk(r);
-    const critterLimit = G.critters.length + 12;
-    for (let tries = 0; tries < 3000 && G.critters.length < critterLimit; tries++) {
-      const x = (r() * W) | 0, y = (r() * H) | 0, i = y * W + x;
-      if (w.type[i] !== T.GRASS || isTree(i) || Math.hypot(x - w.start.x, y - w.start.y) < 12) continue;
-      let trees = 0;
-      for (let k = 0; k < 8; k++) { const n = (y + DY[k]) * W + x + DX[k]; if (n >= 0 && n < w.N && isTree(n)) trees++; }
-      if (trees < 2) continue;
-      G.critters.push(makeCritter(G.critters.length % 3 === 0 ? 'deer' : 'squirrel', x * TS + 8, y * TS + 10, r() < 0.5 ? 1 : -1, r() * 4));
-    }
-    // Swans, on open water away from the banks.
-    const openWater = i => w.type[i] === T.WATER && DX.every((dx, k) => { const n = i + DY[k] * W + dx; return n >= 0 && n < w.N && w.type[n] === T.WATER; });
-    for (let tries = 0, swans = 0; tries < 3000 && swans < 8; tries++) {
-      const x = 1 + ((r() * (W - 2)) | 0), y = 1 + ((r() * (H - 2)) | 0);
-      if (!openWater(y * W + x)) continue;
-      G.critters.push(makeCritter('swan', x * TS + 8, y * TS + 10, r() < 0.5 ? 1 : -1, r() * 4));
-      swans++;
-    }
-  }
-  // Peaceful inhabitants stay by their own hut until it is threatened or war begins.
-  function spawnPeacefulFolk(r) {
-    for (const h of G.huts) if (h.alive && !h.angry) for (let k = 0; k < 2; k++) {
-      G.critters.push(Object.assign(makeCritter('native', h.x + (r() - 0.5) * 30, h.y + 4 + r() * 10, r() < 0.5 ? 1 : -1, r() * 4), { home: h.tile }));
-    }
-  }
-  function makeCritter(kind, x, y, dir, t) {
-    return { kind, x, y, tx: 0, ty: 0, t, dir, walkT: 0, moving: false, flee: false, alpha: 1 };
-  }
   const tileOfPx = (x, y) => ((y / TS) | 0) * W + ((x / TS) | 0);
   LJ.tileOfPx = tileOfPx;
   LJ.seenPx = (x, y) => G.fog[tileOfPx(x, y)] === 1;
-  function critterStop(c, t) { c.moving = false; c.flee = false; c.t = t; }
-  function critterGo(c, x, y) {
-    c.tx = LJ.clamp(x, 8, W * TS - 8); c.ty = LJ.clamp(y, 8, H * TS - 8); c.moving = true;
-  }
-  function updCritters(dt) {
-    for (const c of G.critters) {
-      if (c.gone) { c.alpha -= dt * 0.8; continue; }
-      if (c.kind === 'native') {
-        const h = LJ.combat.hutAt(c.home);
-        if (!h || h.angry) { c.gone = true; continue; }
-        if (!c.moving && (c.t -= dt) <= 0) critterGo(c, h.x + (Math.random() - 0.5) * 32, h.y + (Math.random() - 0.5) * 32);
-        if (c.moving) {
-          const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy), dist = Math.min(d, 16 * dt);
-          if (d < 1) critterStop(c, 2 + Math.random() * 4);
-          else { c.x += dx / d * dist; c.y += dy / d * dist; c.dir = dx > 0 ? 1 : -1; c.walkT += dt; }
-        }
-        continue;
-      }
-      const tile = tileOfPx(c.x, c.y);
-      if (c.kind === 'swan') { // drifts about its water and leaves when the water is filled in
-        if (w.type[tile] !== T.WATER) { c.gone = true; continue; }
-        if (!c.moving && (c.t -= dt) <= 0) critterGo(c, c.x + (Math.random() - 0.5) * 70, c.y + (Math.random() - 0.5) * 40);
-        if (!c.moving) continue;
-        const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy), nx = c.x + (dx / d) * 7 * dt, ny = c.y + (dy / d) * 7 * dt;
-        if (d < 1.5 || w.type[tileOfPx(nx + Math.sign(dx) * 9, ny)] !== T.WATER || w.type[tileOfPx(nx, ny + Math.sign(dy) * 7)] !== T.WATER) { critterStop(c, 2 + Math.random() * 6); continue; }
-        c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1;
-        continue;
-      }
-      if (w.lush[tile] < 0.4) { c.gone = true; continue; } // nothing left to live on
-      const deer = c.kind !== 'squirrel';
-      if (!c.flee) {
-        for (const u of G.units) {
-          if (Math.hypot(u.x - c.x, u.y - c.y) < (deer ? 70 : 44)) {
-            const a = Math.atan2(c.y - u.y, c.x - u.x);
-            critterGo(c, c.x + Math.cos(a) * 90, c.y + Math.sin(a) * 90); c.flee = true;
-            break;
-          }
-        }
-      }
-      if (!c.moving && (c.t -= dt) <= 0) critterGo(c, c.x + (Math.random() - 0.5) * 90, c.y + (Math.random() - 0.5) * 90);
-      if (!c.moving) continue;
-      const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy);
-      const sp = c.flee ? (deer ? 85 : 70) : deer ? 16 : 24;
-      if (d < 1.5) { critterStop(c, 1.5 + Math.random() * 5); continue; }
-      const nx = c.x + (dx / d) * sp * dt, ny = c.y + (dy / d) * sp * dt;
-      if (!wildPass(tileOfPx(nx, ny))) { critterStop(c, 0.4); continue; }
-      c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1; c.walkT += dt;
-    }
-    if (G.critters.some(c => c.alpha <= 0)) G.critters = G.critters.filter(c => c.alpha > 0);
-  }
 
   const introLines = () => LN.intro.concat(LN.camp);
   const beatTime = line => Math.max(INTRO_BEAT_TIME, line.length / 15); // reading time for one line
@@ -1440,10 +1354,9 @@
     if (!G.cine) updConstruction(dt);
     for (const u of G.units) {
       if (u.dead) continue;
-      if (u.state === 'sellRun' && !u.path.length && u.wait <= 0) { sell(u, u.carry, 0); u.carry = 0; u.state = 'idle'; }
-      else updUnit(u, dt);
+      updUnit(u, dt);
     }
-    updCritters(dt);
+    LJ.critters.update(dt);
     if (G.cine) LJ.ending.update(dt);
     else {
       updFog(dt);
@@ -1464,19 +1377,7 @@
     for (const b of G.bubbles) b.t -= dt;
     G.bubbles = G.bubbles.filter(b => { if (b.t <= 0) { if (b.el) b.el.remove(); return false; } return true; });
 
-    // Butterflies only live where the land is still lush.
-    for (const b of G.bflies) {
-      b.t -= dt; b.ph += dt * 14;
-      if (b.t <= 0) {
-        b.t = 1 + Math.random() * 2;
-        b.tx = LJ.clamp(b.x + (Math.random() - 0.5) * 60, 4, W * TS - 4);
-        b.ty = LJ.clamp(b.y + (Math.random() - 0.5) * 60, 4, H * TS - 4);
-        if (w.lush[tileOfPx(b.x, b.y)] < 0.5) b.dead = true;
-      }
-      const dx = b.tx - b.x, dy = b.ty - b.y, d = Math.hypot(dx, dy);
-      if (d > 1) { b.x += (dx / d) * 16 * dt; b.y += (dy / d) * 16 * dt; }
-    }
-    if (G.bflies.some(b => b.dead)) G.bflies = G.bflies.filter(b => !b.dead);
+    LJ.critters.updateButterflies(dt);
 
     G.ground.flush(200);
   };
