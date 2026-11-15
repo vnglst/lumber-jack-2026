@@ -1,0 +1,20 @@
+body { display: flex; flex-direction: column; background: var(--tar); }
+#review-controls { flex: none; padding: 10px 14px; background: var(--red-deep); border-bottom: 3px solid var(--trim-shade); max-height: 45dvh; overflow: auto; }
+.review-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; }
+.review-heading h1 { font-size: 20px; margin-right: auto; }
+.review-heading button { padding: 5px 8px; min-height: 32px; background: var(--red); border: 1px solid var(--trim-shade); color: var(--trim); font: inherit; cursor: pointer; }
+#review-controls a { color: var(--ochre); }
+#review-controls p { margin-top: 6px; font-size: 13px; color: var(--chalk); }
+#review-form { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 10px; }
+#review-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+#review-form select, #review-form input, #review-form button { min-height: 36px; padding: 6px 9px; border: 1px solid var(--trim-shade); border-radius: 2px; background: var(--tar); color: var(--trim); font: inherit; }
+#review-form input { width: 110px; user-select: text; }
+#review-form button { background: var(--red); cursor: pointer; font-size: 14px; }
+#review-form button:disabled { opacity: .5; cursor: wait; }
+#review-game { display: block; width: 100%; flex: 1; min-height: 0; border: 0; background: var(--tar); }
+@media (max-width: 520px) {
+  #review-controls { padding: 8px; }
+  .review-heading h1 { font-size: 18px; }
+  #review-form { gap: 6px; }
+  #review-form select { max-width: 210px; }
+}

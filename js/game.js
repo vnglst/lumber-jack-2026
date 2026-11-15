@@ -169,6 +169,18 @@
       bearChance: level >= 4 ? Math.min(0.5, (level - 3) * 0.1) : 0
     };
   }
+  // Shared by ordinary encounters and the isolated review playground.
+  LJ.spawnWildAt = function (kind, tile, count) {
+    if (!FOE[kind] || !FOE[kind].wild || tile < 0 || tile >= w.N) return;
+    const cfg = wild(G.level), bear = kind === 'bear';
+    for (let k = 0; k < count; k++) {
+      G.animals.push({
+        kind, x: midX(tile) + k * 7, y: feetY(tile), tile, home: tile, path: [], target: null,
+        hp: cfg.hp * (bear ? 2.5 : 1), max: cfg.hp * (bear ? 2.5 : 1), dmg: cfg.dmg * (bear ? 1.8 : 1),
+        speed: cfg.speed * (bear ? 0.85 : 1) * (1 - k * 0.06), repath: k * 0.3, atkCd: 0, dir: 1, walkT: 0, alive: true, flee: false
+      });
+    }
+  };
   LJ.danger = level => [
     '', '', 'Wolves now hunt in packs.', 'Bears have woken up. They are not happy.', 'The forest folk are taking up their bows.',
     'The animals are getting desperate.', 'Something in the forest is angry.', 'The packs are bigger than ever.',
@@ -782,13 +794,7 @@
       if (!isTree(i) || !bfs(i, c => c === tgt.tile, wildPass)) continue; // they come out of the living forest
       const n = Math.min(cfg.pack, Math.max(1, js.length - 1));
       const bear = Math.random() < cfg.bearChance;
-      for (let k = 0; k < (bear ? 1 : n); k++) {
-        G.animals.push({
-          kind: bear ? 'bear' : 'wolf', x: x * TS + 8 + k * 7, y: y * TS + 10, tile: i, home: i, path: [], target: null,
-          hp: cfg.hp * (bear ? 2.5 : 1), max: cfg.hp * (bear ? 2.5 : 1), dmg: cfg.dmg * (bear ? 1.8 : 1),
-          speed: cfg.speed * (bear ? 0.85 : 1) * (1 - k * 0.06), repath: k * 0.3, atkCd: 0, dir: 1, walkT: 0, alive: true, flee: false
-        });
-      }
+      LJ.spawnWildAt(bear ? 'bear' : 'wolf', i, bear ? 1 : n);
       LJ.voice.cue(bear ? 'bear_roar' : 'wolf_howl');
       LJ.ui.toast(bear ? 'A bear is coming for ' + tgt.name + '!' : n > 1 ? 'A wolf pack is on the prowl!' : 'A wolf is on the prowl!');
       return;
