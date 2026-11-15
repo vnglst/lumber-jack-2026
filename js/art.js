@@ -371,6 +371,70 @@
   // ---------- Icons that depend on the art above ----------
   I.jack = icon(x => x.drawImage(S.jack.axe.idle.r, 4, 0, 14, 14, -1, 0, 14, 14));
   I.stone = icon(x => x.drawImage(S.rocks[0], 0, 0, 22, 18, 0, 1, 12, 10));
+  // ---------- Interface icons ----------
+  // Buttons carry little pixel pictures instead of line drawings. Each is twelve rows of twelve characters; a letter
+  // is a colour from UI_INK and a dot is empty. They sit on cream buttons, so every shape has a dark outline (k) and
+  // is lit from the top-left like the rest of the art.
+  const UI_INK = {
+    k: '#1b1422', w: '#f4efe2', g: '#8c949e', G: '#d5dbe2', b: '#7a4d26', B: '#b07a44', r: '#c8372d', R: '#ef7a66',
+    y: '#f0bd4a', Y: '#fff3b0', n: '#3f7d4a', N: '#7cc46a', u: '#3d7bd8', U: '#a9d0ff'
+  };
+  const pix = rows => icon(x => rows.forEach((row, y) => { for (let c = 0; c < row.length; c++) if (UI_INK[row[c]]) R(x, c, y, 1, 1, UI_INK[row[c]]); }));
+  // Saw lumber: a hand saw, wooden grip on the left, teeth along the lower edge.
+  I.saw = pix([
+    '............', '............', '.kkkk.......', 'kBBBBkkkkkkk', 'kBkkBGGGGGGk', 'kBkkBGGGGGk.',
+    'kbbbbGGGGgk.', '.kkkkgkgkgk.', '.....k.k.k..', '............', '............', '............']);
+  // Haul to market: a market stall with a striped awning and a coin on the counter.
+  I.market = pix([
+    '............', '.kkkkkkkkkk.', 'kRRwwrrwwrrk', 'krrwwrrwwrrk', '.kwkrkwkrkw.', '..k......k..',
+    '..k..kk..k..', '..k.kYyk.k..', '..k.kyyk.k..', '..k..kk..k..', '.kkkkkkkkkk.', '............']);
+  // Stop: a red mitten held up, white cuff.
+  I.stop = pix([
+    '............', '...kkkk.....', '..kRRrrk....', '..kRrrrk.kk.', '..krrrrkkrrk', '..krrrrrrrrk',
+    '..krrrrrrrk.', '..krrrrrrk..', '...krrrrk...', '...kwwwwk...', '...kwwwwk...', '....kkkk....']);
+  // Deselect and close: a chunky red cross.
+  I.close = pix([
+    '............', '.kk......kk.', 'kRrk....kRrk', '.krrk..krrk.', '..krrkkrrk..', '...krrrrk...',
+    '...krrrrk...', '..krrkkrrk..', '.krrk..krrk.', 'krrk....krrk', '.kk......kk.', '............']);
+  // Back: an arrow pointing left.
+  I.back = pix([
+    '............', '.....kk.....', '....kyk.....', '...kYyk.....', '..kYyykkkkk.', '.kYyyyyyyyk.',
+    '.kyyyyyyyyk.', '..kyyykkkkk.', '...kyyk.....', '....kyk.....', '.....kk.....', '............']);
+  // Map: a folded map with a lake, a trail and a red mark.
+  I.map = pix([
+    '............', '.kkkk..kkkk.', '.kNNkkkkNNk.', '.kNNkYYkNNk.', '.kNNkYYkrNk.', '.kNnkYrkNNk.',
+    '.kuukYYkNNk.', '.kuukYYkNnk.', '.kNNkYYkNNk.', '.kkkkYYkkkk.', '....kkkk....', '............']);
+  // Sound: a single note with a flag.
+  I.sound = pix([
+    '............', '.....kkkk...', '.....kYyykk.', '.....kykyyk.', '.....kyk.kyk', '.....kyk..k.',
+    '.....kyk....', '..kkkkyk....', '.kYyyyyk....', '.kyyyyyk....', '..kkkkk.....', '............']);
+  // Forest finds: a gold nugget, glinting.
+  I.finds = pix([
+    '............', '.........k..', '........kYk.', '..kkkk...k..', '.kYYyykk....', 'kYYyyyyyk...',
+    'kYyyyyyyyk..', 'kyyyyyyyyk..', 'kyyyybyyyk..', '.kyybyyyk...', '..kkkkkk....', '............']);
+  // How to play: a speech bubble with a question mark.
+  I.help = pix([
+    '............', '.kkkkkkkkkk.', 'kUUUUUUUUUUk', 'kUUUkkkkUUUk', 'kUUUUUUkUUUk', 'kUUUUUkkUUUk',
+    'kUUUUUkUUUUk', 'kUUUUUUUUUUk', 'kUUUUUkUUUUk', '.kkkUUkkkkk.', '...kUk......', '...kk.......']);
+  // Menu: the usual three bars, as a stack of logs.
+  I.menu = pix([
+    '............', '.kkkkkkkkkk.', 'kBBBBBBBkYYk', 'kbbbbbbbkyYk', '.kkkkkkkkkk.', 'kBBBBBBBkYYk',
+    'kbbbbbbbkyYk', '.kkkkkkkkkk.', 'kBBBBBBBkYYk', 'kbbbbbbbkyYk', '.kkkkkkkkkk.', '............']);
+  I.zoomin = pix([
+    '............', '....kkkk....', '....kNNk....', '....kNnk....', '.kkkkNnkkkk.', '.kNNNNnnnnk.',
+    '.kNnnnnnnnk.', '.kkkknnkkkk.', '....knnk....', '....knnk....', '....kkkk....', '............']);
+  I.zoomout = pix([
+    '............', '............', '............', '............', '.kkkkkkkkkk.', '.kNNNNNNNNk.',
+    '.kNnnnnnnnk.', '.kkkkkkkkkk.', '............', '............', '............', '............']);
+  // Credits: a heart.
+  I.heart = pix([
+    '............', '..kk....kk..', '.kRRk..krrk.', 'kRRrrkkrrrrk', 'kRrrrrrrrrrk', 'krrrrrrrrrrk',
+    '.krrrrrrrrk.', '..krrrrrrk..', '...krrrrk...', '....krrk....', '.....kk.....', '............']);
+  // New game: a sapling in a mound of earth.
+  I.sapling = pix([
+    '............', '.....kk.....', '....kNNk....', '...kNNnnk...', '..kNNnnnnk..', '..kNnnnnnk..',
+    '...kknnkk...', '.....kbk....', '.....kbk....', '..kkkkbkkkk.', '..kBBbbbbbk.', '..kkkkkkkkk.']);
+
   // A lump of ore: the same boulder with orange-brown metal showing in it.
   I.ore = icon(x => {
     x.drawImage(S.rocks[0], 0, 0, 22, 18, 0, 1, 12, 10);

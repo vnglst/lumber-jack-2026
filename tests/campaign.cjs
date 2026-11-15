@@ -4,7 +4,8 @@
 // dead ends and balance problems, not a claim about how a person plays or whether the game is fun.
 //   node tests/campaign.cjs [seed ...]        (--hours N caps the game time, default 5; --log adds the event log)
 // Options for weaker play styles: { every: 6 } acts every six seconds, { huts: false } never attacks huts,
-// { skip: ['tower'] } never buys those items, { orders: false } declines market orders, { mine: false } never mines.
+// { skip: ['tower'] } never buys those items, { orders: false } declines market orders, { mine: false } never mines,
+// { walls: true } rings the camp with palisade.
 const { game } = require('./harness.cjs');
 
 const BUY = ['jack', 'sharpaxe', 'sling', 'base', 'boots', 'rifles', 'bunk', 'sawmill', 'truck', 'barrow', 'chainsaw', 'pick', 'tower',
@@ -15,7 +16,7 @@ const ALIVE = { dozer: 1 }; // replace it when it is lost, but never run two
 function campaign(seed, hours = 5, opts = {}) {
   const lj = game(seed), g = lj.G, w = g.world, W = w.W;
   const log = [], toasts = {}, levels = [{ level: 1, at: 0 }];
-  const m = { deaths: 0, vehiclesLost: 0, waves: 0, raids: 0, orders: { taken: 0, done: 0, missed: 0 }, debtS: 0, idleS: 0, jackS: 0, stalls: [], packs: 0, fightS: 0, killers: {}, wipes: 0, mineOrders: 0 };
+  const m = { deaths: 0, vehiclesLost: 0, waves: 0, raids: 0, orders: { taken: 0, done: 0, missed: 0 }, debtS: 0, idleS: 0, jackS: 0, stalls: [], packs: 0, fightS: 0, killers: {}, wipes: 0, mineOrders: 0, wallSections: 0 };
   const perLevel = k => { const l = levels[levels.length - 1]; l[k] = (l[k] || 0) + 1; };
   const note = (event, extra) => log.push(Object.assign({ t: Math.round(g.time), event }, extra));
   lj.ui.toast = text => {
@@ -142,6 +143,20 @@ function campaign(seed, hours = 5, opts = {}) {
     }
   }
 
+  // Once the camp can afford it, ring it with palisade a few tiles out, as a player fortifying against raids would.
+  // Palisades block the crew too, so this is where a sealed camp or a stuck truck would show up.
+  let walled = false;
+  function fortify() {
+    if (walled || !opts.walls || g.tier < 1 || g.level < 3 || g.money < 900 || g.wood < 250) return;
+    const b = g.base, x0 = b.tx - 5, x1 = b.tx + b.w + 4, y0 = b.ty - 5, y1 = b.ty + b.h + 4, ring = [];
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if ((x === x0 || x === x1 || y === y0 || y === y1) && x > 0 && y > 0 && x < W - 1 && y < w.H - 1) ring.push(y * W + x);
+    }
+    m.wallSections = lj.buildWalls(ring);
+    walled = true;
+    note('walls', { text: m.wallSections + ' of ' + ring.length + ' sections' });
+  }
+
   function orders() {
     const o = g.order;
     if (o && o.state === 'offer') {
@@ -152,7 +167,7 @@ function campaign(seed, hours = 5, opts = {}) {
   }
 
   function manage() {
-    shop(); orders();
+    shop(); orders(); fortify();
     let sawyers = g.units.filter(u => u.task && u.task.type === 'saw').length;
     const wantSaw = g.count.sawmill && !g.up.steam && g.wood >= 12 ? Math.min(2 * g.count.sawmill, lj.jacks().length >> 2) : 0;
     let blocked = null, miners = g.units.filter(u => u.task && u.task.type === 'mine').length;
@@ -205,7 +220,7 @@ function campaign(seed, hours = 5, opts = {}) {
   }
   return {
     seed, minutes: Math.round(g.time / 60), finished: !!g.cine, level: g.level, cleared: g.cleared, total: g.total, money: g.money, earned: g.earned,
-    ore: g.ore, oreLeft: lj.ore.left(), mineOrders: m.mineOrders, jacks: lj.jacks().length, kills: g.kills, folkKilled: g.folkKilled, hutsLeft: g.huts.filter(h => h.alive).length, finds: g.finds.filter(f => f.found).length + '/' + g.finds.length,
+    ore: g.ore, oreLeft: lj.ore.left(), mineOrders: m.mineOrders, wallSections: m.wallSections, jacks: lj.jacks().length, kills: g.kills, folkKilled: g.folkKilled, hutsLeft: g.huts.filter(h => h.alive).length, finds: g.finds.filter(f => f.found).length + '/' + g.finds.length,
     idleShare: +(m.idleS / Math.max(1, m.jackS)).toFixed(3), fightShare: +(m.fightS / Math.max(1, m.jackS)).toFixed(3), debtMinutes: Math.round(m.debtS / 60),
     deaths: m.deaths, wipes: m.wipes, gameOver: over, killers: m.killers, lastWaveMin: m.lastWaveAt && Math.round(m.lastWaveAt / 60), lastHutMin: m.lastHutAt && Math.round(m.lastHutAt / 60), vehiclesLost: m.vehiclesLost, packs: m.packs, waves: m.waves, raids: m.raids, orders: m.orders, stalls: m.stalls,
     levels: levels.map((l, k) => Object.assign({ minutes: +(((levels[k + 1] ? levels[k + 1].at : g.time) - l.at) / 60).toFixed(1) }, l)),
