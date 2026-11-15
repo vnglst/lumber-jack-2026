@@ -197,7 +197,7 @@
       G.hover = [wx, wy];
       const kind = G.place.kind;
       if (LJ.tryPlace(Math.floor(wx / TS) - (G.place.w >> 1), Math.floor(wy / TS) - (G.place.h >> 1))) ui.toast(LJ.BLD[kind].name + ' construction started — ' + LJ.BLD[kind].build + ' seconds.');
-      else if (G.place) ui.toast("Can't build there — it needs a clear, explored spot the road can reach.");
+      else if (G.place) ui.toast("Can't build there. It needs a clear, explored spot the road can reach, and it may not wall off ground behind it.");
       return;
     }
     const slack = touch ? 5 : 0;
@@ -527,7 +527,7 @@
     '<h1>How to play</h1>' +
     '<ul><li><b>Clear the forest.</b> Send a jack to a tree and he keeps cutting whatever he can see. Wood goes back to camp; your truck sells the surplus at the market down the road west.</li>' +
     '<li><b>Grow the camp.</b> The Shop has tools, more jacks, buildings and machines. Upgrade the tent into a village; sawmills turn wood into lumber, Logging Trucks fetch wood from deep in the forest.</li>' +
-    '<li><b>Mind the forest.</b> The map is unexplored and it bites back. Jacks heal near home and learn through work. Forest villages defend themselves; destroying a hut stops its reinforcements for good.</li></ul>' +
+    '<li><b>Mind the forest.</b> The map is unexplored and it bites back. Jacks heal near home, fall back there by themselves when badly hurt, and learn through work. Forest villages defend themselves; destroying a hut stops its reinforcements for good.</li></ul>' +
     '<table class="keys"><tr><td></td><th>Mouse</th><th>Touch</th><th>Keys</th></tr>' +
     row('Select', 'Click a unit, drag a box. Shift adds. Double-click takes every unit of that kind.', 'Tap a unit. Double-tap takes every unit of that kind.', 'Ctrl/⌘+A all jacks. Shift+1–9 saves a group, 1–9 recalls it.') +
     row('Order', 'Click or right-click a tree, animal, hut, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things.', 'X stops. Esc deselects.') +
@@ -635,6 +635,7 @@
     if (G.wave.active && !G.wave.active.retreating) return 'The forest folk are attacking! Guard towers and jacks with laser pistols can hold them off.';
     if (nw !== null && nw < 30) return 'War drums in the forest… the next war party arrives in ' + mmss(nw) + '.';
     if (G.wave.hostile && !G.count.tower && G.level >= 3) return 'The forest folk will be back. Build Guard Towers and a palisade around the village.';
+    if (LJ.noCrew()) return 'Your crew is gone. Hire a jack in the Shop to carry on' + (G.money < LJ.SHOP.find(it => it.id === 'jack').cost().m ? ', once your truck has sold enough to pay for one.' : '.');
     if (G.money < 0) return "You're in debt: hired jacks and machines slack off until you're back in the black.";
     if (G.stockpile) return 'Stockpiling: automatic market loading is paused. Jacks and Logging Trucks still deliver to camp. Tap “Stockpiling” to resume selling.';
     const tasks = t => G.units.some(u => u.task && u.task.type === t), sel = [...G.sel];

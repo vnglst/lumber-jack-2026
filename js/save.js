@@ -37,7 +37,7 @@
         if (!jobs.has(t.job)) jobs.set(t.job, jobs.size);
         return { type: 'doze', job: jobs.get(t.job), ax: t.ax, ay: t.ay };
       }
-      case 'hunt': return taskOut(t.resume, jobs);
+      case 'hunt': case 'retreat': return taskOut(t.resume, jobs); // a loaded game picks the interrupted job back up
       default: return null;
     }
   }

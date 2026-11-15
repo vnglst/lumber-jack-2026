@@ -482,17 +482,28 @@
     const t = u.task;
     if (!t) { u.state = 'idle'; return; }
     if (t.type === 'move') { u.task = null; u.state = 'idle'; return; }
+    if (t.type === 'retreat') { if (!walkTo(u, healsAt, 'retreat')) endTask(u); return; }
     if (t.type === 'hunt') {
       const a = t.a;
       if (!a.alive) { if (t.resume) { setTask(u, t.resume); think(u); } else endTask(u); return; }
       const ax = a.tile % W, ay = (a.tile / W) | 0;
-      if (!walkTo(u, c => Math.abs((c % W) - ax) <= 1 && Math.abs(((c / W) | 0) - ay) <= 1, 'hunt')) { u.wait = 0.4; u.state = 'think'; }
+      // A hut stands still among the trees: anywhere within reach of the weapon will do. If there is no such spot,
+      // say so and go back to work instead of waiting for ever. Animals move, so for them it is worth waiting.
+      const reach = a.kind === 'hut' ? Math.max(1, Math.floor((weaponRange() - 12) / TS)) : 1;
+      if (walkTo(u, c => Math.hypot((c % W) - ax, ((c / W) | 0) - ay) <= reach + 0.5, 'hunt')) return;
+      if (a.kind !== 'hut') { u.wait = 0.4; u.state = 'think'; return; }
+      say(u, M.cantReach);
+      if (t.resume) { setTask(u, t.resume); think(u); } else endTask(u);
       return;
     }
     if (t.type === 'saw') { if (!walkTo(u, c => G.sawMask[c] === 1, 'toSaw', M.noSawmill)) endTask(u); return; }
     if (t.type === 'haul') {
       const ok = u.load ? walkTo(u, exitGoal, 'haulExit', M.noRoad) : walkTo(u, storeGoal, 'haulStore', M.noStore);
-      if (!ok) endTask(u);
+      if (!ok) {
+        // No way to the market: the load goes back into stock instead of staying on the hauler for ever.
+        if (u.load) { G.wood += u.load.w; G.lumber += u.load.l; G.stone += u.load.s; u.load = null; }
+        endTask(u);
+      }
       return;
     }
     if (t.type === 'shuttle') {
@@ -661,12 +672,13 @@
     for (const v of G.units) {
       if (!a.alive || v === u || v.kind !== 'jack' || v.dead || v.fighting || Math.hypot(v.x - u.x, v.y - u.y) > 140) continue;
       const vt = v.task && v.task.type;
-      if (vt === 'hunt' || vt === 'move') continue;
+      if (vt === 'hunt' || vt === 'move' || vt === 'retreat') continue;
       setTask(v, { type: 'hunt', a, resume: v.task });
     }
-    // Shot from out of reach: go after the attacker, unless explicitly retreating.
     const task = u.task && u.task.type;
-    if (u.hp > 0 && a.alive && jack && !u.fighting && task !== 'hunt' && task !== 'move') setTask(u, { type: 'hunt', a, resume: u.task });
+    if (jack && u.hp > 0 && u.hp < FLEE_HP && !u.fled && !u.hold && task !== 'move' && !nearHome(u)) fallBack(u);
+    // Shot from out of reach: go after the attacker, unless retreating.
+    else if (u.hp > 0 && a.alive && jack && !u.fighting && task !== 'hunt' && task !== 'move' && task !== 'retreat') setTask(u, { type: 'hunt', a, resume: u.task });
     if (u.hp > 0) return;
     u.dead = true; release(u);
     G.sel.delete(u);
@@ -723,10 +735,12 @@
   }
 
   // Jacks defend themselves against anything in reach. Returns true while they are busy fighting.
+  const weaponRange = () => (G.up.scope ? 130 : G.up.rifles ? 100 : 26); // pixels: overcharged lasers, lasers, axes
   function defend(u, dt) {
     u.atkCd -= dt;
-    if (u.task && u.task.type === 'move') { u.fighting = false; return false; } // an explicit move order means: run!
-    const range = G.up.scope ? 130 : G.up.rifles ? 100 : 26;
+    const tt = u.task && u.task.type;
+    if (tt === 'move' || (tt === 'retreat' && u.path.length)) { u.fighting = false; return false; } // a move order, or falling back hurt, means: run!
+    const range = weaponRange();
     let best = LJ.nearest(G.animals, u.x, u.y, range, a => a.alive);
     const target = u.task && u.task.type === 'hunt' && u.task.a;
     if (!best && target && target.kind === 'hut' && target.alive && Math.hypot(target.x - u.x, target.y - u.y) <= range) best = target;
@@ -807,14 +821,42 @@
     }
     if (G.units.some(u => u.dead)) {
       G.units = G.units.filter(u => !u.dead);
-      if (!jacks().length && !(G.village && G.village.queue.length) && !G.units.some(canChop)) { G.paused = true; LJ.ui.gameOver(); }
+      if (noCrew() && !crewLost()) LJ.ui.toast('Your whole crew is gone. Hire a new jack in the Shop to carry on.');
     }
+    if (crewLost()) { G.paused = true; LJ.ui.gameOver(); }
+  }
+
+  // Nobody left who can fell a tree, and nobody in training.
+  const noCrew = (LJ.noCrew = () => !jacks().length && !(G.village && G.village.queue.length) && !G.units.some(canChop));
+  // Losing the whole crew only ends the game when there is no way back: too little money to hire a jack, and no
+  // truck with goods that would sell for enough.
+  function crewLost() {
+    if (G.arrival || G.cine || !noCrew()) return false;
+    const hire = SHOP.find(it => it.id === 'jack').cost().m;
+    if (G.money >= hire) return false;
+    const worth = (wd, lum, st) => wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone;
+    let goods = worth(Math.max(0, G.wood - RESERVE.wood), Math.max(0, G.lumber - RESERVE.lumber), G.stone);
+    for (const u of G.units) if (u.load) goods += worth(u.load.w, u.load.l, u.load.s);
+    return !(countKind('truck') && G.money + goods >= hire);
   }
 
   // Jacks heal quickly near buildings that heal (the village, guard towers).
-  function nearHome(u) {
-    const x = u.tile % W, y = (u.tile / W) | 0;
+  function healsAt(tile) {
+    const x = tile % W, y = (tile / W) | 0;
     return G.buildings.some(b => buildingReady(b) && BLD[b.kind].heals && Math.abs(x - b.tx - b.w / 2) <= 4 && Math.abs(y - b.ty - b.h / 2) <= 4);
+  }
+  const nearHome = u => healsAt(u.tile);
+
+  // A badly hurt jack falls back to the nearest place that heals, rests there, and then picks his job back up.
+  // He does this once per wound: a new order from the player overrides it until he has healed.
+  const FLEE_HP = 35, FIT_HP = 80;
+  function fallBack(u) {
+    const t = u.task, back = t && (t.type === 'hunt' || t.type === 'retreat') ? t.resume : t;
+    u.fled = true; u.fighting = false;
+    LJ.combat.cancelBurst(u);
+    setTask(u, { type: 'retreat', resume: back || null });
+    if (walkTo(u, healsAt, 'retreat')) say(u, M.patchUp);
+    else if (back) { setTask(u, back); think(u); } else endTask(u); // nowhere to go: carry on
   }
 
   function dust(x, y) {
@@ -826,6 +868,7 @@
     if (u.kind === 'jack') {
       if (defend(u, dt)) return;
       if (u.hp < 100) u.hp = Math.min(100, u.hp + dt * (nearHome(u) ? 5 : 0.4)); // rest heals fastest at home
+      if (u.fled && u.hp >= FIT_HP) u.fled = false;
     }
     if (u.wait > 0) { u.wait -= dt; return; }
     if (u.path.length) { stepPath(u, dt); return; }
@@ -894,6 +937,12 @@
         else think(u);
         break;
       case 'return': u.state = 'idle'; break;
+      case 'retreat': // resting at home until fit again (or until the place that heals is gone)
+        if (u.hp >= FIT_HP || !nearHome(u)) {
+          const back = u.task && u.task.resume;
+          if (back) { setTask(u, back); think(u); } else endTask(u);
+        }
+        break;
       case 'toDoze':
         if (canDoze(u.target)) { u.state = 'doze'; u.sawT = 0; face(u, (u.target % W) * TS + 8); }
         else { release(u); think(u); }
@@ -946,7 +995,9 @@
       if (!dz.length) return false;
       const path = bfs(dz[0].tile, c => c === idx, dozePass, true);
       if (!path) { say(dz[0], M.cantGet); return false; }
-      const tiles = [...path, idx].filter(canDoze);
+      // Only what is in the way: rock and water on the route, plus the tile that was pointed at.
+      // Stumps along the route can be driven over; uprooting each one first made the breach wait for minutes.
+      const tiles = [...path.filter(blocked), idx].filter(canDoze);
       if (!tiles.length) { LJ.cmd.move(dz, idx); return true; }
       const job = { tiles: new Set(tiles) };
       for (const u of dz) setTask(u, { type: 'doze', job, ax: idx % W, ay: (idx / W) | 0 });
@@ -1087,13 +1138,26 @@
     return true;
   };
 
+  // Marks every tile that can be walked to from the market road (vis[i] === stamp, until the next path search)
+  // and returns how many there are.
+  function floodFromRoad() {
+    bfs(G.exitIdx, () => false);
+    let n = 0;
+    for (let i = 0; i < w.N; i++) if (vis[i] === stamp) n++;
+    return n;
+  }
+
   LJ.tryPlace = function (tx, ty) {
     if (!G.place || !LJ.canPlace(tx, ty)) { LJ.sfx('no'); return false; }
     const p = G.place, it = SHOP.find(s => s.id === p.kind), c = it.cost();
     if (!afford(c)) { G.place = null; LJ.sfx('no'); return false; }
+    // The road must reach the new building, and a building may not cut any ground off from the road. Houses packed
+    // around the camp could otherwise seal it off from the market for good, or leave a pocket for the crew to be trapped in.
+    let open = floodFromRoad();
+    for (let y = ty; y < ty + p.h; y++) for (let x = tx; x < tx + p.w; x++) if (vis[y * W + x] === stamp) open--; // the footprint itself
     const b = addBuilding(p.kind, tx, ty, p.w, p.h), mask = new Uint8Array(w.N);
     ring(b, mask);
-    if (!bfs(G.exitIdx, n => mask[n] === 1)) { // must be reachable from the road
+    if (floodFromRoad() < open || !mask.some((m, i) => m && vis[i] === stamp)) {
       G.buildings.pop();
       for (let y = ty; y < ty + p.h; y++) for (let x = tx; x < tx + p.w; x++) w.bld[y * W + x] = 0;
       LJ.sfx('no'); return false;
@@ -1101,13 +1165,15 @@
     pay(c);
     G.place = null;
     levelFootprint(b);
-    // Anyone standing on the building site steps aside.
+    // Anyone standing on the building site steps aside, to the nearest free tile however hemmed in the site is
+    // (searching only walkable ground left a jack walled into the new building for good). Anyone whose route
+    // crossed the site plans a new one.
     for (const u of G.units) {
       if (w.bld[u.tile]) {
-        const pth = bfs(u.tile, n => pass(n));
+        const pth = bfs(u.tile, n => pass(n), () => true);
         if (pth && pth.length) { u.tile = pth[0]; u.x = (u.tile % W) * TS + 8; u.y = ((u.tile / W) | 0) * TS + 10; }
-        u.path = []; if (u.state !== 'idle') u.state = 'think';
-      }
+      } else if (!u.path.some(n => w.bld[n])) continue;
+      u.path = []; if (u.state !== 'idle') u.state = 'think';
     }
     LJ.sfx('build');
     return true;
@@ -1137,6 +1203,7 @@
       case 'toSaw': return 'Walking to the sawmill';
       case 'saw': return G.wood < 2 ? 'Sawing (out of wood!)' : 'Sawing lumber';
       case 'move': return 'Walking';
+      case 'retreat': return moving ? 'Falling back to heal' : 'Resting';
       case 'hunt': return u.task && u.task.a.kind === 'hut' ? 'Attacking hut' : 'Hunting';
       default: return u.fighting ? 'Fighting!' : u.hold ? 'Waiting for orders' : 'Idle — no trees in sight';
     }
