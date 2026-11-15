@@ -33,7 +33,7 @@ LJ.LINES = {
   misc: {
     allClear: 'All clear!', cantReach: "Can't get at it from here.", cantGet: "Can't get there.", noHaul: 'Nothing to haul yet.',
     lost: "I'm lost!", noRoad: "Can't reach the road.", noStore: "Can't reach storage.", noSawmill: "Can't reach a sawmill.",
-    market: 'To market!', sawdust: 'Sawdust time.', duty: 'Reporting for duty!', patchUp: 'I need patching up!', who: '…Who are you?'
+    market: 'To market!', sawdust: 'Sawdust time.', duty: 'Reporting for duty!', patchUp: 'I need patching up!', ore: 'Rock and roll.', who: '…Who are you?'
   },
   veh: {
     truck: ['Honk honk!', 'Beep beep.', '*diesel noises*', 'Loading zone, buddy.'],
@@ -117,7 +117,7 @@ LJ.voiceGroups = function () {
   add('none', 'jack', 'Jack: nothing to do', 'No trees left in reach.', L.none.concat(m.allClear));
   add('hunt', 'jack', 'Jack: going hunting', 'Sent after an animal.', L.hunt);
   add('jobs', 'jack', 'Jack: on the job', 'Orders that go wrong, and a few announcements.',
-    [m.cantReach, m.cantGet, m.noHaul, m.lost, m.noRoad, m.noStore, m.noSawmill, m.market, m.sawdust, m.duty, m.patchUp, m.who]);
+    [m.cantReach, m.cantGet, m.noHaul, m.lost, m.noRoad, m.noStore, m.noSawmill, m.market, m.sawdust, m.duty, m.patchUp, m.ore, m.who]);
   add('wolf', 'jack', 'Jack: bitten by a wolf', 'A wolf attacks.', L.hit.wolf);
   add('bear', 'jack', 'Jack: mauled by a bear', 'A bear attacks.', L.hit.bear);
   add('native', 'jack', 'Jack: shot by the forest folk', 'Arrows incoming.', L.hit.native);

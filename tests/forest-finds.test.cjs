@@ -30,7 +30,7 @@ test('recipes change capacity and saved finds survive reloading; old saves gain 
   recover(lj, 'sling');
   assert.equal(lj.capOf(jack), before + 4);
   lj.saveGame();
-  assert.equal(JSON.parse(storage(lj).getItem('lumberjack-save')).v, 8);
+  assert.equal(JSON.parse(storage(lj).getItem('lumberjack-save')).v, 9);
   assert.ok(lj.loadGame());
   assert.equal(lj.G.recipes.join(','), 'sling');
   assert.ok(lj.G.finds.find(f => f.kind === 'sling').found);

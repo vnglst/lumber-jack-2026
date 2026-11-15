@@ -17,7 +17,7 @@ function game(seed = 42, arrive = true) {
     setInterval() {}, addEventListener() {}, document: { addEventListener() {} }
   });
   ctx.window = ctx;
-  for (const name of ['util', 'lines', 'world', 'game', 'critters', 'discoveries', 'combat', 'ending', 'save']) {
+  for (const name of ['util', 'lines', 'world', 'game', 'critters', 'discoveries', 'ore', 'combat', 'ending', 'save']) {
     if (name === 'world') {
       ctx.LJ.sprites = {
         trees: [[{ ay: 64 }]], base: Array.from({ length: 4 }, () => ({ width: 48, height: 48 })),

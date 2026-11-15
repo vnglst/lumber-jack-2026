@@ -298,6 +298,7 @@
     }
 
     if (G.dc) drawDataCenter(ctx, G, cx, cy, vw, vh);
+    if (LJ.ore) LJ.ore.draw(ctx, cx, cy, vw, vh);
     if (LJ.discoveries) LJ.discoveries.draw(ctx, cx, cy);
     drawFog(ctx, G, w, cx, cy);
   };

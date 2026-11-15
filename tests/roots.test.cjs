@@ -128,7 +128,7 @@ test('root cargo and muddy terrain survive save/load without a second payout', (
   until(lj, () => dozer.carry === 2, 10);
   lj.cmd.stop([dozer]);
   lj.saveGame();
-  assert.equal(JSON.parse(storage(lj).getItem('lumberjack-save')).v, 8);
+  assert.equal(JSON.parse(storage(lj).getItem('lumberjack-save')).v, 9);
   assert.ok(lj.loadGame());
   const restored = g.units.find(u => u.kind === 'dozer');
   assert.equal(restored.carry, 2);

@@ -81,6 +81,9 @@ How to read it:
 | 68 | 15 Nov | Play testing and voice recording credits | Active |
 | 69 | 15 Nov | A clearer mobile game interface | Active |
 | 70 | 15 Nov | Dedicated sound settings menu | Active |
+| 71 | 15 Nov | Ore: mining, and ore in the shop and the market | Active |
+| 72 | 15 Nov | Northern lights mirrored in the lake; playtest with ore | Active |
+| 73 | 15 Nov | Review before merging: a palisade may not seal the camp | Active |
 
 ---
 
@@ -869,3 +872,49 @@ How to read it:
 - *Decision: the pause menu has one Sound settings entry. Its submenu contains the existing All sound/global mute and Music switches plus the independent Music and Sound effects volume sliders. Sound effects include voices and wildlife. Existing mixer behavior and saved preferences stay unchanged.*
 - *Decision: ♪ opens the same settings dialog directly, including during the intro and ending, instead of toggling mute immediately. Escape/Back returns one layer to the paused parent menu, or to the original gameplay/intro/ending state for direct entry, restoring focus to the entry control. Switches and sliders update in place without rebuilding the dialog.*
 - Keep mobile and desktop layouts compact and accessible, document the new route in Help, and refresh the offline shell to v14. Browser checks exercise switches, sliders, persistence, pause/return behavior and narrow portrait/landscape layouts; nobody listened to the audio.
+
+## 71. Ore: mining, and ore in the shop and the market (15 Nov 2026)
+
+> Allow extracting ore from rocks and using it as a resource. Integrate this in the gameplay, shop and general economy.
+
+- Some rocks hold ore. It can be extracted, is a resource alongside wood, lumber and stone, and matters in play, in the shop and in the economy.
+- *Decision: veins are seeded from the map seed in a separate random stream (`js/ore.js`), like the forest finds, so map generation and existing maps are unchanged. Nine veins per map, each a small cluster of rock tiles beside ground that can be walked up to, 5 to 10 ore per tile: 240 to 400 ore on a map. Explored ore shows as glinting orange metal in the boulders and in orange on the minimap.*
+- **Extracting:**
+  - *Decision: Pickaxes (level 3, €120) let jacks mine. Tap a glinting rock with jacks selected, or with nobody selected to send the nearest jack. Without pickaxes the tap explains what is needed.*
+  - *Decision: one ore takes three seconds (faster with rank, slower in debt, like other work) and earns 2 XP. Ore is heavy: a jack carries six, takes them to camp and comes back, and keeps on with any ore in sight of the spot. Jacks never start mining by themselves; trees stay their default work.*
+  - *Decision: a mined-out rock crumbles to gravel and leaves one stone, so mining can also open a way through ore-bearing rock a level before the bulldozer. A bulldozer clearing an ore rock brings in its ore with the stone.*
+- **Shop:**
+  - *Decision: ore is a fourth cost alongside money, wood and lumber. Overcharged Lasers now also need 10 ore, Steam Sawmills 20, Turbo Harvesters 25 and Mega Haulers 25. New: Steel Axe Heads (level 4, €200 + 12 ore, needs Pickaxes), jacks chop 20% faster. In all 92 ore, a quarter to a third of a map's supply. Money prices are unchanged.*
+- **Economy:**
+  - *Decision: ore sells at the market for €14 (wood 3, stone 6, lumber 10). Trucks and hauling jacks load it first. Camp keeps 25 ore back for upgrades, as it keeps wood and lumber; Stockpiling keeps everything.*
+  - *Decision: once pickaxes are owned and ore is in stock or in sight, about one market order in five asks for ore: 8 to 14 of it within three minutes, bonus €10 each. An active order may use the reserve.*
+  - *Decision: an ore chip joins the HUD once pickaxes are owned. The selection panel, hints, How to play and the level-up list cover mining.*
+- **Measured** with the scripted player (§51), which now buys pickaxes and keeps two jacks mining while upgrades still need ore: six of six maps finish in 29 to 44 minutes, the same pace as before, with pickaxes bought around minute 5 to 7 and the ore-priced upgrades spread from minute 12 to 30. A player who never mines still finishes four of four, without most of those upgrades and with more losses.
+- *Decision: save format 9 stores ore in stock, on jacks and left in each rock, and a mining jack reloads into his job. Formats 2 to 8 remain loadable and gain the seeded veins in whatever rock is still standing.*
+- Not judged by a person: whether mining is fun, and the look of the ore on a phone-sized screen, where the HUD now wraps to one more chip.
+- Added eight tests (`tests/ore.test.cjs`). The offline shell lists the new script and its cache version is bumped.
+
+## 72. Northern lights mirrored in the lake; playtest with ore (15 Nov 2026)
+
+> Northern lights should be reflected in the water.
+> Test game mechanics when done. Make sure game is still engaging and enjoyable.
+
+- The northern lights on the opening screen are reflected in the lake.
+- *Decision: this was a bug, not a missing feature. The scene already drew each curtain a second time as a reflection, but the mirror formula placed every row below the near shore, where it was discarded, so the lake never showed any of it. The reflection is now a true mirror about the horizon, squeezed to fit the lake, with the lights' bright lower edge just below the far shore, their tops reaching towards the viewer, and ripples that widen as they come closer. It is a little brighter than the old, invisible setting.*
+- *Measured in a browser: aurora-coloured pixels in the lake went from 0% to about 6%, against 16% in the sky. Added a test that every row of the lights is mirrored between the two shores.*
+- Playtest the whole game again with ore (the previous entry) in place.
+- *Measured with the scripted player (§51), now mining: careful play finishes 12 of 12 maps in 26 to 44 minutes with about 7 deaths; a slow player 8 of 8 with about 9. Before ore: 16 of 16 in 26 to 48 minutes with about 8 deaths. Pacing per level is unchanged, with no stalls, debt or game overs.*
+- *Measured: ore is a real choice. A player who never mines finishes 8 of 8, but without most ore-priced upgrades loses about 25 jacks instead of 7 and ends with a third of the money. On each map 60 to 100% of the ore is extracted, the 92 needed for upgrades is always reachable, and the rest is sold. The first ore-priced upgrade arrives between minute 14 and 23 depending on where the veins lie.*
+- *Decision: no rule changes from this playtest.*
+- Not judged by a person: whether the reflection looks right in motion, and whether mining is enjoyable to play. A scripted player finds dead ends and balance problems; it cannot tell fun.
+
+## 73. Review before merging: a palisade may not seal the camp (15 Nov 2026)
+
+> other agent is done, review, mergen and push
+
+- Review the solid palisades (§61) together with ore (§71) and the northern lights (§72), merge and push.
+- *Decision: one finding. Since §61, palisades stop the player's own jacks and trucks, and a palisade cannot be taken down. A closed ring around the camp therefore cut it off from the market for good: the dead end §51 removed for buildings. A test built all 32 sections of such a ring. Now a section that would cut any ground off from the road is not built, and the player is told that an opening was left. This applies §51's rule for buildings to palisades; §61's "leave openings" still describes what the player should do, the game now also guarantees one.*
+- *Decision: the rule is strict on purpose. Even a small pocket behind a wall may hold the only way to some trees, and every tree has to go.*
+- *Measured after merging all three: the tests pass (199 once the sound-settings and mobile-interface work of §62–70 was merged in as well); the scripted player (which builds no palisades) finishes 8 of 8 maps with careful play and 6 of 6 with slow play, at the same pace as before.*
+- Not covered: nobody has played with palisades by hand since they became solid, and the scripted player does not use them.
+- The offline shell cache is bumped to v15.

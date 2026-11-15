@@ -3,7 +3,8 @@
 (function () {
   const TS = LJ.TS, T = LJ.T, STUMP = LJ.STUMP;
   const G = (LJ.G = {});
-  const PRICE = (LJ.PRICE = { wood: 3, lumber: 10, stone: 6 });
+  const PRICE = (LJ.PRICE = { wood: 3, lumber: 10, stone: 6, ore: 14 });
+  const MINE_TIME = 3, ORE_LOAD = 6; // seconds to pick out one ore, and how much of it a jack carries (it is heavy)
   const MAX_LEVEL = 10, WAGE = 20, PAY_EVERY = 60, SAW_TIME = 3.5, INTRO_BEAT_TIME = 4.5, WALL_BUILD_TIME = 3;
   // Share of the forest that must be cleared to complete each of the 10 levels. The last level needs every single tree.
   const FR = [0.005, 0.03, 0.07, 0.12, 0.19, 0.28, 0.4, 0.55, 0.74, 1];
@@ -108,20 +109,22 @@
     bldItem('sawmill', 2, () => ({ m: 150 + 150 * buildingCount('sawmill'), w: 20 }), 'Jacks turn 2 wood into 1 lumber here. Lumber sells for €' + PRICE.lumber + '.', 'blade'),
     { id: 'rifles', name: 'Laser Pistols', desc: 'Jacks fire bursts of laser bolts at anything that attacks them.', icon: 'rifle', level: 2, cost: () => ({ m: 150 }) },
     { id: 'barrow', name: 'Wheelbarrows', desc: 'Jacks carry 24.', icon: 'barrow', level: 2, need: 'sling', cost: () => ({ m: 160, w: 20 }) },
+    { id: 'pick', name: 'Pickaxes', desc: 'Jacks can mine the ore that glints in the rocks. Ore sells for €' + PRICE.ore + ' and the best machines need it. A mined-out rock crumbles to gravel.', icon: 'pick', level: 3, cost: () => ({ m: 120 }) },
     { id: 'chainsaw', name: 'Chainsaws', desc: 'Chop twice as fast. Loud.', icon: 'chainsaw', level: 3, need: 'sharpaxe', cost: () => ({ m: 300 }) },
     vehItem('truck', 2, 250, 'Hauls 60 goods per trip down the road to market, much faster than walking.', 'truck'),
     vehItem('shuttle', 3, 150, 'Tap a forest clearing to set a route. Jacks load it there; it shuttles up to 40 wood back to the village automatically.', 'shuttle'),
     bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Fires laser bursts at forest folk and wild animals. Sees far, and jacks nearby heal quickly.', 'tower'),
     { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Takes ' + WALL_BUILD_TIME + ' seconds per section. Blocks every unit: leave openings for your crew and trucks. Enemies can break through. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
-    vehItem('dozer', 4, 600, 'Uproots stumps for extra wood, clears rocks for stone and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
+    vehItem('dozer', 4, 600, 'Uproots stumps for extra wood, clears rocks for stone (and any ore in them) and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
+    { id: 'steel', name: 'Steel Axe Heads', desc: 'Forged from your own ore. Jacks chop 20% faster.', icon: 'axe', level: 4, need: 'pick', cost: () => ({ m: 200, o: 12 }) },
     { id: 'foreman', name: 'Keen-eyed Foreman', desc: 'Jacks spot trees from 50% further away.', icon: 'hat', level: 5, cost: () => ({ m: 500 }) },
     { id: 'dispatch', name: 'Dispatcher', desc: 'Trucks keep hauling on their own whenever there are goods.', icon: 'clip', level: 5, need: 'truck', cost: () => ({ m: 450 }) },
     vehItem('feller', 4, 480, 'A compact tree-cutting tractor. Fells a tree in 2.4 seconds and delivers 24 wood at a time. Wolves ignore it.', 'feller'),
     vehItem('harv', 6, 900, 'A machine that fells and carries trees by itself. Wolves ignore it.', 'harv'),
-    { id: 'scope', name: 'Overcharged Lasers', desc: 'Longer range and 4-bolt bursts that hit harder.', icon: 'rifle', level: 6, need: 'rifles', cost: () => ({ m: 400 }) },
-    { id: 'steam', name: 'Steam Sawmills', desc: 'Every sawmill saws lumber by itself.', icon: 'blade', level: 7, need: 'sawmill', cost: () => ({ m: 1200, l: 40 }) },
-    { id: 'turbo', name: 'Turbo Harvesters', desc: 'Harvesters and felling tractors fell trees 40% faster. Harvesters also drive faster.', icon: 'harv', level: 8, need: 'harv', cost: () => ({ m: 1500 }) },
-    { id: 'mega', name: 'Mega Haulers', desc: 'Trucks carry 120, harvesters 60.', icon: 'truck', level: 9, need: 'truck', cost: () => ({ m: 1500 }) }
+    { id: 'scope', name: 'Overcharged Lasers', desc: 'Longer range and 4-bolt bursts that hit harder.', icon: 'rifle', level: 6, need: 'rifles', cost: () => ({ m: 400, o: 10 }) },
+    { id: 'steam', name: 'Steam Sawmills', desc: 'Every sawmill saws lumber by itself.', icon: 'blade', level: 7, need: 'sawmill', cost: () => ({ m: 1200, l: 40, o: 20 }) },
+    { id: 'turbo', name: 'Turbo Harvesters', desc: 'Harvesters and felling tractors fell trees 40% faster. Harvesters also drive faster.', icon: 'harv', level: 8, need: 'harv', cost: () => ({ m: 1500, o: 25 }) },
+    { id: 'mega', name: 'Mega Haulers', desc: 'Trucks carry 120, harvesters 60.', icon: 'truck', level: 9, need: 'truck', cost: () => ({ m: 1500, o: 25 }) }
   ]);
 
   // What everyone says lives in lines.js, so the recording booth can list it.
@@ -192,7 +195,7 @@
     vis = new Uint32Array(w.N); par = new Int32Array(w.N); q = new Int32Array(w.N); stamp = 0;
     Object.assign(G, {
       world: w, ground: new LJ.Ground(w), units: [], buildings: [], hutLimit: w.hutLimit,
-      money: 0, wood: 0, lumber: 0, stone: 0, cleared: 0, total: w.totalTrees, level: 1, levelDone: false, up: {},
+      money: 0, wood: 0, lumber: 0, stone: 0, ore: 0, cleared: 0, total: w.totalTrees, level: 1, levelDone: false, up: {},
       time: 0, paused: true, sel: new Set(), floats: [], parts: [], falls: [], bubbles: [], bflies: [],
       nextId: 1, drag: null, exitIdx: w.roadY * W, sold: 0, cam: { x: 0, y: 0 },
       stockpile: false, village: null, base: null, tier: 0, count: { bunk: 0, sawmill: 0, tower: 0 },
@@ -203,6 +206,7 @@
       cine: null, suit: null, props: [], critters: [], wildlifeT: 8, dc: null, folkKilled: 0, wallMode: false, wallDrag: null, wallSites: {}, arrival: null
     });
     LJ.discoveries.init();
+    LJ.ore.init();
     LJ.combat.reset();
     G.thr = FR.map(f => Math.max(1, Math.round(f * G.total)));
     // Money that must have been earned (in total) before a level counts as complete. The last level only needs the trees gone.
@@ -245,6 +249,7 @@
     for (let i = 0; i < nw.N; i++) if (nw.wear[i] >= 6) {
       nw.flower[i] = 0; if (nw.deco[i] !== 8) nw.deco[i] = 0;
     }
+    LJ.ore.restore(d.veins);
     // Legacy saves have no hut state: derive living huts from the restored terrain/decor.
     // Newer saves replace this default with their explicit damage and destruction state.
     LJ.combat.reset();
@@ -317,7 +322,7 @@
   function makeUnit(tx, ty, name, kind, wage) {
     return {
       id: G.nextId++, kind, x: tx * TS + 8, y: ty * TS + 10, tile: ty * W + tx, path: [], state: 'idle', task: null,
-      carry: 0, load: null, xp: 0, dir: 1, wait: 0, walkT: 0, swing: 0, sawT: 0, target: -1, clicks: 0, lastClick: -99,
+      carry: 0, ore: 0, load: null, xp: 0, dir: 1, wait: 0, walkT: 0, swing: 0, sawT: 0, target: -1, clicks: 0, lastClick: -99,
       lastWhack: -9, name, hired: wage > 0, wage, hp: kind === 'jack' ? 100 : VEH[kind].hp, atkCd: 0, fighting: false, hold: false
     };
   }
@@ -377,7 +382,7 @@
   function chopTime(t, u) {
     if (VEH[u.kind] && VEH[u.kind].chop) return VEH[u.kind].chop * (G.up.turbo ? 0.6 : 1);
     const recipe = G.recipes.includes('resin') ? 0.85 : 1;
-    return recipe * SPECIES[w.obj[t]].t * (G.up.sharpaxe ? 0.65 : 1) * (G.up.chainsaw ? 0.5 : 1) / rankOf(u).work;
+    return recipe * SPECIES[w.obj[t]].t * (G.up.sharpaxe ? 0.65 : 1) * (G.up.chainsaw ? 0.5 : 1) * (G.up.steel ? 0.8 : 1) / rankOf(u).work;
   }
   function speedOf(u) {
     // Trails (worn dirt, gravel) help a little; the road to market helps a lot, most of all for trucks.
@@ -503,6 +508,20 @@
     if (!t) { u.state = 'idle'; return; }
     if (t.type === 'move') { u.task = null; u.state = 'idle'; return; }
     if (t.type === 'retreat') { if (!walkTo(u, healsAt, 'retreat')) endTask(u); return; }
+    if (t.type === 'mine') {
+      // Keep at the nearest vein in sight of the work spot, taking the ore home whenever the load is full.
+      if (u.ore >= ORE_LOAD) { if (!walkTo(u, storeGoal, 'oreHome', M.noStore)) endTask(u); return; }
+      const R = sightOf(u), vein = n => G.veins[n] > 0 && G.fog[n] && (colOf(n) - t.ax) ** 2 + (rowOf(n) - t.ay) ** 2 <= R * R;
+      const ordered = t.first >= 0; // straight from the player's order: say so if it cannot be reached
+      let r = null;
+      if (ordered) { const f = t.first; t.first = -1; if (G.veins[f]) r = nearestAdj(u, n => n === f); }
+      if (!r || !r.path) r = nearestAdj(u, vein);
+      if (r.path) { w.claim[r.found] = u.id; u.target = r.found; u.path = r.path; u.state = 'toOre'; }
+      else if (r.sawClaimed) { u.wait = 0.6; u.state = 'think'; }
+      else if (u.ore > 0) { if (!walkTo(u, storeGoal, 'oreHome', M.noStore)) endTask(u); }
+      else { endTask(u); u.idleVer = G.worldVer; if (ordered) say(u, M.cantReach); }
+      return;
+    }
     if (t.type === 'hunt') {
       const a = t.a;
       if (!a.alive) { if (t.resume) { setTask(u, t.resume); think(u); } else endTask(u); return; }
@@ -521,7 +540,7 @@
       const ok = u.load ? walkTo(u, exitGoal, 'haulExit', M.noRoad) : walkTo(u, storeGoal, 'haulStore', M.noStore);
       if (!ok) {
         // No way to the market: the load goes back into stock instead of staying on the hauler for ever.
-        if (u.load) { G.wood += u.load.w; G.lumber += u.load.l; G.stone += u.load.s; u.load = null; }
+        if (u.load) { G.wood += u.load.w; G.lumber += u.load.l; G.stone += u.load.s; G.ore += u.load.o || 0; u.load = null; }
         endTask(u);
       }
       return;
@@ -562,7 +581,8 @@
   // All harvested wood goes through the settlement before it can be sold.
   function goDrop(u) {
     u.dropId = null;
-    const trucks = G.units.filter(t => !t.dead && !t.hold && t.kind === 'shuttle' && t.state === 'shuttleLoad' && !t.path.length && t.carry < capOf(t));
+    // Ore only comes off at camp, so a jack with ore on his back skips the logging trucks.
+    const trucks = u.ore ? [] : G.units.filter(t => !t.dead && !t.hold && t.kind === 'shuttle' && t.state === 'shuttleLoad' && !t.path.length && t.carry < capOf(t));
     const goal = c => {
       if (storeGoal(c)) return true;
       const t = trucks.find(t => Math.abs(colOf(c) - colOf(t.tile)) <= 1 && Math.abs(rowOf(c) - rowOf(t.tile)) <= 1);
@@ -587,17 +607,17 @@
     think(u);
   }
 
-  function sell(u, wd, lum, st) {
-    st = st || 0;
-    if (wd + lum + st <= 0) return;
-    const gain = Math.round((wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone) * TIERS[G.tier].sellMul);
-    G.money += gain; G.earned += gain; G.sold += wd + lum + st;
-    gainXP(u, (wd + lum + st) / 2);
+  function sell(u, wd, lum, st, or) {
+    st = st || 0; or = or || 0;
+    if (wd + lum + st + or <= 0) return;
+    const gain = Math.round((wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone + or * PRICE.ore) * TIERS[G.tier].sellMul);
+    G.money += gain; G.earned += gain; G.sold += wd + lum + st + or;
+    gainXP(u, (wd + lum + st + or) / 2);
     LJ.float(u.x + 6, u.y - 18, '+€' + gain, 'money');
     LJ.sfx('coin');
     const o = G.order;
     if (o && o.state === 'active') {
-      o.got = Math.min(o.qty, o.got + (o.kind === 'wood' ? wd : lum));
+      o.got = Math.min(o.qty, o.got + { wood: wd, lumber: lum, ore: or }[o.kind]);
       if (o.got >= o.qty) {
         G.money += o.bonus; G.earned += o.bonus; G.order = null; G.orderCd = 45;
         LJ.sfx('level'); LJ.ui.toast('Order delivered! Bonus +€' + o.bonus);
@@ -606,6 +626,12 @@
   }
 
   function deposit(u) {
+    if (u.ore > 0) {
+      G.ore += u.ore;
+      gainXP(u, u.ore / 2);
+      LJ.float(u.x, u.y - 26, '+' + u.ore + ' ore', '');
+      u.ore = 0;
+    }
     if (u.carry <= 0) return;
     G.wood += u.carry;
     gainXP(u, u.carry / 4);
@@ -646,17 +672,18 @@
   }
 
   // Storage holds back a little for building (bunkhouses, upgrades); everything above that goes to market.
-  const RESERVE = { wood: 20, lumber: 30 };
-  // Take goods from storage for a market run. Lumber and stone first; raw wood only if nobody is sawing it.
+  const RESERVE = { wood: 20, lumber: 30, ore: 25 }; // kept back for building and upgrades
+  // Take goods from storage for a market run. Ore, lumber and stone first; raw wood only if nobody is sawing it.
   function loadUp(u) {
     const cap = capOf(u), o = G.order, orderOf = k => o && o.state === 'active' && o.kind === k;
-    const lum = Math.min(cap, Math.max(0, G.lumber - (orderOf('lumber') ? 0 : RESERVE.lumber))), st = Math.min(cap - lum, G.stone);
+    const or = Math.min(cap, Math.max(0, G.ore - (orderOf('ore') ? 0 : RESERVE.ore)));
+    const lum = Math.min(cap - or, Math.max(0, G.lumber - (orderOf('lumber') ? 0 : RESERVE.lumber))), st = Math.min(cap - or - lum, G.stone);
     const sawing = (G.up.steam && G.count.sawmill) || G.units.some(j => j.task && j.task.type === 'saw');
     const wantWood = !sawing || G.wood > 40 || (o && o.state === 'active' && o.kind === 'wood');
-    const wd = wantWood ? Math.min(cap - lum - st, Math.max(0, G.wood - (orderOf('wood') ? 0 : RESERVE.wood))) : 0;
-    if (lum + st + wd <= 0) return false;
-    G.lumber -= lum; G.stone -= st; G.wood -= wd;
-    u.load = { w: wd, l: lum, s: st };
+    const wd = wantWood ? Math.min(cap - or - lum - st, Math.max(0, G.wood - (orderOf('wood') ? 0 : RESERVE.wood))) : 0;
+    if (or + lum + st + wd <= 0) return false;
+    G.ore -= or; G.lumber -= lum; G.stone -= st; G.wood -= wd;
+    u.load = { w: wd, l: lum, s: st, o: or };
     return true;
   }
 
@@ -740,13 +767,20 @@
   };
   LJ.buildWalls = function (tiles) {
     if (G.cine) return 0;
-    let n = 0;
+    // Palisades stop the player's own units and cannot be taken down again, so like a building (see tryPlace) a
+    // section may not cut any ground off from the road. One that would is left out: that gap is the way through.
+    let n = 0, gaps = 0, open = floodFromRoad();
     for (const i of tiles) {
       if (!LJ.canWall(i)) continue;
       if (G.money < WALL_COST.m || G.wood < WALL_COST.w) { LJ.ui.toast('Not enough money or wood for more palisade.'); break; }
-      G.money -= WALL_COST.m; G.wood -= WALL_COST.w; w.wall[i] = 1;
+      w.wall[i] = 1;
+      const left = floodFromRoad();
+      if (left < open - 1) { w.wall[i] = 0; gaps++; continue; }
+      open = left;
+      G.money -= WALL_COST.m; G.wood -= WALL_COST.w;
       G.wallSites[i] = { t: WALL_BUILD_TIME, total: WALL_BUILD_TIME }; n++;
     }
+    if (gaps) LJ.ui.toast('Left an opening in the palisade: closing it would cut your crew and trucks off from the road.');
     if (n) { LJ.sfx('build'); G.worldVer++; }
     return n;
   };
@@ -851,9 +885,9 @@
     if (G.arrival || G.cine || !noCrew()) return false;
     const hire = hireCost();
     if (G.money >= hire) return false;
-    const worth = (wd, lum, st) => wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone;
-    let goods = worth(Math.max(0, G.wood - RESERVE.wood), Math.max(0, G.lumber - RESERVE.lumber), G.stone);
-    for (const u of G.units) if (u.load) goods += worth(u.load.w, u.load.l, u.load.s);
+    const worth = (wd, lum, st, or) => wd * PRICE.wood + lum * PRICE.lumber + st * PRICE.stone + or * PRICE.ore;
+    let goods = worth(Math.max(0, G.wood - RESERVE.wood), Math.max(0, G.lumber - RESERVE.lumber), G.stone, Math.max(0, G.ore - RESERVE.ore));
+    for (const u of G.units) if (u.load) goods += worth(u.load.w, u.load.l, u.load.s, u.load.o || 0);
     return !(countKind('truck') && G.money + goods >= hire);
   }
 
@@ -949,11 +983,29 @@
         } else u.wait = 1;
         break;
       case 'haulExit':
-        sell(u, u.load.w, u.load.l, u.load.s); u.load = null;
+        sell(u, u.load.w, u.load.l, u.load.s, u.load.o); u.load = null;
         if (u.task && u.task.once) { u.task = null; if (!walkTo(u, storeGoal, 'return')) u.state = 'idle'; }
         else think(u);
         break;
       case 'return': u.state = 'idle'; break;
+      case 'toOre':
+        if (G.veins[u.target]) { u.state = 'mine'; u.sawT = 0; u.swing = 0; face(u, midX(u.target)); }
+        else { release(u); think(u); }
+        break;
+      case 'mine': {
+        const t = u.target;
+        if (!G.veins[t]) { release(u); think(u); break; }
+        u.sawT += dt * effort(u) * rankOf(u).work; u.swing += dt;
+        if (u.swing > 0.5) { u.swing = 0; LJ.sfx('rock'); chip(midX(t), rowOf(t) * TS + 8, '#c8732e'); }
+        if (u.sawT < MINE_TIME) break;
+        u.sawT = 0; u.ore++; G.veins[t]--;
+        gainXP(u, 2);
+        LJ.float(u.x, u.y - 18, '+1 ore', '');
+        if (!G.veins[t]) crumble(t);
+        if (!G.veins[t] || u.ore >= ORE_LOAD) { release(u); think(u); }
+        break;
+      }
+      case 'oreHome': deposit(u); think(u); break;
       case 'retreat': // resting at home until fit again (or until the place that heals is gone)
         if (u.hp >= FIT_HP || !nearHome(u)) {
           const back = u.task && u.task.resume;
@@ -972,6 +1024,7 @@
         if (u.swing > 0.15) { u.swing = 0; dust(u.x + u.dir * 12, u.y - 2); }
         if (u.sawT >= rule.time) {
           w.type[t] = rule.ground; w.obj[t] = 0;
+          if (G.veins[t]) { G.ore += G.veins[t]; LJ.float(u.x, u.y - 28, '+' + G.veins[t] + ' ore', ''); G.veins[t] = 0; } // ore in a bulldozed rock is not lost
           if (rule.muddy) { w.lush[t] = 0; w.wear[t] = Math.max(80, w.wear[t]); w.flower[t] = w.deco[t] = 0; }
           markAround(t, 2); G.worldVer++;
           if (rule.resource) {
@@ -987,6 +1040,15 @@
       }
       default: think(u);
     }
+  }
+
+  // A mined-out rock falls apart: gravel that can be walked over, and a stone for the pile.
+  function crumble(t) {
+    w.type[t] = T.GRAVEL;
+    G.stone++;
+    markAround(t, 2); G.worldVer++;
+    for (let i = 0; i < 8; i++) dust(midX(t), rowOf(t) * TS + 10);
+    LJ.sfx('rock');
   }
 
   // ---------- Commands ----------
@@ -1005,6 +1067,14 @@
       if (!units.length) return;
       units.forEach((u, k) => workAt(u, colOf(tree), rowOf(tree), k === 0 ? tree : -1));
       if (Math.random() < 0.5) say(units[0], LJ.pick(units[0].kind === 'jack' ? Q_ACK : Q_VEH[VEH[units[0].kind].voice || units[0].kind]));
+    },
+    // Mine a vein: that rock first, then whatever ore is in sight around it. Needs pickaxes.
+    mine(units, tile) {
+      units = units.filter(u => u.kind === 'jack');
+      if (!units.length || !G.up.pick || !G.veins[tile]) return false;
+      units.forEach((u, k) => setTask(u, { type: 'mine', ax: colOf(tile), ay: rowOf(tile), first: k === 0 ? tile : -1 }));
+      say(units[0], M.ore);
+      return true;
     },
     // Clear roots and bulldoze rock/water along the route to a target.
     dozeTo(units, idx) {
@@ -1085,8 +1155,8 @@
     if (BLD[id]) return G.count[id] > 0;
     return !!G.up[id];
   }
-  const costText = c => '€' + c.m + (c.w ? ' + ' + c.w + ' wood' : '') + (c.l ? ' + ' + c.l + ' lumber' : '');
-  const afford = c => G.money >= c.m && G.wood >= (c.w || 0) && G.lumber >= (c.l || 0);
+  const costText = c => '€' + c.m + (c.w ? ' + ' + c.w + ' wood' : '') + (c.l ? ' + ' + c.l + ' lumber' : '') + (c.o ? ' + ' + c.o + ' ore' : '');
+  const afford = c => G.money >= c.m && G.wood >= (c.w || 0) && G.lumber >= (c.l || 0) && G.ore >= (c.o || 0);
   LJ.shopState = function (it) {
     const c = it.cost(), ct = costText(c);
     if (G.arrival) return { st: 'locked', label: 'Arriving…', costText: ct };
@@ -1098,7 +1168,7 @@
     if (!afford(c)) return { st: 'cant', label: ct, costText: ct };
     return { st: 'ok', label: ct, costText: ct };
   };
-  function pay(c) { G.money -= c.m; G.wood -= c.w || 0; G.lumber -= c.l || 0; }
+  function pay(c) { G.money -= c.m; G.wood -= c.w || 0; G.lumber -= c.l || 0; G.ore -= c.o || 0; }
 
   function spawnVehicle(kind) {
     const n = countKind(kind) + 1;
@@ -1223,13 +1293,16 @@
       case 'toSaw': return 'Walking to the sawmill';
       case 'saw': return G.wood < 2 ? 'Sawing (out of wood!)' : 'Sawing lumber';
       case 'move': return 'Walking';
+      case 'toOre': return 'Walking to the ore';
+      case 'mine': return 'Mining ore';
+      case 'oreHome': return 'Carrying ore to camp';
       case 'retreat': return moving ? 'Falling back to heal' : 'Resting';
       case 'hunt': return u.task && u.task.a.kind === 'hut' ? 'Attacking hut' : 'Hunting';
       default: return u.fighting ? 'Fighting!' : u.hold ? 'Waiting for orders' : 'Idle — no trees in sight';
     }
   };
   LJ.capOf = capOf;
-  LJ.cargoOf = u => u.carry + (u.load ? u.load.w + u.load.l + (u.load.s || 0) : 0);
+  LJ.cargoOf = u => u.carry + (u.ore || 0) + (u.load ? u.load.w + u.load.l + (u.load.s || 0) + (u.load.o || 0) : 0);
 
   // ---------- Simulation step ----------
   function updConstruction(dt) {
@@ -1296,6 +1369,13 @@
     if (!o) {
       if ((G.orderCd -= dt) <= 0) {
         const crew = jacks().length + 2 * countKind('harv') + countKind('truck'), lum = G.count.sawmill > 0 && Math.random() < 0.6;
+        // Now and then the market wants ore, once you can mine it and there is some in stock or in sight.
+        if (G.up.pick && (G.ore >= 8 || LJ.ore.inSight()) && Math.random() < 0.2) {
+          const qty = 8 + ((Math.random() * 7) | 0);
+          G.order = { kind: 'ore', qty, got: 0, state: 'offer', ttl: 40, time: 180, bonus: qty * 10 };
+          LJ.sfx('deal');
+          return;
+        }
         const qty = lum ? 5 + crew * 3 + ((Math.random() * 4) | 0) : 16 + crew * 8 + ((Math.random() * 8) | 0);
         G.order = { kind: lum ? 'lumber' : 'wood', qty, got: 0, state: 'offer', ttl: 40, time: lum ? 150 : 120, bonus: Math.round(qty * (lum ? 9 : 2.5) / 5) * 5 };
         LJ.sfx('deal');
@@ -1313,7 +1393,7 @@
   function updAuto(dt) {
     if ((G.autoT -= dt) > 0) return;
     G.autoT = 1;
-    const stock = G.wood + G.lumber + G.stone;
+    const stock = G.wood + G.lumber + G.stone + G.ore;
     for (const u of G.units) {
       if (u.task || u.hold || u.path.length || u.wait > 0 || u.fighting) continue;
       if (u.idleVer === G.worldVer) continue; // found nothing to do last time, and nothing has changed since

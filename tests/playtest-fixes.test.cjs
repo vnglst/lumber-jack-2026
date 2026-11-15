@@ -161,3 +161,28 @@ test('a badly hurt jack falls back to camp, heals and is not sent back again by 
   lj.hurtUnit(jack, 5, wolf);
   assert.notEqual(jack.task && jack.task.type, 'retreat');
 });
+
+test('a palisade ring around the camp is left with an opening instead of sealing it off from the road', () => {
+  const lj = game(), g = lj.G, w = g.world, toasts = [];
+  lj.ui.toast = t => toasts.push(t);
+  lj.cmd.stop(g.units);
+  g.animalCd = 1e9; g.money = 1e6; g.wood = 1e6;
+  const b = g.base, x0 = b.tx - 3, x1 = b.tx + b.w + 2, y0 = b.ty - 3, y1 = b.ty + b.h + 2, ring = [];
+  // Open, explored ground around the camp (the road stays a road: palisades can be built across it).
+  for (let y = y0 - 1; y <= y1 + 1; y++) for (let x = x0 - 1; x <= x1 + 1; x++) {
+    const n = y * w.W + x;
+    if (w.bld[n]) continue;
+    w.obj[n] = 0; w.deco[n] = 0; g.fog[n] = 1;
+    if (!lj.isRoad(w.type[n])) w.type[n] = lj.T.GRASS;
+    if (x === x0 || x === x1 || y === y0 || y === y1) { if (x >= x0 && x <= x1 && y >= y0 && y <= y1) ring.push(n); }
+  }
+  for (const u of g.units) stand(u, (b.ty + b.h) * w.W + b.tx + 1, w); // everyone at the camp door, inside the ring
+  const built = lj.buildWalls(ring);
+  assert.ok(built >= ring.length - 4 && built < ring.length, built + ' of ' + ring.length + ' sections built');
+  assert.ok(lj.bfs(g.exitIdx, c => g.storeMask[c] === 1), 'the road still reaches the camp');
+  assert.ok(toasts.some(t => /opening/.test(t)), 'and the player is told why a section is missing');
+  // Closing the gap by hand afterwards is refused too.
+  const gap = ring.find(n => !w.wall[n]);
+  assert.equal(lj.buildWalls([gap]), 0);
+  assert.ok(lj.bfs(g.exitIdx, c => g.storeMask[c] === 1));
+});
