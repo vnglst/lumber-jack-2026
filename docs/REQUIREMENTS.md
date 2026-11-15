@@ -71,6 +71,7 @@ How to read it:
 | 58 | 15 Nov | Subtle interface animations | Active |
 | 59 | 15 Nov | Creator and source-code credits | Active |
 | 60 | 15 Nov | Agent notes from the interface, playtest and refactor sessions | Active |
+| 61 | 15 Nov | Palisades block every unit | Active |
 
 ---
 
@@ -759,3 +760,14 @@ How to read it:
 - *Decision: code. The checklist for a new script includes the test harness; a new unit task lists the five places it touches; the placement and movement invariants from §51 and §56 are stated; a `misc` voice line must be added to a booth group by hand (the notes said this was automatic); interface conventions from §48 and §49 are recorded.*
 - *Decision: tools. Short, single-purpose shell commands, so they match the user's allow rules; plain git diffs past the external diff tool; zsh word splitting.*
 - No game code changes.
+
+## 61. Palisades block every unit (15 Nov 2026)
+
+> Palisades should block Jacks as well (or any unit).
+
+- Palisades obstruct Jacks, all vehicles, hostile units and walking wildlife; player units must find an opening instead of passing through walls.
+- Apply the same blocking to unfinished stakes and completed sections, including diagonal corners and walls built after a route was planned.
+- *Decision: remove the implicit friendly gate behavior. The shop and placement hint explain that players must leave openings for their crews and market trucks. Enemies still have to break a wall before crossing it.*
+- *Decision: refuse placement on occupied tiles so construction cannot embed a unit in a solid wall. Existing saved walls gain the blocking behavior without a save-format change; destroying a section opens the route again.*
+- *Decision: the ending cancels palisade placement and prevents new wall construction, keeping the visitor's planned route clear.*
+- Bump the offline shell for the changed movement and interface scripts. Regression checks cover every player unit kind, wildlife, enemies, live route obstruction, deliberate gaps and saved walls.

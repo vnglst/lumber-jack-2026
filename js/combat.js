@@ -142,11 +142,11 @@
 
   // Walks an enemy along its path; returns the palisade tile in the way, or -1. Used by wolves and bears too.
   const march = (LJ.march = function (a, dt, speed) {
-    const w = G.world;
     let dist = speed * dt;
     while (dist > 0 && a.path.length) {
       const n = a.path[a.path.length - 1];
-      if (w.wall[n]) return n;
+      const wall = LJ.wallInWay(a.tile, n);
+      if (wall >= 0) return wall;
       const px = colOf(n) * TS + 8, py = rowOf(n) * TS + 10, dx = px - a.x, dy = py - a.y, d = Math.hypot(dx, dy);
       if (Math.abs(dx) > 0.01) a.dir = dx > 0 ? 1 : -1;
       if (d <= dist) { a.x = px; a.y = py; dist -= d; a.path.pop(); a.tile = n; }
