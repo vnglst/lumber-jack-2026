@@ -4,18 +4,18 @@
 // dead ends and balance problems, not a claim about how a person plays or whether the game is fun.
 //   node tests/campaign.cjs [seed ...]        (--hours N caps the game time, default 5; --log adds the event log)
 // Options for weaker play styles: { every: 6 } acts every six seconds, { huts: false } never attacks huts,
-// { skip: ['tower'] } never buys those items, { orders: false } declines market orders.
+// { skip: ['tower'] } never buys those items, { orders: false } declines market orders, { mine: false } never mines.
 const { game } = require('./harness.cjs');
 
-const BUY = ['jack', 'sharpaxe', 'sling', 'base', 'boots', 'rifles', 'bunk', 'sawmill', 'truck', 'barrow', 'chainsaw', 'tower',
-  'dispatch', 'dozer', 'feller', 'foreman', 'harv', 'scope', 'steam', 'turbo', 'mega', 'shuttle'];
+const BUY = ['jack', 'sharpaxe', 'sling', 'base', 'boots', 'rifles', 'bunk', 'sawmill', 'truck', 'barrow', 'chainsaw', 'pick', 'tower',
+  'steel', 'dispatch', 'dozer', 'feller', 'foreman', 'harv', 'scope', 'steam', 'turbo', 'mega', 'shuttle'];
 const LIMIT = { tower: 3, sawmill: 2, shuttle: 0 };
 const ALIVE = { dozer: 1 }; // replace it when it is lost, but never run two
 
 function campaign(seed, hours = 5, opts = {}) {
   const lj = game(seed), g = lj.G, w = g.world, W = w.W;
   const log = [], toasts = {}, levels = [{ level: 1, at: 0 }];
-  const m = { deaths: 0, vehiclesLost: 0, waves: 0, raids: 0, orders: { taken: 0, done: 0, missed: 0 }, debtS: 0, idleS: 0, jackS: 0, stalls: [], packs: 0, fightS: 0, killers: {}, wipes: 0 };
+  const m = { deaths: 0, vehiclesLost: 0, waves: 0, raids: 0, orders: { taken: 0, done: 0, missed: 0 }, debtS: 0, idleS: 0, jackS: 0, stalls: [], packs: 0, fightS: 0, killers: {}, wipes: 0, mineOrders: 0 };
   const perLevel = k => { const l = levels[levels.length - 1]; l[k] = (l[k] || 0) + 1; };
   const note = (event, extra) => log.push(Object.assign({ t: Math.round(g.time), event }, extra));
   lj.ui.toast = text => {
@@ -89,6 +89,26 @@ function campaign(seed, hours = 5, opts = {}) {
     }
   }
 
+  // Ore still needed for the upgrades that cost it, beyond what is in stock and on the miners' backs.
+  function oreWanted() {
+    let need = 0;
+    for (const it of lj.SHOP) if (lj.shopState(it).st !== 'owned' && !(opts.skip && opts.skip.includes(it.id))) need += it.cost().o || 0;
+    return need - g.ore - g.units.reduce((a, u) => a + (u.ore || 0), 0);
+  }
+  // Like a player tapping the nearest glinting rock he can walk up to.
+  function sendToMine(u) {
+    const reach = flood(u.tile);
+    let best = -1, bd = Infinity;
+    for (let n = 0; n < w.N; n++) {
+      if (!g.veins[n] || !g.fog[n]) continue;
+      const x = n % W;
+      if (![n + 1, n - 1, n + W, n - W].some(c => c >= 0 && c < w.N && reach[c] && Math.abs(c % W - x) <= 1)) continue;
+      const d = dist(n, u.tile);
+      if (d < bd) { bd = d; best = n; }
+    }
+    return best >= 0 && lj.cmd.mine([u], best);
+  }
+
   function sendToWork(u) {
     const reach = flood(u.tile);
     let seen = -1, sd = Infinity, any = -1, ad = Infinity, spot = -1;
@@ -135,7 +155,8 @@ function campaign(seed, hours = 5, opts = {}) {
     shop(); orders();
     let sawyers = g.units.filter(u => u.task && u.task.type === 'saw').length;
     const wantSaw = g.count.sawmill && !g.up.steam && g.wood >= 12 ? Math.min(2 * g.count.sawmill, lj.jacks().length >> 2) : 0;
-    let blocked = null;
+    let blocked = null, miners = g.units.filter(u => u.task && u.task.type === 'mine').length;
+    const wantMiners = opts.mine !== false && g.up.pick && oreWanted() > 0 ? 2 : 0;
     const stock = g.wood + g.lumber + g.stone, js = lj.jacks();
     // With no truck, someone has to walk the goods to market.
     if (!lj.countKind('truck') && stock >= 60 && !js.some(u => u.task && u.task.type === 'haul')) {
@@ -153,6 +174,7 @@ function campaign(seed, hours = 5, opts = {}) {
       if (u.kind !== 'jack' && !lj.VEH[u.kind].chop) continue;
       if (u.task || u.path.length || u.fighting || u.wait > 0) continue;
       if (u.kind === 'jack' && sawyers < wantSaw) { lj.cmd.saw([u]); sawyers++; continue; }
+      if (u.kind === 'jack' && wantMiners > miners && sendToMine(u)) { miners++; m.mineOrders++; continue; }
       if (!sendToWork(u)) blocked = u;
     }
     if (blocked && g.cleared < g.total) breach(blocked);
@@ -183,7 +205,7 @@ function campaign(seed, hours = 5, opts = {}) {
   }
   return {
     seed, minutes: Math.round(g.time / 60), finished: !!g.cine, level: g.level, cleared: g.cleared, total: g.total, money: g.money, earned: g.earned,
-    jacks: lj.jacks().length, kills: g.kills, folkKilled: g.folkKilled, hutsLeft: g.huts.filter(h => h.alive).length, finds: g.finds.filter(f => f.found).length + '/' + g.finds.length,
+    ore: g.ore, oreLeft: lj.ore.left(), mineOrders: m.mineOrders, jacks: lj.jacks().length, kills: g.kills, folkKilled: g.folkKilled, hutsLeft: g.huts.filter(h => h.alive).length, finds: g.finds.filter(f => f.found).length + '/' + g.finds.length,
     idleShare: +(m.idleS / Math.max(1, m.jackS)).toFixed(3), fightShare: +(m.fightS / Math.max(1, m.jackS)).toFixed(3), debtMinutes: Math.round(m.debtS / 60),
     deaths: m.deaths, wipes: m.wipes, gameOver: over, killers: m.killers, lastWaveMin: m.lastWaveAt && Math.round(m.lastWaveAt / 60), lastHutMin: m.lastHutAt && Math.round(m.lastHutAt / 60), vehiclesLost: m.vehiclesLost, packs: m.packs, waves: m.waves, raids: m.raids, orders: m.orders, stalls: m.stalls,
     levels: levels.map((l, k) => Object.assign({ minutes: +(((levels[k + 1] ? levels[k + 1].at : g.time) - l.at) / 60).toFixed(1) }, l)),

@@ -2,14 +2,14 @@
 // Saving: the game goes to localStorage every 15 seconds and whenever the tab is hidden or closed.
 // The map itself is regenerated from its seed on load, so only what changed is stored.
 (function () {
-  const G = LJ.G, KEY = 'lumberjack-save', VERSION = 8;
+  const G = LJ.G, KEY = 'lumberjack-save', VERSION = 9;
   // World layers that change during play. Grass dryness (lush) is stored as a byte; tree health only for trees
   // being chopped; flowers and decor are rebuilt from the buildings on load.
   const LAYERS = { type: Uint8Array, obj: Uint8Array, wear: Uint8Array, bld: Int16Array, wall: Uint8Array };
   // Plain game-state fields copied as they are (thresholds, quotas and building counts are recomputed on load).
-  const FIELDS = ['money', 'wood', 'lumber', 'stone', 'cleared', 'level', 'up', 'time', 'nextId', 'sold', 'cam', 'stockpile', 'tier',
+  const FIELDS = ['money', 'wood', 'lumber', 'stone', 'ore', 'cleared', 'level', 'up', 'time', 'nextId', 'sold', 'cam', 'stockpile', 'tier',
     'order', 'orderCd', 'payT', 'kills', 'earned', 'jackN', 'steamT', 'folkKilled', 'graves', 'animalCd', 'wallSites', 'hutLimit', 'huts', 'finds', 'recipes'];
-  const UNIT_FIELDS = ['id', 'kind', 'x', 'y', 'tile', 'carry', 'load', 'xp', 'dir', 'name', 'hired', 'wage', 'hp', 'hold'];
+  const UNIT_FIELDS = ['id', 'kind', 'x', 'y', 'tile', 'carry', 'ore', 'load', 'xp', 'dir', 'name', 'hired', 'wage', 'hp', 'hold'];
 
   // Typed arrays travel as base64 of their raw bytes.
   function enc(ta) {
@@ -31,6 +31,7 @@
     switch (t.type) {
       case 'work': return { type: 'work', ax: t.ax, ay: t.ay };
       case 'saw': return { type: 'saw' };
+      case 'mine': return { type: 'mine', ax: t.ax, ay: t.ay };
       case 'shuttle': return { type: 'shuttle', ax: t.ax, ay: t.ay };
       case 'haul': return { type: 'haul', once: t.once, resume: taskOut(t.resume, jobs) };
       case 'doze': {
@@ -43,7 +44,7 @@
   }
   function taskIn(t, jobs) {
     if (!t) return null;
-    if (t.type === 'work') return Object.assign(t, { first: -1 });
+    if (t.type === 'work' || t.type === 'mine') return Object.assign(t, { first: -1 });
     if (t.type === 'shuttle') return t;
     if (t.type === 'haul') return Object.assign(t, { resume: taskIn(t.resume, jobs) });
     if (t.type === 'doze') return Object.assign(t, { job: jobs[t.job] });
@@ -62,6 +63,7 @@
     for (let i = 0; i < w.N; i++) if (w.hp[i] > 0 && w.hp[i] < 1) s.chopping.push([i, +w.hp[i].toFixed(3)]);
     for (const k of FIELDS) s.g[k] = G[k];
     s.fog = enc(G.fog);
+    s.veins = enc(G.veins);
     s.wave = { hostile: G.wave.hostile, next: G.wave.next, n: G.wave.n };
     s.buildings = G.buildings.map(b => ({ kind: b.kind, tx: b.tx, ty: b.ty, w: b.w, h: b.h, hp: b.hp, max: b.max, dead: !!b.dead, queue: b.queue, construction: b.construction }));
     const jobs = new Map();
@@ -76,7 +78,7 @@
   };
 
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } };
-  const compatible = s => s && (s.v === VERSION || s.v === 7 || s.v === 6 || s.v === 5 || s.v === 4 || s.v === 3 || s.v === 2);
+  const compatible = s => s && (s.v === VERSION || s.v === 8 || s.v === 7 || s.v === 6 || s.v === 5 || s.v === 4 || s.v === 3 || s.v === 2);
   LJ.hasSave = () => !!compatible(read());
   LJ.clearSave = () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } };
 
@@ -89,7 +91,7 @@
       world.lush = Float32Array.from(dec(s.lush, Uint8Array), v => v / 255);
       const jobs = s.jobs.map(tiles => ({ tiles: new Set(tiles) }));
       for (const u of s.units) u.task = taskIn(u.task, jobs);
-      return LJ.restoreGame({ seed: s.seed, world, chopping: s.chopping, g: s.g, fog: dec(s.fog, Uint8Array), wave: s.wave, buildings: s.buildings, units: s.units, critters: s.critters });
+      return LJ.restoreGame({ seed: s.seed, world, chopping: s.chopping, g: s.g, fog: dec(s.fog, Uint8Array), veins: s.veins ? dec(s.veins, Uint8Array) : null, wave: s.wave, buildings: s.buildings, units: s.units, critters: s.critters });
     } catch (e) {
       console.warn('Lumberjack: the saved game could not be loaded.', e);
       return false;

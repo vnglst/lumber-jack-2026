@@ -371,4 +371,19 @@
   // ---------- Icons that depend on the art above ----------
   I.jack = icon(x => x.drawImage(S.jack.axe.idle.r, 4, 0, 14, 14, -1, 0, 14, 14));
   I.stone = icon(x => x.drawImage(S.rocks[0], 0, 0, 22, 18, 0, 1, 12, 10));
+  // A lump of ore: the same boulder with orange-brown metal showing in it.
+  I.ore = icon(x => {
+    x.drawImage(S.rocks[0], 0, 0, 22, 18, 0, 1, 12, 10);
+    x.fillStyle = '#3b2416'; x.fillRect(2, 5, 4, 3); x.fillRect(7, 3, 3, 3); x.fillRect(6, 7, 3, 2);
+    x.fillStyle = '#c8732e'; x.fillRect(3, 5, 2, 2); x.fillRect(8, 3, 1, 2); x.fillRect(7, 7, 1, 1);
+    x.fillStyle = '#f2b866'; x.fillRect(3, 5, 1, 1); x.fillRect(8, 3, 1, 1);
+  });
+  // A pickaxe: curved steel head on a wooden shaft, lit from the top-left.
+  I.pick = icon(x => {
+    x.fillStyle = '#1b1422'; x.fillRect(1, 2, 10, 3); x.fillRect(0, 3, 2, 3); x.fillRect(10, 3, 2, 3); x.fillRect(4, 3, 4, 9);
+    x.fillStyle = '#9aa3ad'; x.fillRect(2, 3, 8, 1); x.fillRect(1, 4, 1, 1); x.fillRect(10, 4, 1, 1);
+    x.fillStyle = '#d5dbe2'; x.fillRect(2, 3, 4, 1);
+    x.fillStyle = '#7a4d26'; x.fillRect(5, 4, 2, 7);
+    x.fillStyle = '#b07a44'; x.fillRect(5, 4, 1, 7);
+  });
 })();

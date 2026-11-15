@@ -7,7 +7,7 @@ const CORE = [
   './assets/icon.svg', './assets/favicon-32.png', './assets/apple-touch-icon.png',
   './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png',
   './js/util.js', './js/sfx-defs.js', './js/sound.js', './js/lines.js', './js/voice.js', './js/songs.js', './js/music.js',
-  './js/sprites.js', './js/art.js', './js/sprites2.js', './js/world.js', './js/game.js', './js/critters.js', './js/discoveries.js',
+  './js/sprites.js', './js/art.js', './js/sprites2.js', './js/world.js', './js/game.js', './js/critters.js', './js/discoveries.js', './js/ore.js',
   './js/combat.js', './js/render.js', './js/ending.js', './js/ui.js', './js/title.js',
   './js/save.js', './js/main.js', './js/site.js'
 ];

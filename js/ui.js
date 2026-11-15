@@ -184,7 +184,8 @@
     if (pickUnit(wx, wy, 0)) return 'pointer';
     const beast = hutAt(wx, wy, 0) || pickAnimal(wx, wy, 0);
     if (beast && LJ.seenPx(beast.x, beast.y)) return 'crosshair';
-    return treeAt(wx, wy) >= 0 ? 'pointer' : 'default';
+    const idx = tileAt(wx, wy);
+    return treeAt(wx, wy) >= 0 || (G.veins[idx] && G.fog[idx]) ? 'pointer' : 'default';
   }
   function setCursor(c) { if (c !== cursor) cv.style.cursor = cursor = c; }
   const isExit = i => { const w = G.world, x = i % w.W, y = (i / w.W) | 0; return x <= 1 && Math.abs(y - w.roadY) <= 1; };
@@ -224,6 +225,17 @@
       return;
     }
     if (doze) { LJ.cmd.dozeTo(sel, idx); LJ.sfx('click'); tilePing(idx, '#ff9a2a'); return; }
+    if (G.veins[idx] && G.fog[idx]) {
+      // Ore in the rock: the selected jacks mine it, or the nearest jack when nobody is selected.
+      if (!G.up.pick) { ui.toast('There is ore in that rock. Jacks need Pickaxes from the Shop to mine it.'); return; }
+      let miners = sel.filter(s => s.kind === 'jack');
+      if (!miners.length && !sel.length) {
+        const near = LJ.nearest(LJ.jacks(), wx, wy, Infinity);
+        if (near) { miners = [near]; G.sel.add(near); }
+      }
+      if (LJ.cmd.mine(miners, idx)) { LJ.sfx('click'); tilePing(idx, '#f2b866'); }
+      return;
+    }
     if (!sel.length) {
       if (tr < 0) return;
       // Nothing selected: grab the nearest jack so a single tap is enough to get going.
@@ -527,11 +539,11 @@
     modal(
     '<h1>How to play</h1>' +
     '<ul><li><b>Clear the forest.</b> Send a jack to a tree and he keeps cutting whatever he can see. Wood goes back to camp; your truck sells the surplus at the market down the road west.</li>' +
-    '<li><b>Grow the camp.</b> The Shop has tools, more jacks, buildings and machines. Upgrade the tent into a village; sawmills turn wood into lumber, Logging Trucks fetch wood from deep in the forest.</li>' +
+    '<li><b>Grow the camp.</b> The Shop has tools, more jacks, buildings and machines. With Pickaxes, jacks mine ore from glinting rocks; it sells well and the late machines need it. Upgrade the tent into a village; sawmills turn wood into lumber, Logging Trucks fetch wood from deep in the forest.</li>' +
     '<li><b>Mind the forest.</b> The map is unexplored and it bites back. Jacks heal near home, fall back there by themselves when badly hurt, and learn through work. Forest villages defend themselves; destroying a hut stops its reinforcements for good.</li></ul>' +
     '<table class="keys"><tr><td></td><th>Mouse</th><th>Touch</th><th>Keys</th></tr>' +
     row('Select', 'Click a unit, drag a box. Shift adds. Double-click takes every unit of that kind.', 'Tap a unit. Double-tap takes every unit of that kind.', 'Ctrl/⌘+A all jacks. Shift+1–9 saves a group, 1–9 recalls it.') +
-    row('Order', 'Click or right-click a tree, animal, hut, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things.', 'X stops. Esc deselects.') +
+    row('Order', 'Click or right-click a tree, animal, hut, a glinting ore rock, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things.', 'X stops. Esc deselects.') +
     row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
     row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch.', '− and +') +
     row('Menus', 'Shop is in the toolbar, ≡ pauses.', 'Shop is in the toolbar, ≡ pauses.', 'B shop. Esc backs out one step, then pauses.') +
@@ -660,6 +672,10 @@
     if (G.level >= 2 && !G.count.sawmill && G.wood >= 20) return 'Build a Sawmill: jacks there turn wood into lumber worth €' + LJ.PRICE.lumber + ' each.';
     if (G.count.sawmill && G.wood >= 6 && G.lumber === 0 && !G.up.steam && !tasks('saw')) return 'Select a jack and tap the sawmill to saw lumber: €' + LJ.PRICE.lumber + ' each, instead of €' + LJ.PRICE.wood + ' per wood.';
     if (G.wood + G.lumber >= 10 && !tasks('haul') && !G.units.some(u => u.kind === 'truck' && u.state !== 'idle')) return 'Nothing sells itself: select a jack or truck and tap the market sign.';
+    if (G.level >= 3 && LJ.ore.inSight()) {
+      if (!G.up.pick) return 'Ore glints in some of the rocks. With Pickaxes from the Shop, jacks can mine it: it sells well, and the best machines need it.';
+      if (!G.ore && !tasks('mine')) return 'Select jacks and tap a glinting rock to mine its ore. They carry it back to camp.';
+    }
     if (G.level >= 4 && !LJ.countKind('dozer')) return 'Rivers and rocks wall off most of the forest. A bulldozer can open a way through.';
     if (G.level === 10) { const left = G.total - G.cleared; return left + ' trees left standing. Every last one has to go — the minimap shows where.'; }
     return '';
@@ -743,7 +759,7 @@
       if (w.bld[i]) { r = 214; g = 84; b = 52; }
       else if (o >= 1 && o <= 3) { if (o === 3) { r = 120; g = 150; b = 40; } else { r = 26; g = o === 1 ? 84 : 104; b = 40; } }
       else if (t === T.WATER) { r = 52; g = 122; b = 200; }
-      else if (t === T.ROCK) { r = 128; g = 126; b = 122; }
+      else if (t === T.ROCK) { if (G.veins[i]) { r = 214; g = 132; b = 60; } else { r = 128; g = 126; b = 122; } }
       else if (t === T.ROAD) { r = 196; g = 160; b = 108; }
       else if (t === T.BRIDGE) { r = 120; g = 80; b = 44; }
       else if (t === T.MUD) { r = 92; g = 70; b = 47; }
@@ -802,6 +818,8 @@
     set($('c-lumber').querySelector('b'), G.lumber);
     $('c-stone').style.display = G.stone > 0 || LJ.countKind('dozer') ? '' : 'none';
     set($('c-stone').querySelector('b'), G.stone);
+    $('c-ore').style.display = G.ore > 0 || G.up.pick ? '' : 'none';
+    set($('c-ore').querySelector('b'), G.ore);
     $('c-pop').style.display = G.village ? '' : 'none';
     const bill = G.units.reduce((a, u) => a + u.wage, 0);
     set($('c-pop').querySelector('b'), LJ.jackCount() + '/' + LJ.popCap());
