@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Lumberjack — Testing playground</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/playground.css">
+</head>
+<body>
+  <header id="review-controls">
+    <div class="review-heading"><h1>Testing playground</h1><a href="index.html">Back to game</a><a href="voices.html" target="_blank" rel="noopener">Voices</a><button id="review-toggle" type="button" aria-expanded="true" aria-controls="review-settings" title="Hide scene settings to give the game more room">Hide controls</button></div>
+    <div id="review-settings">
+    <p>Contains ending spoilers. Disposable scenarios use the real game. Your saved game is never loaded, saved or cleared here.</p>
+    <form id="review-form">
+      <label>Scene <select id="review-scene">
+        <option value="arrival">Opening drive &amp; tutorial</option>
+        <option value="level">Level announcement &amp; play</option>
+        <option value="wolf">Wolf encounter</option>
+        <option value="pack">Wolf pack (3)</option>
+        <option value="bear">Bear encounter</option>
+        <option value="hut">Local village defenders</option>
+        <option value="raid">Local raiding party</option>
+        <option value="ending">Ending sequence</option>
+      </select></label>
+      <label>Level <select id="review-level"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+      <label>Equipment <select id="review-gear"><option value="axe">Axe</option><option value="chainsaw">Chainsaw</option><option value="laser" selected>Laser pistol</option><option value="scope">Overcharged laser</option></select></label>
+      <label>Map seed <input id="review-seed" type="number" min="1" max="999999999" step="1" value="42" required></label>
+      <button type="submit" disabled id="review-load" title="Start this scene again from its initial state">Load / replay</button>
+      <button type="button" disabled id="review-pause" title="Pause or resume the simulation">Pause</button>
+    </form>
+    <p id="review-status" role="status" aria-live="polite">Loading game…</p>
+    </div>
+  </header>
+  <iframe id="review-game" title="Playable Lumberjack test scene" allow="autoplay"></iframe>
+  <script src="js/playground.js"></script>
+</body>
+</html>

@@ -79,6 +79,14 @@ LJ.CUES = [
   { id: 'swan_call', who: 'swan', label: 'Whooper swan call', hint: 'Occasionally near a visible swan', try: 'A comical little questioning honk' }
 ];
 
+// Preserved downloaded performances: recording a replacement must not erase the original.
+LJ.VOICE_ORIGINALS = {
+  keys: ['wolf_howl', 'wolf_snarl', 'wolf_yelp', 'bear_roar', 'bear_groan', 'reindeer_call', 'squirrel_call', 'swan_call'],
+  artist: 'rubberduck', title: '80 CC0 creature SFX',
+  url: 'https://opengameart.org/content/80-cc0-creature-sfx',
+  license: 'https://creativecommons.org/publicdomain/zero/1.0/'
+};
+
 // Voice line identity: the text with numbers folded away, as a file-name-safe key.
 LJ.voiceKey = function (text) {
   const slug = text.replace(/\{n\}|\d[\d,]*/g, '#').toLowerCase().replace(/[^a-z0-9#]+/g, '-').replace(/^-+|-+$/g, '').replace(/#/g, 'n');

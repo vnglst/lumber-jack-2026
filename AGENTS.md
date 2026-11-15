@@ -58,4 +58,4 @@ When using worktrees/subagents:
 - Keep the ending a surprise: nothing in the UI before the ending should hint at the data center. The opening story says an AI took the player's job; it must not say what the land is for.
 - The game is set in Finland: spruce, Scots pine and birch; reindeer, swans, wolves and bears; red wooden houses with white trim; prices in euros.
 - Match the existing pixel-art style: light from the top-left, dark outlines, small palettes.
-- Animal audio uses playful, stylized game effects or voiced creature performances. Record downloaded sound sources, licenses and processing details in `credits.html`.
+- Animal audio uses playful, stylized game effects or voiced creature performances. Record downloaded sound sources, licenses and processing details in `audio/CREDITS.md`; player-facing attribution belongs in the credits popup.

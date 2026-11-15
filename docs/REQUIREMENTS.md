@@ -72,9 +72,18 @@ How to read it:
 | 59 | 15 Nov | Creator and source-code credits | Active |
 | 60 | 15 Nov | Agent notes from the interface, playtest and refactor sessions | Active |
 | 61 | 15 Nov | Palisades block every unit | Active |
-| 62 | 15 Nov | Ore: mining, and ore in the shop and the market | Active |
-| 63 | 15 Nov | Northern lights mirrored in the lake; playtest with ore | Active |
-| 64 | 15 Nov | Review before merging: a palisade may not seal the camp | Active |
+| 62 | 15 Nov | Credits open inside the welcome screen | Refined by 63 |
+| 63 | 15 Nov | Credits also open from settings | Active |
+| 64 | 15 Nov | Separate music and effects volumes | Refined by 70 |
+| 65 | 15 Nov | Game sequence testing playground | Active |
+| 66 | 15 Nov | Wildlife originals in the recording booth | Active |
+| 67 | 15 Nov | Compact mobile Jack actions | Active |
+| 68 | 15 Nov | Play testing and voice recording credits | Active |
+| 69 | 15 Nov | A clearer mobile game interface | Active |
+| 70 | 15 Nov | Dedicated sound settings menu | Active |
+| 71 | 15 Nov | Ore: mining, and ore in the shop and the market | Active |
+| 72 | 15 Nov | Northern lights mirrored in the lake; playtest with ore | Active |
+| 73 | 15 Nov | Review before merging: a palisade may not seal the camp | Active |
 
 ---
 
@@ -714,6 +723,8 @@ How to read it:
 
 ## 55. Playful animal voices (15 Nov 2026)
 
+**Status:** credits access and presentation are superseded by §62 and §63; animal audio and provenance remain active.
+
 > Not real sounds, playful and suitable for this game
 
 - Use expressive cartoon animal voices that suit the game's pixel art and humor.
@@ -747,6 +758,8 @@ How to read it:
 
 ## 59. Creator and source-code credits (15 Nov 2026)
 
+**Status:** the standalone credits page and welcome footer links are replaced by the popup in §62 and §63; creator and source-code links remain in that popup.
+
 > Add credits with link to my website and source code.
 
 - Link to Koen van Gilst's website and the game's source repository from the welcome screen and credits page.
@@ -775,7 +788,92 @@ How to read it:
 - *Decision: the ending cancels palisade placement and prevents new wall construction, keeping the visitor's planned route clear.*
 - Bump the offline shell for the changed movement and interface scripts. Regression checks cover every player unit kind, wildlife, enemies, live route obstruction, deliberate gaps and saved walls.
 
-## 62. Ore: mining, and ore in the shop and the market (15 Nov 2026)
+## 62. Credits open inside the welcome screen (15 Nov 2026)
+
+> The credits are a dead link, should be an in-game popup, only on the welcome screen. Don't show credits anywhere else. Only as in welcome / new game screen.
+
+**Status:** §63 adds access from the in-game settings menu.
+
+- Replace navigation to a standalone page with a credits button and an in-game popup on the welcome screen.
+- Keep creator, source-code and licensed animal-audio attribution inside the popup; remove the credits link from gameplay Help and remove the standalone page.
+- *Decision: reuse the game's dialog style. The welcome screen stays visible behind the popup and gameplay stays paused; Back and Escape close it and return focus to Credits. Keep developer-facing source and processing details in `audio/CREDITS.md`.*
+
+## 63. Credits also open from settings (15 Nov 2026)
+
+> There should also be a credits popup from the settings menu in-game.
+
+- Offer the same credits popup from the in-game pause/settings menu, in addition to the welcome screen.
+- *Decision: closing credits from settings returns to the paused settings menu. Credits have no separate page or gameplay Help link.*
+- **Supersedes** §62's restriction to the welcome screen alone.
+
+## 64. Separate music and effects volumes (15 Nov 2026)
+
+**Status:** §70 moves the controls to a dedicated sound settings submenu; mixer behavior and preferences remain active.
+
+> There should be settings to change the volume of the music and the in-game sound fx.
+
+- Add independently adjustable Music and Sound effects volume sliders to settings, with immediate feedback and percentage values.
+- *Decision: the effects slider controls synthesized effects, voices and animal recordings together. Music and its echo use their own volume bus; the existing global mute still silences both buses. Default 100% preserves the existing mix.*
+- *Decision: remember both values in browser preferences (`lumberjack-audio-volume`), independently of campaign saves and the existing music on/off preference. Clamp values to 0–100%, tolerate blocked/invalid storage, and smooth changes over 20 ms to avoid clicks.*
+- Refresh the offline shell for the popup, settings and mixer changes; the credits popup works offline without fetching a separate page.
+
+## 65. Game sequence testing playground (15 Nov 2026)
+
+> I want to review important sequences of the game, like end sequence, different levels etc. Fighting different animals, locals. etc. Can you create a testing playground where I can review and test these.
+
+- Provide a playground for reviewing and playing important sequences, levels, animal fights and encounters with locals.
+- *Decision: `playground.html` runs disposable scenarios in a separate frame with the real game scripts and simulation. It omits the save, normal boot and site scripts, so loading, replaying, finishing and restarting scenarios never loads, overwrites or clears the normal campaign save.*
+- *Decision: include the opening drive/tutorial, levels 1–10 with their announcements and threshold clearing, a wolf, a three-wolf pack, a bear, hut defenders, a raiding party and the complete ending. Offer seed, equipment, replay, pause and collapsible controls. Level fixtures have review supplies and a suitable village tier; ordinary shop unlock rules remain intact.*
+- Keep the playground separate from normal game menus to protect the ending surprise. Document its address and show it when the local server starts. Like the booth, it requires a connection and is outside the offline shell.
+- *Decision: reuse the ordinary animal creation logic without changing its balance or random draws. Campaign reports for seeds 1, 2 and 3 remain byte-identical to the pinned base.*
+
+## 66. Wildlife originals in the recording booth (15 Nov 2026)
+
+> In voices I want to see the newly added sounds from the internet, but also be able to record my own. Especially for the wild life sounds.
+
+- Make downloaded wildlife sounds easy to find, preview and replace with personal recordings.
+- *Decision: add a Wildlife sounds filter, animal names, original-source/CC0 links, Internet original and Current game sound previews. Preserve the eight downloaded adaptations in `audio/voice-defaults/`; Use original restores one through the existing local recording API without removing personal takes.*
+- Personal recordings use the existing microphone/take workflow and the same game cue keys. Preserve current recordings, including recordings already edited outside this task. Audio files and the recording booth remain network-only.
+- *Decision: isolated browser checks exercise recording with a simulated microphone, replacing a sound and restoring its original. API writes are intercepted to avoid changing current recordings. All originals decode; nobody listened to the sounds or tested a physical microphone.*
+
+## 67. Compact mobile Jack actions (15 Nov 2026)
+
+> Can you make the action tab of the jack compacter by using icons, on mobile.
+
+- Compact the selected Jack's action panel on mobile with icons for sawing, hauling, stopping and deselecting.
+- *Decision: inline vector symbols use the existing painted controls, with accessible names, tooltips and a Help explanation. Keep desktop text, status and XP. Use 40×44-pixel action buttons in portrait and short touch landscape layouts.*
+- Check opening, full late-game HUD, active market offer, shop and actual Stop behavior at narrow portrait, landscape and desktop sizes.
+
+## 68. Play testing and voice recording credits (15 Nov 2026)
+
+> To the credits add: Koen & Tibo for play testing the game and the voice recordings.
+
+- Credit Koen & Tibo for play testing the game and the voice recordings.
+- *Decision: add the requested wording to the shared credits popup, visible from the welcome screen and in-game settings.*
+- Refresh the offline shell to v12 for the combined game-script, mobile-interface and credits changes. Browser checks cover offline boot and campaign save restoration.
+
+## 69. A clearer mobile game interface (15 Nov 2026)
+
+> Review and refactor the UI on mobile. The screen is too cluttered for practical use right now. It’s fine on desktop.
+
+- Review mobile clutter across the whole interface and make the game practical to use, preserving the desktop presentation.
+- *Decision: replace the wrapping mobile HUD with one row for money, wood, Camp and Menu. Camp expands the other resources, population/pay, level progress, stockpiling, discoveries, sound, Help and ordinary guidance. Debt, missing-crew, approaching-raid, active-raid and placement warnings remain visible without opening Camp.*
+- *Decision: show market offers and active-order progress as a compact button. Tap it for the existing offer/accept/decline or active-order details. Keep urgent countdowns visible. Camp, market details, minimap and Shop dismiss competing panels; a map tap closes a sheet without issuing an accidental order. Escape backs out disclosures one at a time.*
+- *Decision: the selected-unit strip keeps its name, a short status and icon actions. Tap the name for full status, cargo and XP. The bottom dock shows idle jacks, Map and Shop; Map reveals zoom buttons. Remove duplicate Stop and always-visible zoom controls from the mobile dock. Landscape puts selection and navigation beside each other.*
+- *Decision: consolidate the compact breakpoint across portrait and short touch landscape. Give the Shop a dedicated scrollable sheet with a sticky close control and 44-pixel purchase targets. Preserve arrival/ending mute access, safe-area padding, keyboard labels and disclosure state. No rules or save-format changes.*
+- Browser checks cover 320/390-pixel portrait, 844-pixel landscape, 1024-pixel short touch landscape and desktop, including the opening, full late-game HUD, market offers, stockpiling, XP, navigation and shop. A focused layout check fails against the previous version (166-pixel HUD versus 52 pixels after the refactor). Physical phone testing and judgments about game feel remain for a person.
+- Bump the offline shell to v13 for the mobile markup, styles and interface script.
+
+## 70. Dedicated sound settings menu (15 Nov 2026)
+
+> Move music and sound settings to seperate menu. On/off is part of that. Refactor ui.
+
+- Move music and sound controls, including on/off switches, into a separate menu and simplify the parent settings UI.
+- *Decision: the pause menu has one Sound settings entry. Its submenu contains the existing All sound/global mute and Music switches plus the independent Music and Sound effects volume sliders. Sound effects include voices and wildlife. Existing mixer behavior and saved preferences stay unchanged.*
+- *Decision: ♪ opens the same settings dialog directly, including during the intro and ending, instead of toggling mute immediately. Escape/Back returns one layer to the paused parent menu, or to the original gameplay/intro/ending state for direct entry, restoring focus to the entry control. Switches and sliders update in place without rebuilding the dialog.*
+- Keep mobile and desktop layouts compact and accessible, document the new route in Help, and refresh the offline shell to v14. Browser checks exercise switches, sliders, persistence, pause/return behavior and narrow portrait/landscape layouts; nobody listened to the audio.
+
+## 71. Ore: mining, and ore in the shop and the market (15 Nov 2026)
 
 > Allow extracting ore from rocks and using it as a resource. Integrate this in the gameplay, shop and general economy.
 
@@ -796,7 +894,7 @@ How to read it:
 - Not judged by a person: whether mining is fun, and the look of the ore on a phone-sized screen, where the HUD now wraps to one more chip.
 - Added eight tests (`tests/ore.test.cjs`). The offline shell lists the new script and its cache version is bumped.
 
-## 63. Northern lights mirrored in the lake; playtest with ore (15 Nov 2026)
+## 72. Northern lights mirrored in the lake; playtest with ore (15 Nov 2026)
 
 > Northern lights should be reflected in the water.
 > Test game mechanics when done. Make sure game is still engaging and enjoyable.
@@ -810,13 +908,13 @@ How to read it:
 - *Decision: no rule changes from this playtest.*
 - Not judged by a person: whether the reflection looks right in motion, and whether mining is enjoyable to play. A scripted player finds dead ends and balance problems; it cannot tell fun.
 
-## 64. Review before merging: a palisade may not seal the camp (15 Nov 2026)
+## 73. Review before merging: a palisade may not seal the camp (15 Nov 2026)
 
 > other agent is done, review, mergen and push
 
-- Review the solid palisades (§61) together with ore (§62) and the northern lights (§63), merge and push.
+- Review the solid palisades (§61) together with ore (§71) and the northern lights (§72), merge and push.
 - *Decision: one finding. Since §61, palisades stop the player's own jacks and trucks, and a palisade cannot be taken down. A closed ring around the camp therefore cut it off from the market for good: the dead end §51 removed for buildings. A test built all 32 sections of such a ring. Now a section that would cut any ground off from the road is not built, and the player is told that an opening was left. This applies §51's rule for buildings to palisades; §61's "leave openings" still describes what the player should do, the game now also guarantees one.*
 - *Decision: the rule is strict on purpose. Even a small pocket behind a wall may hold the only way to some trees, and every tree has to go.*
-- *Measured after merging all three: 191 tests pass; the scripted player (which builds no palisades) finishes 8 of 8 maps with careful play and 6 of 6 with slow play, at the same pace as before.*
+- *Measured after merging all three: the tests pass (199 once the sound-settings and mobile-interface work of §62–70 was merged in as well); the scripted player (which builds no palisades) finishes 8 of 8 maps with careful play and 6 of 6 with slow play, at the same pace as before.*
 - Not covered: nobody has played with palisades by hand since they became solid, and the scripted player does not use them.
-- The offline shell cache is bumped to v11.
+- The offline shell cache is bumped to v15.

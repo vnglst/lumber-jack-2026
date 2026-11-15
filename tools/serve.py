@@ -92,4 +92,5 @@ if __name__ == "__main__":
     handler = functools.partial(NoCache, directory=str(ROOT))
     print(f"Lumberjack: http://localhost:{port}  (Ctrl+C to stop)")
     print(f"Recording booth: http://localhost:{port}/voices.html")
+    print(f"Testing playground: http://localhost:{port}/playground.html")
     http.server.ThreadingHTTPServer(("", port), handler).serve_forever()

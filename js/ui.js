@@ -7,7 +7,7 @@
   const ZOOMS = [1, 1.5, 2, 3, 4];
   const ICON_OF = { jack: 'jack', truck: 'truck', shuttle: 'shuttle', dozer: 'dozer', harv: 'harv', feller: 'feller' };
   let cv, zi = 3, zoom = 3, keys = {}, lastClickU = null, lastClickT = 0, toastT = 0, panelSig = '', shopSig = '', orderSig = '';
-  let hudBottom = -1, panelsTop = -1;
+  let hudBottom = -1, panelsTop = -1, noticeHeight = -1, controlsHeight = -1;
   let mini, mctx, mimg, miniT = 0, mouse = null; // mouse: last pointer position in window pixels, null when outside
   let muted = false, idleI = 0, groups = {}, lastGroup = '', lastGroupT = 0, cursor = '';
   const PING = 0.45; // seconds an order marker stays on the ground
@@ -35,7 +35,7 @@
     // Text and newly unlocked resource chips can wrap the HUD without a window resize.
     if (typeof ResizeObserver !== 'undefined') {
       const layout = new ResizeObserver(layoutPanels);
-      layout.observe($('hud')); layout.observe($('hint'));
+      layout.observe($('hud')); layout.observe($('hint')); layout.observe($('bottom')); layout.observe($('marketBtn'));
     }
     bindPointer(); bindKeys(); bindButtons(); bindMini();
     // A clicked button must not keep the keyboard: Space and Enter belong to the game, not to the last button pressed.
@@ -50,8 +50,11 @@
     if (!hud.getBoundingClientRect) return;
     // Read both sizes before writing styles, and only write when geometry changes.
     const bottom = Math.ceil(hud.getBoundingClientRect().bottom);
-    const hintHeight = hint.offsetHeight;
-    const below = bottom + 8 + (hintHeight ? hintHeight + 8 : 0);
+    const notice = $('marketBtn').offsetHeight || 0, hintHeight = hint.offsetHeight;
+    const controls = $('bottom').offsetHeight || 0;
+    const below = bottom + 8 + (notice ? notice + 6 : 0) + (hintHeight ? hintHeight + 8 : 0);
+    if (notice !== noticeHeight) { $('game').style.setProperty('--notice-space', notice ? notice + 6 + 'px' : '0px'); noticeHeight = notice; }
+    if (controls !== controlsHeight) { $('game').style.setProperty('--controls-height', controls + 'px'); controlsHeight = controls; }
     if (bottom !== hudBottom) { $('game').style.setProperty('--hud-bottom', bottom + 'px'); hudBottom = bottom; }
     if (below !== panelsTop) { $('game').style.setProperty('--panels-top', below + 'px'); panelsTop = below; }
   }
@@ -127,11 +130,29 @@
   }
 
   function setShop(open) {
+    if (open && compact()) { setMobilePanel(''); closeMap(); }
     $('shop').classList.toggle('open', open);
     $('game').classList.toggle('shopping', open); // small screens tuck the selection panel away under the shop
   }
   const shopOpen = () => $('shop').classList.contains('open');
   const modalOpen = () => $('modal').classList.contains('open');
+  const compact = () => innerWidth <= 900 || typeof matchMedia === 'function' && matchMedia('(pointer: coarse) and (max-height: 500px)').matches;
+  function closeMap() { $('game').classList.remove('mini-on'); $('mapBtn').setAttribute('aria-expanded', 'false'); }
+
+  // These disclosures are visible only in the compact layout; desktop keeps its existing panels.
+  function setMobilePanel(name) {
+    for (const [kind, id] of [['resources', 'resourcesBtn'], ['order', 'marketBtn']]) {
+      $('game').classList.toggle(kind + '-open', name === kind);
+      $(id).setAttribute('aria-expanded', String(name === kind));
+    }
+    if (name) { setShop(false); closeMap(); }
+  }
+  function toggleMap() {
+    const open = !$('game').classList.contains('mini-on');
+    if (compact()) { setMobilePanel(''); setShop(false); }
+    $('game').classList.toggle('mini-on', open);
+    $('mapBtn').setAttribute('aria-expanded', String(open));
+  }
 
   ui.toast = function (text) { const t = $('toast'); t.textContent = text; t.classList.add('show'); toastT = 2.6; };
 
@@ -193,7 +214,10 @@
   function click(wx, wy, right, touch, shift) {
     if (G.cine) { if (G.cine.phase === 'talk') LJ.ending.next(); return; }
     if (G.paused || G.arrival) return;
-    if (shopOpen() && innerWidth <= 700) { setShop(false); return; } // on a phone the shop is a sheet: a tap beside it closes it
+    if (compact()) {
+      if (shopOpen()) { setShop(false); return; } // a tap beside a mobile sheet closes it without issuing an order
+      if ($('game').classList.contains('resources-open') || $('game').classList.contains('order-open')) { setMobilePanel(''); return; }
+    }
     if (G.place) {
       if (right) { G.place = null; return; }
       G.hover = [wx, wy];
@@ -376,14 +400,20 @@
 
   function bindKeys() {
     addEventListener('keydown', e => {
+      if (modalOpen()) { // Escape takes a dialog's way out; Enter presses the focused button by itself
+        const m = $('modal'), out = m.querySelector('[data-esc]');
+        if (e.key === 'Escape' && out) { e.preventDefault(); out.click(); }
+        if (e.key === 'Tab') {
+          const controls = [...m.querySelectorAll('a[href], button:not([disabled]), input:not([disabled])')].filter(el => el.getClientRects().length);
+          const first = controls[0], last = controls[controls.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+        return;
+      }
       if (LJ.title.isOpen()) return;
       const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
       if (!mod) keys[k] = true;
-      if (modalOpen()) { // Escape takes a dialog's way out; Enter presses the focused button by itself
-        const out = $('modal').querySelector('[data-esc]');
-        if (e.key === 'Escape' && out) out.click();
-        return;
-      }
       if (G.cine) { if ((e.key === ' ' || e.key === 'Enter') && G.cine.phase === 'talk') LJ.ending.next(); return; }
       if (G.arrival) {
         if ((e.key === ' ' || e.key === 'Enter') && !G.paused) { e.preventDefault(); LJ.skipIntroLine(); }
@@ -397,7 +427,7 @@
       else if (k === 'h' || k === 'home') ui.centerOnCamp();
       else if (k === 'tab') { e.preventDefault(); nextIdle(); }
       else if (k === 'b') setShop(!shopOpen());
-      else if (k === 'm') $('game').classList.toggle('mini-on');
+      else if (k === 'm') toggleMap();
       else if (k === 'x') LJ.cmd.stop([...G.sel]);
       else if (k === 'p') ui.showMenu();
       else if (k === '+' || k === '=') setZoom(zi + 1);
@@ -406,6 +436,9 @@
         // Back out one step at a time; with nothing left to back out of, Escape opens the menu.
         if (G.place || G.wallMode) { G.place = null; G.wallMode = false; G.wallDrag = null; }
         else if (shopOpen()) setShop(false);
+        else if ($('game').classList.contains('resources-open') || $('game').classList.contains('order-open')) setMobilePanel('');
+        else if ($('game').classList.contains('unit-details-open')) { $('game').classList.remove('unit-details-open'); panelSig = ''; }
+        else if ($('game').classList.contains('mini-on')) toggleMap();
         else if (G.sel.size) G.sel.clear();
         else ui.showMenu();
       }
@@ -440,7 +473,7 @@
       else if (b.dataset.act === 'zoomout') setZoom(zi - 1);
       else if (b.dataset.act === 'shop') setShop(!shopOpen());
       else if (b.dataset.act === 'idle') nextIdle();
-      else if (b.dataset.act === 'map') $('game').classList.toggle('mini-on');
+      else if (b.dataset.act === 'map') toggleMap();
     });
     $('shopClose').onclick = () => setShop(false);
     $('shopList').addEventListener('click', e => {
@@ -462,6 +495,7 @@
       else if (a === 'saw') LJ.cmd.saw(sel);
       else if (a === 'stop') LJ.cmd.stop(sel);
       else if (a === 'desel') G.sel.clear();
+      else if (a === 'details') { $('game').classList.toggle('unit-details-open'); panelSig = ''; }
       else if (a === 'cancel') G.place = null;
       else if (a === 'walldone') { G.wallMode = false; G.wallDrag = null; }
     });
@@ -471,18 +505,21 @@
     });
     $('cine').addEventListener('click', () => LJ.ending.next());
     $('again').onclick = () => ui.restart();
-    $('stockBtn').onclick = () => { G.stockpile = !G.stockpile; LJ.sfx('click'); ui.toast(G.stockpile ? 'Wood is now stockpiled at the camp' : 'Wood is now sold at the market'); };
-    $('soundBtn').onclick = toggleSound;
+    $('stockBtn').onclick = $('mobileStockBtn').onclick = () => { G.stockpile = !G.stockpile; LJ.sfx('click'); ui.toast(G.stockpile ? 'Wood is now stockpiled at the camp' : 'Wood is now sold at the market'); };
+    $('resourcesBtn').onclick = () => setMobilePanel($('game').classList.contains('resources-open') ? '' : 'resources');
+    $('marketBtn').onclick = () => setMobilePanel($('game').classList.contains('order-open') ? '' : 'order');
+    $('soundBtn').onclick = () => ui.showAudioSettings();
     $('menuBtn').onclick = () => ui.showMenu();
     $('findsBtn').onclick = () => { if (!G.cine && !G.arrival) ui.showFinds(); };
     $('helpBtn').onclick = () => { if (!G.cine) ui.showHelp(); };
+    $('creditsBtn').onclick = () => ui.showCredits();
   }
 
   function toggleSound() {
     LJ.audioInit();
     muted = LJ.toggleMute();
     $('soundBtn').style.opacity = muted ? 0.4 : 1;
-    $('soundBtn').title = muted ? 'Sound is off' : 'Sound is on';
+    $('soundBtn').title = 'Sound settings (all sound ' + (muted ? 'off' : 'on') + ')';
   }
 
   // ---------- Dialogs ----------
@@ -492,6 +529,8 @@
   function dialog(html, acts) {
     const m = $('modal');
     m.innerHTML = '<div class="dialog" role="dialog" aria-modal="true">' + html + '</div>';
+    const heading = m.querySelector('h1');
+    if (heading) { heading.id = 'dialog-title'; m.firstElementChild.setAttribute('aria-labelledby', heading.id); }
     m.classList.add('open');
     G.paused = true;
     const buttons = [...m.querySelectorAll('button')];
@@ -514,16 +553,68 @@
     dialog('<h1>Paused</h1><div class="menu">' +
       '<button data-a="resume" data-esc>Back to work</button>' +
       '<button data-a="help" class="ghost">How to play</button>' +
-      '<button data-a="sound" class="ghost">Sound: ' + (muted ? 'off' : 'on') + '</button>' +
-      '<button data-a="music" class="ghost">Music: ' + (LJ.music.isOn() ? 'on' : 'off') + '</button>' +
+      '<button data-a="audio" class="ghost" title="Music, sound and volume controls">Sound settings</button>' +
+      '<button data-a="credits" class="ghost" title="Creator and audio credits">Credits</button>' +
       '<button data-a="fresh" class="ghost">New game</button></div>' +
       '<p class="fine">The game saves itself as you play.</p>', {
       help: ui.showHelp,
-      sound: () => { toggleSound(); ui.showMenu(); },
-      music: () => { LJ.music.toggle(); ui.showMenu(); },
+      audio: () => ui.showAudioSettings(true),
+      credits: () => ui.showCredits(true),
       fresh: () => dialog('<h1>Start a new game?</h1><p>This forest and everything you built in it will be replaced by a fresh one.</p>' +
         '<div class="row"><button data-a="yes">Start a new game</button><button data-a="no" class="ghost" data-esc>Keep playing</button></div>', { yes: ui.restart, no: ui.showMenu })
     });
+  };
+
+  ui.showAudioSettings = function (fromMenu = false) {
+    if (modalOpen() || LJ.title.isOpen()) return;
+    const wasPaused = G.paused;
+    const toggle = (id, name, on) => '<div class="audio-toggle"><label for="audio-' + id + '">' + name + '</label>' +
+      '<output id="audio-' + id + '-state" for="audio-' + id + '">' + (on ? 'On' : 'Off') + '</output>' +
+      '<input id="audio-' + id + '" type="checkbox"' + (on ? ' checked' : '') + '></div>';
+    dialog('<h1>Sound settings</h1><div class="audio-settings">' +
+      toggle('master', 'All sound', !muted) + toggle('music', 'Music', LJ.music.isOn()) +
+      ['music', 'effects'].map(kind => {
+        const name = kind === 'music' ? 'Music' : 'Sound effects', value = Math.round(LJ.volumeOf(kind) * 100);
+        return '<div class="volume-control"><label for="volume-' + kind + '">' + name + ' volume</label><output for="volume-' + kind + '">' + value + '%</output>' +
+          '<input id="volume-' + kind + '" data-volume="' + kind + '" type="range" min="0" max="100" step="1" value="' + value + '"></div>';
+      }).join('') + '<p class="fine">Sound effects include voices and wildlife.</p></div><button data-a="back" data-esc title="' + (fromMenu ? 'Back to paused menu' : 'Return to the game') + ' (Escape)">Back</button>', {
+      back: () => {
+        if (fromMenu) { ui.showMenu(); $('modal').querySelector('[data-a="audio"]').focus({ preventScroll: true }); }
+        else { G.paused = wasPaused; $('soundBtn').focus({ preventScroll: true }); }
+      }
+    });
+    $('audio-master').onchange = e => {
+      if (e.target.checked === muted) toggleSound();
+      $('audio-master-state').value = muted ? 'Off' : 'On';
+    };
+    $('audio-music').onchange = e => {
+      LJ.audioInit();
+      if (e.target.checked !== LJ.music.isOn()) LJ.music.toggle();
+      $('audio-music-state').value = LJ.music.isOn() ? 'On' : 'Off';
+    };
+    $('modal').querySelectorAll('[data-volume]').forEach(input => {
+      input.oninput = () => {
+        LJ.audioInit(); LJ.setVolume(input.dataset.volume, Number(input.value) / 100);
+        input.parentElement.querySelector('output').value = input.value + '%';
+      };
+    });
+  };
+
+  ui.showCredits = function (fromMenu = false) {
+    const welcome = LJ.title.isOpen();
+    if (modalOpen() || (!welcome && !fromMenu)) return;
+    if (welcome) $('title').inert = true;
+    modal('<h1>Credits</h1><p>Made by <a href="https://koenvangilst.nl/" target="_blank" rel="noopener">Koen van Gilst</a>.</p>' +
+      '<p>Koen &amp; Tibo for play testing the game and the voice recordings.</p>' +
+      '<p><a href="https://github.com/vnglst/lumber-jack-2026" target="_blank" rel="noopener">Source code</a></p>' +
+      '<p>Playful animal voices adapted from <a href="https://opengameart.org/content/80-cc0-creature-sfx" target="_blank" rel="noopener">80 CC0 creature SFX</a> by rubberduck, under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0 1.0</a>.</p>' +
+      '<p class="fine">Shortened, pitched and softened for this forest. Human dialogue and forest-folk voices were recorded for Lumberjack.</p>' +
+      '<button>Back</button>', () => {
+        $('modal').classList.remove('welcome');
+        if (welcome) { $('title').inert = false; G.paused = true; $('creditsBtn').focus({ preventScroll: true }); }
+        else ui.showMenu();
+      });
+    $('modal').classList.toggle('welcome', welcome);
   };
 
   ui.showFinds = function () {
@@ -543,11 +634,11 @@
     '<li><b>Mind the forest.</b> The map is unexplored and it bites back. Jacks heal near home, fall back there by themselves when badly hurt, and learn through work. Forest villages defend themselves; destroying a hut stops its reinforcements for good.</li></ul>' +
     '<table class="keys"><tr><td></td><th>Mouse</th><th>Touch</th><th>Keys</th></tr>' +
     row('Select', 'Click a unit, drag a box. Shift adds. Double-click takes every unit of that kind.', 'Tap a unit. Double-tap takes every unit of that kind.', 'Ctrl/⌘+A all jacks. Shift+1–9 saves a group, 1–9 recalls it.') +
-    row('Order', 'Click or right-click a tree, animal, hut, a glinting ore rock, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things.', 'X stops. Esc deselects.') +
+    row('Order', 'Click or right-click a tree, animal, hut, a glinting ore rock, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things. Selected-unit icons: saw lumber, cart to market, square to stop, × to deselect.', 'X stops. Esc deselects.') +
     row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
     row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch.', '− and +') +
-    row('Menus', 'Shop is in the toolbar, ≡ pauses.', 'Shop is in the toolbar, ≡ pauses.', 'B shop. Esc backs out one step, then pauses.') +
-    '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels. <a href="credits.html" target="_blank" rel="noopener">Wildlife audio credits</a>.</p><button>Back to work</button>');
+    row('Menus', 'Shop is in the toolbar. ≡ pauses. Sound settings opens music/sound switches and volumes; ♪ opens it directly.', 'Camp opens resources, progress and tips. Tap the selected unit’s name for status and XP. Market opens order details. Map shows the minimap and zoom buttons. ≡ → Sound settings (or ♪ in Camp) opens music/sound switches and volumes.', 'B shop. Esc backs out one step, then pauses.') +
+    '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels.</p><button>Back to work</button>');
   };
 
   // The opening screen. It is shown once, at boot, over a fresh game that is paused and waiting.
@@ -701,10 +792,15 @@
       experience = '<div class="experience" title="Earn XP by felling trees, processing lumber and delivering goods. Higher ranks improve work, carrying and walking.">' +
         rank.name + ' · ' + Math.floor(u.xp || 0) + (next ? '/' + next.xp + ' XP' : ' XP · max') + (bonus ? ' · +' + bonus + '% work' : '') + '</div>';
     }
+    const action = (act, label, path, tip) => '<button data-act="' + act + '" title="' + (tip || label) + '" aria-label="' + label + '">' +
+      '<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">' + path + '</svg><span class="action-label">' + (act === 'desel' ? '✕' : label) + '</span></button>';
     let btn = '';
-    if (has('jack') && G.count.sawmill) btn += '<button data-act="saw">Saw lumber</button>';
-    if (has('jack') || has('truck')) btn += '<button data-act="sell">' + (has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market') + '</button>';
-    p.innerHTML = '<div><div>' + title + '</div><div class="st">' + st + '</div>' + experience + '</div>' + btn + '<button data-act="stop">Stop</button><button data-act="desel">✕</button>';
+    if (has('jack') && G.count.sawmill) btn += action('saw', 'Saw lumber', '<path d="M3 9h13l5 4-3 5-3-3-2 2-2-2-2 2-2-2-2 2-2-2zM17 11l2 2-1 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>');
+    if (has('jack') || has('truck')) btn += action('sell', has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market', '<path d="M2 4h3l3 12h11l3-9H6M9 11h11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="10" cy="20" r="2" fill="currentColor"/><circle cx="18" cy="20" r="2" fill="currentColor"/>');
+    btn += action('stop', 'Stop', '<path d="M6 6h12v12H6z" fill="currentColor"/>', 'Stop the selected units (X)');
+    btn += action('desel', 'Deselect', '<path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.5"/>', 'Deselect (Esc)');
+    p.innerHTML = '<button class="unit-peek mobile-only" data-act="details" title="Selected unit details and experience" aria-label="Selected unit details" aria-expanded="' + $('game').classList.contains('unit-details-open') + '"><span>' + title + '</span><small>' + st + '</small></button>' +
+      '<div class="unit-info"><div>' + title + '</div><div class="st">' + st + '</div>' + experience + '</div><div class="unit-actions">' + btn + '</div>';
     const pic = iconCanvas(S.icons[ICON_OF[u.kind]], 12);
     pic.title = 'Show on the map (F)'; pic.style.cursor = 'pointer'; pic.onclick = () => ui.centerOnSelection();
     p.prepend(pic);
@@ -737,6 +833,13 @@
 
   function refreshOrder() {
     const o = G.order, el = $('order');
+    const market = $('marketBtn');
+    market.hidden = !o;
+    if (o) {
+      const label = o.state === 'offer' ? 'Market offer · ' + Math.ceil(o.ttl) + 's' : 'Order ' + (o.got || 0) + '/' + o.qty + ' · ' + mmss(o.time);
+      if (market.textContent !== label) market.textContent = label;
+      market.classList.toggle('urgent', o.state === 'active' && o.time < 30);
+    } else if ($('game').classList.contains('order-open')) setMobilePanel('');
     const sig = !o ? '' : o.state + o.got + ':' + Math.ceil(o.state === 'offer' ? o.ttl : o.time);
     if (sig === orderSig) return;
     orderSig = sig;
@@ -785,7 +888,11 @@
     mctx.strokeRect(Math.round(G.cam.x / TS) + 0.5, Math.round(G.cam.y / TS) + 0.5, Math.round(vwW() / TS), Math.round(vwH() / TS));
   }
 
-  ui.reset = function () { panelSig = shopSig = orderSig = 'x'; groups = {}; ui.pings.length = 0; $('overlay').innerHTML = ''; ui.introLine(null); };
+  ui.reset = function () {
+    panelSig = shopSig = orderSig = 'x'; groups = {}; ui.pings.length = 0;
+    $('overlay').innerHTML = ''; ui.introLine(null);
+    setMobilePanel(''); closeMap(); $('game').classList.remove('unit-details-open');
+  };
 
   ui.tick = function (dt) {
     const sp = 260 * dt / (zoom / 3);
@@ -812,8 +919,10 @@
     set($('c-money').querySelector('b'), G.money.toLocaleString('en-US'));
     $('c-money').classList.toggle('debt', G.money < 0);
     set($('c-wood').querySelector('b'), G.wood);
+    $('c-wood').classList.toggle('stockpiling', G.stockpile);
     $('stockBtn').style.display = '';
     set($('stockBtn'), G.stockpile ? 'Stockpiling' : 'Selling');
+    set($('mobileStockBtn'), G.stockpile ? 'Stockpiling · resume selling' : 'Selling · stockpile wood');
     $('c-lumber').style.display = G.village ? '' : 'none';
     set($('c-lumber').querySelector('b'), G.lumber);
     $('c-stone').style.display = G.stone > 0 || LJ.countKind('dozer') ? '' : 'none';
@@ -831,6 +940,8 @@
     set($('quota'), quota && !G.levelDone ? '€' + Math.min(G.earned, quota).toLocaleString('en-US') + ' / ' + quota.toLocaleString('en-US') + ' earned' : '');
     $('lvlFill').style.width = 'calc(' + Math.min(1, G.cleared / goal) * 100 + '% - 4px)';
     set($('hint'), hint());
+    const nextWave = LJ.combat.nextWaveIn();
+    $('hint').classList.toggle('urgent', !!(G.place || G.wallMode || G.wave.active && !G.wave.active.retreating || G.money < 0 || LJ.noCrew() || nextWave !== null && nextWave < 30));
     refreshPanel(); refreshShop(); refreshOrder();
   };
 
