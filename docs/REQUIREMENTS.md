@@ -72,6 +72,13 @@ How to read it:
 | 59 | 15 Nov | Creator and source-code credits | Active |
 | 60 | 15 Nov | Agent notes from the interface, playtest and refactor sessions | Active |
 | 61 | 15 Nov | Palisades block every unit | Active |
+| 62 | 15 Nov | Credits open inside the welcome screen | Refined by 63 |
+| 63 | 15 Nov | Credits also open from settings | Active |
+| 64 | 15 Nov | Separate music and effects volumes | Active |
+| 65 | 15 Nov | Game sequence testing playground | Active |
+| 66 | 15 Nov | Wildlife originals in the recording booth | Active |
+| 67 | 15 Nov | Compact mobile Jack actions | Active |
+| 68 | 15 Nov | Play testing and voice recording credits | Active |
 
 ---
 
@@ -711,6 +718,8 @@ How to read it:
 
 ## 55. Playful animal voices (15 Nov 2026)
 
+**Status:** credits access and presentation are superseded by §62 and §63; animal audio and provenance remain active.
+
 > Not real sounds, playful and suitable for this game
 
 - Use expressive cartoon animal voices that suit the game's pixel art and humor.
@@ -744,6 +753,8 @@ How to read it:
 
 ## 59. Creator and source-code credits (15 Nov 2026)
 
+**Status:** the standalone credits page and welcome footer links are replaced by the popup in §62 and §63; creator and source-code links remain in that popup.
+
 > Add credits with link to my website and source code.
 
 - Link to Koen van Gilst's website and the game's source repository from the welcome screen and credits page.
@@ -771,3 +782,65 @@ How to read it:
 - *Decision: refuse placement on occupied tiles so construction cannot embed a unit in a solid wall. Existing saved walls gain the blocking behavior without a save-format change; destroying a section opens the route again.*
 - *Decision: the ending cancels palisade placement and prevents new wall construction, keeping the visitor's planned route clear.*
 - Bump the offline shell for the changed movement and interface scripts. Regression checks cover every player unit kind, wildlife, enemies, live route obstruction, deliberate gaps and saved walls.
+
+## 62. Credits open inside the welcome screen (15 Nov 2026)
+
+> The credits are a dead link, should be an in-game popup, only on the welcome screen. Don't show credits anywhere else. Only as in welcome / new game screen.
+
+**Status:** §63 adds access from the in-game settings menu.
+
+- Replace navigation to a standalone page with a credits button and an in-game popup on the welcome screen.
+- Keep creator, source-code and licensed animal-audio attribution inside the popup; remove the credits link from gameplay Help and remove the standalone page.
+- *Decision: reuse the game's dialog style. The welcome screen stays visible behind the popup and gameplay stays paused; Back and Escape close it and return focus to Credits. Keep developer-facing source and processing details in `audio/CREDITS.md`.*
+
+## 63. Credits also open from settings (15 Nov 2026)
+
+> There should also be a credits popup from the settings menu in-game.
+
+- Offer the same credits popup from the in-game pause/settings menu, in addition to the welcome screen.
+- *Decision: closing credits from settings returns to the paused settings menu. Credits have no separate page or gameplay Help link.*
+- **Supersedes** §62's restriction to the welcome screen alone.
+
+## 64. Separate music and effects volumes (15 Nov 2026)
+
+> There should be settings to change the volume of the music and the in-game sound fx.
+
+- Add independently adjustable Music and Sound effects volume sliders to settings, with immediate feedback and percentage values.
+- *Decision: the effects slider controls synthesized effects, voices and animal recordings together. Music and its echo use their own volume bus; the existing global mute still silences both buses. Default 100% preserves the existing mix.*
+- *Decision: remember both values in browser preferences (`lumberjack-audio-volume`), independently of campaign saves and the existing music on/off preference. Clamp values to 0–100%, tolerate blocked/invalid storage, and smooth changes over 20 ms to avoid clicks.*
+- Refresh the offline shell for the popup, settings and mixer changes; the credits popup works offline without fetching a separate page.
+
+## 65. Game sequence testing playground (15 Nov 2026)
+
+> I want to review important sequences of the game, like end sequence, different levels etc. Fighting different animals, locals. etc. Can you create a testing playground where I can review and test these.
+
+- Provide a playground for reviewing and playing important sequences, levels, animal fights and encounters with locals.
+- *Decision: `playground.html` runs disposable scenarios in a separate frame with the real game scripts and simulation. It omits the save, normal boot and site scripts, so loading, replaying, finishing and restarting scenarios never loads, overwrites or clears the normal campaign save.*
+- *Decision: include the opening drive/tutorial, levels 1–10 with their announcements and threshold clearing, a wolf, a three-wolf pack, a bear, hut defenders, a raiding party and the complete ending. Offer seed, equipment, replay, pause and collapsible controls. Level fixtures have review supplies and a suitable village tier; ordinary shop unlock rules remain intact.*
+- Keep the playground separate from normal game menus to protect the ending surprise. Document its address and show it when the local server starts. Like the booth, it requires a connection and is outside the offline shell.
+- *Decision: reuse the ordinary animal creation logic without changing its balance or random draws. Campaign reports for seeds 1, 2 and 3 remain byte-identical to the pinned base.*
+
+## 66. Wildlife originals in the recording booth (15 Nov 2026)
+
+> In voices I want to see the newly added sounds from the internet, but also be able to record my own. Especially for the wild life sounds.
+
+- Make downloaded wildlife sounds easy to find, preview and replace with personal recordings.
+- *Decision: add a Wildlife sounds filter, animal names, original-source/CC0 links, Internet original and Current game sound previews. Preserve the eight downloaded adaptations in `audio/voice-defaults/`; Use original restores one through the existing local recording API without removing personal takes.*
+- Personal recordings use the existing microphone/take workflow and the same game cue keys. Preserve current recordings, including recordings already edited outside this task. Audio files and the recording booth remain network-only.
+- *Decision: isolated browser checks exercise recording with a simulated microphone, replacing a sound and restoring its original. API writes are intercepted to avoid changing current recordings. All originals decode; nobody listened to the sounds or tested a physical microphone.*
+
+## 67. Compact mobile Jack actions (15 Nov 2026)
+
+> Can you make the action tab of the jack compacter by using icons, on mobile.
+
+- Compact the selected Jack's action panel on mobile with icons for sawing, hauling, stopping and deselecting.
+- *Decision: inline vector symbols use the existing painted controls, with accessible names, tooltips and a Help explanation. Keep desktop text, status and XP. Use 40×44-pixel action buttons in portrait and short touch landscape layouts.*
+- Check opening, full late-game HUD, active market offer, shop and actual Stop behavior at narrow portrait, landscape and desktop sizes.
+
+## 68. Play testing and voice recording credits (15 Nov 2026)
+
+> To the credits add: Koen & Tibo for play testing the game and the voice recordings.
+
+- Credit Koen & Tibo for play testing the game and the voice recordings.
+- *Decision: add the requested wording to the shared credits popup, visible from the welcome screen and in-game settings.*
+- Refresh the offline shell to v12 for the combined game-script, mobile-interface and credits changes. Browser checks cover offline boot and campaign save restoration.

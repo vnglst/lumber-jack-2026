@@ -364,14 +364,20 @@
 
   function bindKeys() {
     addEventListener('keydown', e => {
+      if (modalOpen()) { // Escape takes a dialog's way out; Enter presses the focused button by itself
+        const m = $('modal'), out = m.querySelector('[data-esc]');
+        if (e.key === 'Escape' && out) { e.preventDefault(); out.click(); }
+        if (e.key === 'Tab') {
+          const controls = [...m.querySelectorAll('a[href], button:not([disabled]), input:not([disabled])')].filter(el => el.getClientRects().length);
+          const first = controls[0], last = controls[controls.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+        return;
+      }
       if (LJ.title.isOpen()) return;
       const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
       if (!mod) keys[k] = true;
-      if (modalOpen()) { // Escape takes a dialog's way out; Enter presses the focused button by itself
-        const out = $('modal').querySelector('[data-esc]');
-        if (e.key === 'Escape' && out) out.click();
-        return;
-      }
       if (G.cine) { if ((e.key === ' ' || e.key === 'Enter') && G.cine.phase === 'talk') LJ.ending.next(); return; }
       if (G.arrival) {
         if ((e.key === ' ' || e.key === 'Enter') && !G.paused) { e.preventDefault(); LJ.skipIntroLine(); }
@@ -464,6 +470,7 @@
     $('menuBtn').onclick = () => ui.showMenu();
     $('findsBtn').onclick = () => { if (!G.cine && !G.arrival) ui.showFinds(); };
     $('helpBtn').onclick = () => { if (!G.cine) ui.showHelp(); };
+    $('creditsBtn').onclick = () => ui.showCredits();
   }
 
   function toggleSound() {
@@ -480,6 +487,8 @@
   function dialog(html, acts) {
     const m = $('modal');
     m.innerHTML = '<div class="dialog" role="dialog" aria-modal="true">' + html + '</div>';
+    const heading = m.querySelector('h1');
+    if (heading) { heading.id = 'dialog-title'; m.firstElementChild.setAttribute('aria-labelledby', heading.id); }
     m.classList.add('open');
     G.paused = true;
     const buttons = [...m.querySelectorAll('button')];
@@ -504,14 +513,44 @@
       '<button data-a="help" class="ghost">How to play</button>' +
       '<button data-a="sound" class="ghost">Sound: ' + (muted ? 'off' : 'on') + '</button>' +
       '<button data-a="music" class="ghost">Music: ' + (LJ.music.isOn() ? 'on' : 'off') + '</button>' +
+      '<button data-a="credits" class="ghost" title="Creator and audio credits">Credits</button>' +
       '<button data-a="fresh" class="ghost">New game</button></div>' +
+      '<fieldset class="audio-settings"><legend>Volume</legend>' + ['music', 'effects'].map(kind => {
+        const name = kind === 'music' ? 'Music' : 'Sound effects', value = Math.round(LJ.volumeOf(kind) * 100);
+        return '<div class="volume-control"><label for="volume-' + kind + '">' + name + ' volume</label><output for="volume-' + kind + '">' + value + '%</output>' +
+          '<input id="volume-' + kind + '" data-volume="' + kind + '" type="range" min="0" max="100" step="1" value="' + value + '"></div>';
+      }).join('') + '</fieldset>' +
       '<p class="fine">The game saves itself as you play.</p>', {
       help: ui.showHelp,
       sound: () => { toggleSound(); ui.showMenu(); },
       music: () => { LJ.music.toggle(); ui.showMenu(); },
+      credits: () => ui.showCredits(true),
       fresh: () => dialog('<h1>Start a new game?</h1><p>This forest and everything you built in it will be replaced by a fresh one.</p>' +
         '<div class="row"><button data-a="yes">Start a new game</button><button data-a="no" class="ghost" data-esc>Keep playing</button></div>', { yes: ui.restart, no: ui.showMenu })
     });
+    $('modal').querySelectorAll('[data-volume]').forEach(input => {
+      input.oninput = () => {
+        LJ.audioInit(); LJ.setVolume(input.dataset.volume, Number(input.value) / 100);
+        input.parentElement.querySelector('output').value = input.value + '%';
+      };
+    });
+  };
+
+  ui.showCredits = function (fromMenu = false) {
+    const welcome = LJ.title.isOpen();
+    if (modalOpen() || (!welcome && !fromMenu)) return;
+    if (welcome) $('title').inert = true;
+    modal('<h1>Credits</h1><p>Made by <a href="https://koenvangilst.nl/" target="_blank" rel="noopener">Koen van Gilst</a>.</p>' +
+      '<p>Koen &amp; Tibo for play testing the game and the voice recordings.</p>' +
+      '<p><a href="https://github.com/vnglst/lumber-jack-2026" target="_blank" rel="noopener">Source code</a></p>' +
+      '<p>Playful animal voices adapted from <a href="https://opengameart.org/content/80-cc0-creature-sfx" target="_blank" rel="noopener">80 CC0 creature SFX</a> by rubberduck, under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0 1.0</a>.</p>' +
+      '<p class="fine">Shortened, pitched and softened for this forest. Human dialogue and forest-folk voices were recorded for Lumberjack.</p>' +
+      '<button>Back</button>', () => {
+        $('modal').classList.remove('welcome');
+        if (welcome) { $('title').inert = false; G.paused = true; $('creditsBtn').focus({ preventScroll: true }); }
+        else ui.showMenu();
+      });
+    $('modal').classList.toggle('welcome', welcome);
   };
 
   ui.showFinds = function () {
@@ -534,8 +573,8 @@
     row('Order', 'Click or right-click a tree, animal, hut, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things. Selected-unit icons: saw lumber, cart to market, square to stop, × to deselect.', 'X stops. Esc deselects.') +
     row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
     row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch.', '− and +') +
-    row('Menus', 'Shop is in the toolbar, ≡ pauses.', 'Shop is in the toolbar, ≡ pauses.', 'B shop. Esc backs out one step, then pauses.') +
-    '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels. <a href="credits.html" target="_blank" rel="noopener">Wildlife audio credits</a>.</p><button>Back to work</button>');
+    row('Menus', 'Shop is in the toolbar. ≡ pauses, with volume settings.', 'Shop is in the toolbar. ≡ pauses, with volume settings.', 'B shop. Esc backs out one step, then pauses.') +
+    '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels.</p><button>Back to work</button>');
   };
 
   // The opening screen. It is shown once, at boot, over a fresh game that is paused and waiting.

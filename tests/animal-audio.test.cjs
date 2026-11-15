@@ -5,12 +5,16 @@ const path = require('node:path');
 const { game, step } = require('./harness.cjs');
 
 const recordings = ['wolf_howl', 'wolf_snarl', 'wolf_yelp', 'bear_roar', 'bear_groan', 'reindeer_call', 'squirrel_call', 'swan_call'];
-test('all animal cues have short, non-clipping, mono cartoon recordings in the manifest and booth', () => {
+test('all animal cues are recordable and retain short, non-clipping cartoon originals', () => {
   const lj = game(), manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../audio/voice/manifest.json')));
   const booth = lj.voiceGroups().flatMap(g => g.items.map(i => i.key));
   for (const key of recordings) {
     assert.ok(manifest[key]); assert.ok(booth.includes(key));
-    const wav = fs.readFileSync(path.join(__dirname, '../audio/voice/' + key + '.wav'));
+    const current = fs.readFileSync(path.join(__dirname, '../audio/voice/' + key + '.wav'));
+    assert.equal(current.toString('ascii', 0, 4), 'RIFF');
+    assert.equal(current.toString('ascii', 8, 12), 'WAVE');
+    // Personal takes may have a different mix; the downloaded originals retain their mastering limits.
+    const wav = fs.readFileSync(path.join(__dirname, '../audio/voice-defaults/' + key + '.wav'));
     assert.equal(wav.toString('ascii', 0, 4), 'RIFF');
     assert.equal(wav.readUInt16LE(22), 1);
     const rate = wav.readUInt32LE(24);
