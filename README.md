@@ -30,7 +30,9 @@ Publish the repository as a static site at `https://lumber-jack.koenvangilst.nl/
 
 `sprites.html` shows every sprite in the game.
 
-`voices.html` is the recording booth: every line the characters say (the jacks, the vehicles, Mr. Grant, the war cries of the forest folk) is listed, and you record it with a microphone of your choice. Press **Keep** on the best take and the game plays it from then on; lines without a recording stay silent text bubbles. Recordings are saved as `audio/voice/*.wav` (needs `make` running).
+`playground.html` is a testing playground for reviewing the arrival, levels, combat and ending. Open it with `make` running. Its scenarios run separately from your saved campaign; ending previews contain spoilers.
+
+`voices.html` is the recording booth: every line the characters say (the jacks, the vehicles, Mr. Grant, the war cries of the forest folk) is listed, and you record it with a microphone of your choice. Use [**Wildlife sounds**](voices.html#wildlife) to find the animal cues, preview the downloaded originals and record replacements. **Use original** restores a downloaded take. Press **Use this** on the best take and the game plays it from then on; lines without a recording stay silent text bubbles. Recordings are saved as `audio/voice/*.wav` (needs `make` running).
 
 
 ## Layout
@@ -39,6 +41,7 @@ Publish the repository as a static site at `https://lumber-jack.koenvangilst.nl/
 index.html     the game
 sprites.html   sprite sheet
 voices.html    recording booth for voice lines
+playground.html scenario playground for reviewing the game
 css/           styles
 js/            game code (loaded in order by index.html)
 audio/voice/   voice recordings made in the booth

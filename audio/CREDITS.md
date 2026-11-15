@@ -22,4 +22,6 @@ These are playful, performed creature voices assigned to the game's animals, not
 
 All clips were converted to mono 22,050 Hz PCM WAV, filtered at 100–8,000 Hz, normalized to a peak below −6 dBFS, and given short fades to avoid clicks. Each lasts 0.28–1.34 seconds. The game adds its existing slight pitch variation; peaceful wildlife plays more quietly than combat cues.
 
+The eight adaptations are also preserved unchanged under `audio/voice-defaults/`. The recording booth can preview these originals alongside the current game sound, replace a cue with a microphone take, or restore its original through the local save API. The source, CC0 license and processing above apply to both copies.
+
 Human dialogue and forest-folk recordings are unchanged. The recording booth may replace any of these animal voices later; the credits above describe the bundled versions. Player-facing credits and previews are in [credits.html](../credits.html), linked from Help.
