@@ -170,11 +170,20 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
 .dialog p.fine { font-size: 12px; color: var(--chalk); }
 .dialog a { color: var(--ochre); text-underline-offset: 3px; }
 .dialog a:focus-visible { outline: 2px solid var(--ochre); outline-offset: 3px; }
-.audio-settings { border: 0; border-top: 2px solid var(--red-deep); margin-top: 16px; padding: 12px 0 0; }
-.audio-settings legend { padding: 0 8px; color: var(--ochre); font-size: 14px; }
+.audio-settings { margin: 14px 0; text-align: left; }
+.audio-toggle { display: grid; grid-template-columns: 1fr auto 28px; align-items: center; gap: 10px; min-height: 44px; border-bottom: 2px solid var(--red-deep); margin-bottom: 10px; }
+.audio-toggle label { padding: 10px 0; cursor: pointer; }
+.audio-toggle output { color: var(--chalk); font-size: 14px; }
+.audio-toggle input { width: 24px; height: 24px; accent-color: var(--spruce); cursor: pointer; }
 .volume-control { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin: 8px 0 14px; text-align: left; font-size: 14px; }
 .volume-control output { color: var(--chalk); }
 .volume-control input { grid-column: 1 / -1; width: 100%; min-height: 24px; accent-color: var(--ochre); cursor: pointer; }
+@media (min-width: 600px) and (max-height: 500px) {
+  .dialog:has(.audio-settings) { padding: 16px 20px; }
+  .audio-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; margin: 8px 0; }
+  .audio-toggle, .audio-settings .volume-control { margin: 0; }
+  .audio-settings p.fine { grid-column: 1 / -1; margin: 0; }
+}
 .dialog .menu { display: flex; flex-direction: column; gap: 8px; max-width: 260px; margin: 14px auto 10px; }
 .dialog .menu button { margin: 0; }
 /* The controls table in How to play. Columns for input the device doesn't have are left out. */

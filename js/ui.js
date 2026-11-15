@@ -496,7 +496,7 @@
     $('stockBtn').onclick = $('mobileStockBtn').onclick = () => { G.stockpile = !G.stockpile; LJ.sfx('click'); ui.toast(G.stockpile ? 'Wood is now stockpiled at the camp' : 'Wood is now sold at the market'); };
     $('resourcesBtn').onclick = () => setMobilePanel($('game').classList.contains('resources-open') ? '' : 'resources');
     $('marketBtn').onclick = () => setMobilePanel($('game').classList.contains('order-open') ? '' : 'order');
-    $('soundBtn').onclick = toggleSound;
+    $('soundBtn').onclick = () => ui.showAudioSettings();
     $('menuBtn').onclick = () => ui.showMenu();
     $('findsBtn').onclick = () => { if (!G.cine && !G.arrival) ui.showFinds(); };
     $('helpBtn').onclick = () => { if (!G.cine) ui.showHelp(); };
@@ -507,7 +507,7 @@
     LJ.audioInit();
     muted = LJ.toggleMute();
     $('soundBtn').style.opacity = muted ? 0.4 : 1;
-    $('soundBtn').title = muted ? 'Sound is off' : 'Sound is on';
+    $('soundBtn').title = 'Sound settings (all sound ' + (muted ? 'off' : 'on') + ')';
   }
 
   // ---------- Dialogs ----------
@@ -541,23 +541,45 @@
     dialog('<h1>Paused</h1><div class="menu">' +
       '<button data-a="resume" data-esc>Back to work</button>' +
       '<button data-a="help" class="ghost">How to play</button>' +
-      '<button data-a="sound" class="ghost">Sound: ' + (muted ? 'off' : 'on') + '</button>' +
-      '<button data-a="music" class="ghost">Music: ' + (LJ.music.isOn() ? 'on' : 'off') + '</button>' +
+      '<button data-a="audio" class="ghost" title="Music, sound and volume controls">Sound settings</button>' +
       '<button data-a="credits" class="ghost" title="Creator and audio credits">Credits</button>' +
       '<button data-a="fresh" class="ghost">New game</button></div>' +
-      '<fieldset class="audio-settings"><legend>Volume</legend>' + ['music', 'effects'].map(kind => {
-        const name = kind === 'music' ? 'Music' : 'Sound effects', value = Math.round(LJ.volumeOf(kind) * 100);
-        return '<div class="volume-control"><label for="volume-' + kind + '">' + name + ' volume</label><output for="volume-' + kind + '">' + value + '%</output>' +
-          '<input id="volume-' + kind + '" data-volume="' + kind + '" type="range" min="0" max="100" step="1" value="' + value + '"></div>';
-      }).join('') + '</fieldset>' +
       '<p class="fine">The game saves itself as you play.</p>', {
       help: ui.showHelp,
-      sound: () => { toggleSound(); ui.showMenu(); },
-      music: () => { LJ.music.toggle(); ui.showMenu(); },
+      audio: () => ui.showAudioSettings(true),
       credits: () => ui.showCredits(true),
       fresh: () => dialog('<h1>Start a new game?</h1><p>This forest and everything you built in it will be replaced by a fresh one.</p>' +
         '<div class="row"><button data-a="yes">Start a new game</button><button data-a="no" class="ghost" data-esc>Keep playing</button></div>', { yes: ui.restart, no: ui.showMenu })
     });
+  };
+
+  ui.showAudioSettings = function (fromMenu = false) {
+    if (modalOpen() || LJ.title.isOpen()) return;
+    const wasPaused = G.paused;
+    const toggle = (id, name, on) => '<div class="audio-toggle"><label for="audio-' + id + '">' + name + '</label>' +
+      '<output id="audio-' + id + '-state" for="audio-' + id + '">' + (on ? 'On' : 'Off') + '</output>' +
+      '<input id="audio-' + id + '" type="checkbox"' + (on ? ' checked' : '') + '></div>';
+    dialog('<h1>Sound settings</h1><div class="audio-settings">' +
+      toggle('master', 'All sound', !muted) + toggle('music', 'Music', LJ.music.isOn()) +
+      ['music', 'effects'].map(kind => {
+        const name = kind === 'music' ? 'Music' : 'Sound effects', value = Math.round(LJ.volumeOf(kind) * 100);
+        return '<div class="volume-control"><label for="volume-' + kind + '">' + name + ' volume</label><output for="volume-' + kind + '">' + value + '%</output>' +
+          '<input id="volume-' + kind + '" data-volume="' + kind + '" type="range" min="0" max="100" step="1" value="' + value + '"></div>';
+      }).join('') + '<p class="fine">Sound effects include voices and wildlife.</p></div><button data-a="back" data-esc>Back</button>', {
+      back: () => {
+        if (fromMenu) { ui.showMenu(); $('modal').querySelector('[data-a="audio"]').focus({ preventScroll: true }); }
+        else { G.paused = wasPaused; $('soundBtn').focus({ preventScroll: true }); }
+      }
+    });
+    $('audio-master').onchange = e => {
+      if (e.target.checked === muted) toggleSound();
+      $('audio-master-state').value = muted ? 'Off' : 'On';
+    };
+    $('audio-music').onchange = e => {
+      LJ.audioInit();
+      if (e.target.checked !== LJ.music.isOn()) LJ.music.toggle();
+      $('audio-music-state').value = LJ.music.isOn() ? 'On' : 'Off';
+    };
     $('modal').querySelectorAll('[data-volume]').forEach(input => {
       input.oninput = () => {
         LJ.audioInit(); LJ.setVolume(input.dataset.volume, Number(input.value) / 100);
@@ -603,7 +625,7 @@
     row('Order', 'Click or right-click a tree, animal, hut, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things. Selected-unit icons: saw lumber, cart to market, square to stop, × to deselect.', 'X stops. Esc deselects.') +
     row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
     row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch.', '− and +') +
-    row('Menus', 'Shop is in the toolbar. ≡ pauses, with volume settings.', 'Camp opens resources, progress and tips. Tap the selected unit’s name for status and XP. Market opens order details. Map shows the minimap and zoom buttons. Shop and ≡ open their menus.', 'B shop. Esc backs out one step, then pauses.') +
+    row('Menus', 'Shop is in the toolbar. ≡ pauses. Sound settings opens music/sound switches and volumes; ♪ opens it directly.', 'Camp opens resources, progress and tips. Tap the selected unit’s name for status and XP. Market opens order details. Map shows the minimap and zoom buttons. ≡ → Sound settings (or ♪ in Camp) opens music/sound switches and volumes.', 'B shop. Esc backs out one step, then pauses.') +
     '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels.</p><button>Back to work</button>');
   };
 

@@ -74,12 +74,13 @@ How to read it:
 | 61 | 15 Nov | Palisades block every unit | Active |
 | 62 | 15 Nov | Credits open inside the welcome screen | Refined by 63 |
 | 63 | 15 Nov | Credits also open from settings | Active |
-| 64 | 15 Nov | Separate music and effects volumes | Active |
+| 64 | 15 Nov | Separate music and effects volumes | Refined by 70 |
 | 65 | 15 Nov | Game sequence testing playground | Active |
 | 66 | 15 Nov | Wildlife originals in the recording booth | Active |
 | 67 | 15 Nov | Compact mobile Jack actions | Active |
 | 68 | 15 Nov | Play testing and voice recording credits | Active |
 | 69 | 15 Nov | A clearer mobile game interface | Active |
+| 70 | 15 Nov | Dedicated sound settings menu | Active |
 
 ---
 
@@ -804,6 +805,8 @@ How to read it:
 
 ## 64. Separate music and effects volumes (15 Nov 2026)
 
+**Status:** §70 moves the controls to a dedicated sound settings submenu; mixer behavior and preferences remain active.
+
 > There should be settings to change the volume of the music and the in-game sound fx.
 
 - Add independently adjustable Music and Sound effects volume sliders to settings, with immediate feedback and percentage values.
@@ -857,3 +860,12 @@ How to read it:
 - *Decision: consolidate the compact breakpoint across portrait and short touch landscape. Give the Shop a dedicated scrollable sheet with a sticky close control and 44-pixel purchase targets. Preserve arrival/ending mute access, safe-area padding, keyboard labels and disclosure state. No rules or save-format changes.*
 - Browser checks cover 320/390-pixel portrait, 844-pixel landscape, 1024-pixel short touch landscape and desktop, including the opening, full late-game HUD, market offers, stockpiling, XP, navigation and shop. A focused layout check fails against the previous version (166-pixel HUD versus 52 pixels after the refactor). Physical phone testing and judgments about game feel remain for a person.
 - Bump the offline shell to v13 for the mobile markup, styles and interface script.
+
+## 70. Dedicated sound settings menu (15 Nov 2026)
+
+> Move music and sound settings to seperate menu. On/off is part of that. Refactor ui.
+
+- Move music and sound controls, including on/off switches, into a separate menu and simplify the parent settings UI.
+- *Decision: the pause menu has one Sound settings entry. Its submenu contains the existing All sound/global mute and Music switches plus the independent Music and Sound effects volume sliders. Sound effects include voices and wildlife. Existing mixer behavior and saved preferences stay unchanged.*
+- *Decision: ♪ opens the same settings dialog directly, including during the intro and ending, instead of toggling mute immediately. Escape/Back returns one layer to the paused parent menu, or to the original gameplay/intro/ending state for direct entry, restoring focus to the entry control. Switches and sliders update in place without rebuilding the dialog.*
+- Keep mobile and desktop layouts compact and accessible, document the new route in Help, and refresh the offline shell to v14. Browser checks exercise switches, sliders, persistence, pause/return behavior and narrow portrait/landscape layouts; nobody listened to the audio.
