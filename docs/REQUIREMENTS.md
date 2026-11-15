@@ -64,6 +64,7 @@ How to read it:
 | 51 | 15 Nov | Full-campaign playtest: dead ends removed, losses made recoverable | Active |
 | 52 | 15 Nov | Codebase review and refactor | Active |
 | 53 | 15 Nov | Sourced animal sound effects | Active |
+| 54 | 15 Nov | More efficient agent instructions | Active |
 | 55 | 15 Nov | Playful animal voices | Active |
 
 ---
@@ -691,6 +692,16 @@ How to read it:
 - Replace existing animal recordings where suitable replacements are found.
 - Keep source, creator, license and adaptation details with the distributed recordings.
 - **Status:** §55 specifies the playful cartoon style.
+
+## 54. More efficient agent instructions (15 Nov 2026)
+
+> review last sessions and improve agentic instructions to be more efficient next time
+
+- Review recent game-development sessions and improve repository instructions using observed friction.
+- Preserve the game's design constraints and the chronological requirements log.
+- *Decision: update the actual test commands and use `index.html` as the script-order source of truth, replacing the stale duplicated list. Keep `CLAUDE.md` as an include of `AGENTS.md`.*
+- *Decision: assign shared-file ownership and serial main integration when delegating; handoffs carry commits, validation and decisions. Reuse already-read context and repeat checks when changes justify them.*
+- *Decision: include targeted browser, offline-cache and legacy-save checks for the integration problems observed in the recent logistics/forest/PWA and interface/navigation/music sessions.*
 
 ## 55. Playful animal voices (15 Nov 2026)
 
