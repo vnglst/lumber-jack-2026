@@ -8,13 +8,18 @@
   const items = [];
   groups.forEach(g => g.items.forEach(it => items.push(Object.assign({ group: g }, it))));
   let cur = 0, takes = [];
+  let filter = location.hash === '#wildlife' ? 'wild' : 'all';
+  const visible = it => filter === 'all' || it.group.id === 'wildcues';
+  const visibleItems = () => items.filter(visible);
+  const original = key => LJ.VOICE_ORIGINALS.keys.includes(key);
+  const originalUrl = key => 'audio/voice-defaults/' + key + '.wav';
 
   function el(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function btn(txt, fn, cls, tip) { const b = el('button', cls, txt); b.onclick = fn; if (tip) b.title = tip; return b; }
   let toastT = 0;
   function toast(msg, ms) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || 2600); }
   const has = key => LJ.voice.has(key);
-  const shown = it => (it.cue ? it.cue.label : it.text.replace('{n}', '12,345')); // the game fills in the real tree count
+  const shown = it => (it.cue ? (({ wolf: 'Wolf · ', bear: 'Bear · ' })[it.cue.who] || '') + it.cue.label : it.text.replace('{n}', '12,345')); // the game fills in the real tree count
   const getDevice = () => { try { return localStorage.getItem(DEVICE_KEY) || ''; } catch (e) { return ''; } };
   const setDevice = id => { try { localStorage.setItem(DEVICE_KEY, id); } catch (e) { /* ignore */ } };
 
@@ -208,6 +213,7 @@
   }
   function play(take) { stopPlayer(); playerUrl = URL.createObjectURL(take.wav); player = new Audio(playerUrl); player.play().catch(() => {}); }
   function playSaved(key) { stopPlayer(); player = new Audio('audio/voice/' + key + '.wav?v=' + LJ.voice.manifest()[key] + '&r=' + Date.now()); player.play().catch(() => {}); }
+  function playOriginal(key) { stopPlayer(); player = new Audio(originalUrl(key)); player.play().catch(() => toast('Could not load the original sound. Check your connection.')); }
 
   // ---------- saving into the game ----------
   async function save(url, init, what) {
@@ -241,6 +247,20 @@
     await synced(); renderCard();
   }
 
+  async function restoreOriginal(key) {
+    stopPlayer();
+    let response;
+    try { response = await fetch(originalUrl(key)); } catch (e) { /* offline */ }
+    if (!response || !response.ok) return toast('Could not load the original sound. Check your connection.', 5000);
+    const wav = await response.blob();
+    if (!(await save('api/voice/' + key, { method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: wav }, 'restore the original sound'))) return;
+    // Work may finish after the user has navigated to a different sound.
+    for (const t of await store.list(key)) if (t.kept) { t.kept = false; await store.put(t); }
+    await synced();
+    if (items[cur].key === key) { takes = await store.list(key); renderCard(); }
+    toast('Original restored. Your own takes stay in the booth.');
+  }
+
   async function dropTake(take) {
     await store.del(take);
     takes = takes.filter(t => t !== take);
@@ -249,8 +269,12 @@
 
   // ---------- navigation ----------
   const nextTodo = from => {
-    for (let k = 1; k <= items.length; k++) { const i = (from + k) % items.length; if (!has(items[i].key)) return i; }
-    return Math.min(items.length - 1, from + 1);
+    for (let k = 1; k <= items.length; k++) { const i = (from + k) % items.length; if (visible(items[i]) && !has(items[i].key)) return i; }
+    return step(from, 1);
+  };
+  const step = (from, delta) => {
+    const list = visibleItems(), pos = list.indexOf(items[from]);
+    return items.indexOf(list[Math.max(0, Math.min(list.length - 1, pos + delta))]);
   };
   async function go(i) {
     if (i < 0 || i >= items.length) return;
@@ -262,18 +286,25 @@
     const sel = document.querySelector('#side .item.sel');
     if (sel) sel.scrollIntoView({ block: 'nearest' });
   }
+  $('voiceFilter').value = filter;
+  $('voiceFilter').onchange = () => {
+    filter = $('voiceFilter').value;
+    const list = visibleItems();
+    go(items.indexOf(visible(items[cur]) ? items[cur] : list.find(it => !has(it.key)) || list[0]));
+  };
 
   // ---------- rendering ----------
   function renderProgress() {
-    const done = items.filter(it => has(it.key)).length;
-    $('progressTxt').textContent = done + ' of ' + items.length + ' recorded';
-    $('progressBar').style.width = (done / items.length * 100) + '%';
+    const list = visibleItems(), done = list.filter(it => has(it.key)).length;
+    $('progressTxt').textContent = done + ' of ' + list.length + ' in game';
+    $('progressBar').style.width = (done / list.length * 100) + '%';
   }
 
   function renderSide() {
     const side = $('side');
     side.innerHTML = '';
     for (const g of groups) {
+      if (filter === 'wild' && g.id !== 'wildcues') continue;
       const done = g.items.filter(it => has(it.key)).length;
       const h = el('h3', '', g.title + ' ');
       h.appendChild(el('span', 'count', done + '/' + g.items.length));
@@ -281,7 +312,7 @@
       for (const it of g.items) {
         const i = items.findIndex(x => x.key === it.key), row = el('div', 'item' + (i === cur ? ' sel' : '') + (has(it.key) ? ' done' : ''));
         row.append(el('span', 'mark'), el('span', 'txt', shown(it)));
-        row.title = it.cue ? it.cue.hint : shown(it);
+        row.title = (original(it.key) ? 'Downloaded animal voice · ' : '') + (it.cue ? it.cue.hint : shown(it));
         if (has(it.key)) row.appendChild(btn('▶', e => { e.stopPropagation(); playSaved(it.key); }, 'play', 'Hear the recording in the game'));
         row.onclick = () => go(i);
         side.appendChild(row);
@@ -291,12 +322,14 @@
 
   function renderCard() {
     const main = $('main'), it = items[cur], g = it.group;
+    renderProgress();
     main.innerHTML = '';
     const card = el('div', 'card');
 
     const crumb = el('div', 'crumb');
-    crumb.append(el('span', 'chip', g.title), el('span', 'grow'), el('span', '', 'Line ' + (cur + 1) + ' of ' + items.length),
-      btn('‹', () => go(cur - 1), 'ghost', 'Previous line (←)'), btn('›', () => go(cur + 1), 'ghost', 'Next line (→)'));
+    const list = visibleItems();
+    crumb.append(el('span', 'chip', g.title), el('span', 'grow'), el('span', '', (filter === 'wild' ? 'Sound ' : 'Line ') + (list.indexOf(it) + 1) + ' of ' + list.length),
+      btn('‹', () => go(step(cur, -1)), 'ghost', 'Previous line (←)'), btn('›', () => go(step(cur, 1)), 'ghost', 'Next line (→)'));
     card.appendChild(crumb);
     card.appendChild(el('div', 'hint', it.cue ? it.cue.hint : g.hint));
 
@@ -311,6 +344,19 @@
     else if (it.text.includes('{n}')) card.appendChild(el('div', 'try', 'The game says a different number each time. Record it with any number, like “twelve thousand”.'));
     else if (it.text.startsWith('*')) card.appendChild(el('div', 'try', 'A sound effect written as text. Make the noise instead of saying the words.'));
     else card.appendChild(el('div', 'try', ''));
+
+    if (original(it.key)) {
+      const source = LJ.VOICE_ORIGINALS, box = el('section', 'original');
+      box.appendChild(el('h3', '', 'Downloaded animal voice'));
+      const credit = el('p');
+      const link = (text, href) => Object.assign(el('a', '', text), { href, target: '_blank', rel: 'noopener' });
+      credit.append('Playful creature performance adapted from ', link(source.title, source.url), ' by ' + source.artist + ' · ', link('CC0', source.license), '. ', link('Source and processing details', 'audio/CREDITS.md'));
+      box.append(credit, el('p', '', 'Listen to the original, then record your own version below. “Use this” replaces the game sound. You can restore the original at any time; your takes stay here.'));
+      const actions = el('div', 'actions');
+      actions.append(btn('▶ Internet original', () => playOriginal(it.key), '', 'Listen to the preserved downloaded animal voice'), btn('Use original', () => restoreOriginal(it.key), '', 'Restore the downloaded sound in the game'));
+      if (has(it.key)) actions.appendChild(btn('▶ Current game sound', () => playSaved(it.key), '', 'Listen to the sound the game uses now'));
+      box.appendChild(actions); card.appendChild(box);
+    }
 
     const deck = el('div', 'deck'); deck.id = 'deck';
     card.appendChild(deck);
@@ -340,10 +386,10 @@
     if (savedOnly) {
       const row = el('div', 'take kept');
       row.append(btn('▶', () => playSaved(key), 'ghost', 'Play'), el('span', 'info'), btn('Remove from game', () => removeSaved(key), 'ghost danger'));
-      row.querySelector('.info').innerHTML = '<span class="tag">In the game</span> · recorded earlier';
+      row.querySelector('.info').innerHTML = '<span class="tag">In the game</span> · ' + (original(key) ? 'current animal voice' : 'recorded earlier');
       box.appendChild(row);
     }
-    if (!takes.length && !savedOnly) box.appendChild(el('div', 'empty', 'No takes yet. Press Record and say the line.'));
+    if (!takes.length && !savedOnly) box.appendChild(el('div', 'empty', 'No takes yet. Press Record and ' + (items[cur].cue ? 'make the sound.' : 'say the line.')));
     for (const t of takes) {
       const row = el('div', 'take' + (t.kept ? ' kept' : ''));
       const cv = el('canvas'); cv.width = 300; cv.height = 56; drawPeaks(cv, t.peaks, t.kept);
@@ -374,8 +420,8 @@
     if (k === 'r') { e.preventDefault(); rec ? stopRec() : startRec(); }
     else if (e.code === 'Space' && tag !== 'BUTTON') { e.preventDefault(); if (takes[0]) play(takes[0]); else if (has(items[cur].key)) playSaved(items[cur].key); }
     else if (e.key === 'Enter' && tag !== 'BUTTON') { if (!rec && takes[0] && !takes[0].kept) keep(takes[0], true); }
-    else if (e.key === 'ArrowRight' || k === 'j') go(cur + 1);
-    else if (e.key === 'ArrowLeft' || k === 'k') go(cur - 1);
+    else if (e.key === 'ArrowRight' || k === 'j') go(step(cur, 1));
+    else if (e.key === 'ArrowLeft' || k === 'k') go(step(cur, -1));
   });
 
   // ---------- start ----------
@@ -383,7 +429,7 @@
   (async function init() {
     renderSide(); renderProgress(); renderCard();
     await LJ.voice.reload();
-    cur = Math.max(0, items.findIndex(it => !has(it.key))); // start at the first line still to record
+    cur = items.indexOf(visibleItems().find(it => !has(it.key)) || visibleItems()[0]);
     takes = await store.list(items[cur].key);
     renderSide(); renderProgress(); renderCard();
     refreshDevices();
