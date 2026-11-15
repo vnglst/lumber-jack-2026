@@ -28,14 +28,18 @@
     g.paused = !g.paused;
   });
   try {
-    const response = await fetch('index.html');
+    // Use a development-only URL space for the shell AND its dependencies. An old
+    // active worker can otherwise mix its cached game API with new scene fixtures;
+    // a query string or cache: 'no-store' does not bypass that cache-first worker.
+    const sourceRoot = new URL('__playground__/', location.href);
+    const response = await fetch(new URL('index.html', sourceRoot));
     if (!response.ok) throw new Error('Game shell returned HTTP ' + response.status);
     const shell = new DOMParser().parseFromString(await response.text(), 'text/html');
     // These scripts never execute here, including the autosave event listeners in save.js.
     for (const script of shell.querySelectorAll('script')) {
       if (!script.getAttribute('src')?.startsWith('js/') || ['js/save.js', 'js/main.js', 'js/site.js'].includes(script.getAttribute('src'))) script.remove();
     }
-    shell.querySelector('head').insertAdjacentHTML('afterbegin', '<base href="' + new URL('.', location.href).href + '">');
+    shell.querySelector('head').insertAdjacentHTML('afterbegin', '<base href="' + sourceRoot.href + '">');
     for (const name of ['playground-scenes', 'playground-frame']) {
       const script = shell.createElement('script'); script.src = 'js/' + name + '.js'; shell.body.appendChild(script);
     }

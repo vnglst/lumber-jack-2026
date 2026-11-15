@@ -35,7 +35,7 @@ Before each release, bump `CACHE` in `sw.js` whenever the HTML, CSS or game scri
 
 `sprites.html` shows every sprite in the game.
 
-`playground.html` is a testing playground for reviewing the arrival, levels, combat and ending. Open it with `make` running. Its scenarios run separately from your saved campaign; ending previews contain spoilers.
+`playground.html` is a testing playground for reviewing the arrival, levels, combat and ending. Open it with `make` running. Its scenarios run separately from your saved campaign; ending previews contain spoilers. The development server serves its game shell and assets under `/__playground__/` to bypass cached production scripts, even while another game tab is open. Restart `make` after updating the development server. `make test` covers every scene in the playground menu across levels, equipment and several map seeds.
 
 `voices.html` is the recording booth: every line the characters say (the jacks, the vehicles, Mr. Grant, the war cries of the forest folk) is listed, and you record it with a microphone of your choice. Use [**Wildlife sounds**](voices.html#wildlife) to find the animal cues, preview the downloaded originals and record replacements. **Use original** restores a downloaded take. Press **Use this** on the best take and the game plays it from then on; lines without a recording stay silent text bubbles. Recordings are saved as `audio/voice/*.wav` (needs `make` running).
 

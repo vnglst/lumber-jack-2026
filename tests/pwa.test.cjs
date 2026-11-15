@@ -56,6 +56,15 @@ test('activation removes only obsolete Lumberjack shell caches', async () => {
   assert.equal(w.stores.size, 2);
 });
 
+test('playground source URLs bypass even the cache-first shell worker', async () => {
+  const w = worker(); await w.run('install');
+  const entries = [...w.stores.values()][0];
+  for (const url of entries.keys()) {
+    const asset = new URL(url).pathname.slice(1);
+    assert.equal(w.fetch('https://game.test/__playground__/' + asset), undefined, asset);
+  }
+});
+
 test('manifest provides installable and maskable icon files at their declared PNG dimensions', () => {
   const m = JSON.parse(fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
   assert.equal(m.display, 'standalone');

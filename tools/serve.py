@@ -35,6 +35,13 @@ def write_manifest():
 
 
 class NoCache(http.server.SimpleHTTPRequestHandler):
+    def translate_path(self, path):
+        # A separate URL space keeps playground source out of an already-active
+        # production service worker's cache, including workers from older releases.
+        if path.startswith('/__playground__/'):
+            path = path.removeprefix('/__playground__')
+        return super().translate_path(path)
+
     def send_head(self):
         path = pathlib.Path(self.translate_path(self.path))
         relative = path.relative_to(ROOT)
