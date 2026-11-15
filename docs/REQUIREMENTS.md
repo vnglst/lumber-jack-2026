@@ -70,6 +70,7 @@ How to read it:
 | 57 | 15 Nov | Welcome screen covers the first paint | Active |
 | 58 | 15 Nov | Subtle interface animations | Active |
 | 59 | 15 Nov | Creator and source-code credits | Active |
+| 60 | 15 Nov | Agent notes from the interface, playtest and refactor sessions | Active |
 
 ---
 
@@ -747,3 +748,14 @@ How to read it:
 - Link to Koen van Gilst's website and the game's source repository from the welcome screen and credits page.
 - *Decision: use `https://koenvangilst.nl/` and the verified Git remote's repository, `https://github.com/vnglst/lumber-jack-2026`. Keep wildlife sound attribution and previews on the credits page.*
 - The offline shell is bumped to v9 for the welcome-screen, animation and credits changes.
+
+## 60. Agent notes from the interface, playtest and refactor sessions (15 Nov 2026)
+
+> Review last couple of sessions. How can agents file be improved? Implement those.
+
+- Review the recent sessions for friction and put what would have prevented it into `AGENTS.md`. §54 did this for delegated work; this entry covers what it left out.
+- *Decision: other chats sharing `main`. Read files in your own worktree, never work over a merge in progress or changes you did not make, choose log numbers and the cache version at merge time, and push only when asked.*
+- *Decision: testing. A regression test must fail on the previous code, with the recipe for checking it; the two tests that load one file against hand-written stubs are named; a stalled scripted campaign is first diagnosed as the player's fault or the game's; refactors keep the order of random draws so campaign reports stay comparable; checks say what they could not judge.*
+- *Decision: code. The checklist for a new script includes the test harness; a new unit task lists the five places it touches; the placement and movement invariants from §51 and §56 are stated; a `misc` voice line must be added to a booth group by hand (the notes said this was automatic); interface conventions from §48 and §49 are recorded.*
+- *Decision: tools. Short, single-purpose shell commands, so they match the user's allow rules; plain git diffs past the external diff tool; zsh word splitting.*
+- No game code changes.
