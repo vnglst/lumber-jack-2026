@@ -79,6 +79,7 @@ How to read it:
 | 66 | 15 Nov | Wildlife originals in the recording booth | Active |
 | 67 | 15 Nov | Compact mobile Jack actions | Active |
 | 68 | 15 Nov | Play testing and voice recording credits | Active |
+| 69 | 15 Nov | A clearer mobile game interface | Active |
 
 ---
 
@@ -844,3 +845,15 @@ How to read it:
 - Credit Koen & Tibo for play testing the game and the voice recordings.
 - *Decision: add the requested wording to the shared credits popup, visible from the welcome screen and in-game settings.*
 - Refresh the offline shell to v12 for the combined game-script, mobile-interface and credits changes. Browser checks cover offline boot and campaign save restoration.
+
+## 69. A clearer mobile game interface (15 Nov 2026)
+
+> Review and refactor the UI on mobile. The screen is too cluttered for practical use right now. It’s fine on desktop.
+
+- Review mobile clutter across the whole interface and make the game practical to use, preserving the desktop presentation.
+- *Decision: replace the wrapping mobile HUD with one row for money, wood, Camp and Menu. Camp expands the other resources, population/pay, level progress, stockpiling, discoveries, sound, Help and ordinary guidance. Debt, missing-crew, approaching-raid, active-raid and placement warnings remain visible without opening Camp.*
+- *Decision: show market offers and active-order progress as a compact button. Tap it for the existing offer/accept/decline or active-order details. Keep urgent countdowns visible. Camp, market details, minimap and Shop dismiss competing panels; a map tap closes a sheet without issuing an accidental order. Escape backs out disclosures one at a time.*
+- *Decision: the selected-unit strip keeps its name, a short status and icon actions. Tap the name for full status, cargo and XP. The bottom dock shows idle jacks, Map and Shop; Map reveals zoom buttons. Remove duplicate Stop and always-visible zoom controls from the mobile dock. Landscape puts selection and navigation beside each other.*
+- *Decision: consolidate the compact breakpoint across portrait and short touch landscape. Give the Shop a dedicated scrollable sheet with a sticky close control and 44-pixel purchase targets. Preserve arrival/ending mute access, safe-area padding, keyboard labels and disclosure state. No rules or save-format changes.*
+- Browser checks cover 320/390-pixel portrait, 844-pixel landscape, 1024-pixel short touch landscape and desktop, including the opening, full late-game HUD, market offers, stockpiling, XP, navigation and shop. A focused layout check fails against the previous version (166-pixel HUD versus 52 pixels after the refactor). Physical phone testing and judgments about game feel remain for a person.
+- Bump the offline shell to v13 for the mobile markup, styles and interface script.

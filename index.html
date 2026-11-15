@@ -47,6 +47,8 @@
       <div class="logo"><span class="lumber">Lumber</span><span class="jack">Jack</span></div>
       <div class="chip" id="c-money" title="Money"><i data-ic="coin"></i><b>0</b></div>
       <div class="chip" id="c-wood" title="Wood in stock"><i data-ic="log"></i><b>0</b><button id="stockBtn" title="Sell wood at the market, or stockpile it at camp">Selling</button></div>
+      <button class="hbtn mobile-only" id="resourcesBtn" title="Camp resources, progress and guidance" aria-label="Camp resources and progress" aria-expanded="false" aria-controls="hudDetails">Camp ▾</button>
+      <div id="hudDetails">
       <div class="chip" id="c-lumber" title="Lumber in stock"><i data-ic="plank"></i><b>0</b></div>
       <div class="chip" id="c-stone" title="Stone in stock"><i data-ic="stone"></i><b>0</b></div>
       <div class="chip" id="c-pop" title="Jacks"><i data-ic="jack"></i><b>1/4</b><span id="payTxt"></span></div>
@@ -59,11 +61,14 @@
       <button class="hbtn" id="soundBtn" title="Sound">♪</button>
       <button class="hbtn" id="findsBtn" title="Forest finds and recipes" aria-label="Forest finds and recipes">✦</button>
       <button class="hbtn" id="helpBtn" title="How to play">?</button>
+      <button class="mobile-only" id="mobileStockBtn" title="Sell wood at the market, or stockpile it at camp">Selling</button>
+      </div>
       <button class="hbtn" id="menuBtn" title="Menu (Esc)" aria-label="Menu">≡</button>
     </header>
 
     <div id="hint"></div>
     <div id="toast"></div>
+    <button id="marketBtn" class="mobile-only" title="Market order details" aria-expanded="false" aria-controls="order" hidden></button>
     <div id="order"></div>
     <canvas id="mini" title="Minimap: click to jump there"></canvas>
     <div id="intro" class="wood" role="status" aria-live="polite"></div>
@@ -81,7 +86,7 @@
           <svg viewBox="0 0 24 24"><path d="M5 12h14" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></button>
         <button data-act="zoomin" title="Zoom in (+)" aria-label="Zoom in">
           <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></button>
-        <button data-act="map" id="mapBtn" title="Map (M)" aria-label="Map">
+        <button data-act="map" id="mapBtn" title="Map (M): minimap and mobile zoom controls" aria-label="Map" aria-expanded="false" aria-controls="mini">
           <svg viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2zM9 4v14M15 6v14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></button>
         <span class="sep"></span>
         <button data-act="shop" id="shopBtn" class="wide" title="Shop (B)">Shop<span id="shopDot"></span></button>

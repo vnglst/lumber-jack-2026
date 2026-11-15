@@ -7,7 +7,7 @@
   const ZOOMS = [1, 1.5, 2, 3, 4];
   const ICON_OF = { jack: 'jack', truck: 'truck', shuttle: 'shuttle', dozer: 'dozer', harv: 'harv', feller: 'feller' };
   let cv, zi = 3, zoom = 3, keys = {}, lastClickU = null, lastClickT = 0, toastT = 0, panelSig = '', shopSig = '', orderSig = '';
-  let hudBottom = -1, panelsTop = -1;
+  let hudBottom = -1, panelsTop = -1, noticeHeight = -1, controlsHeight = -1;
   let mini, mctx, mimg, miniT = 0, mouse = null; // mouse: last pointer position in window pixels, null when outside
   let muted = false, idleI = 0, groups = {}, lastGroup = '', lastGroupT = 0, cursor = '';
   const PING = 0.45; // seconds an order marker stays on the ground
@@ -35,7 +35,7 @@
     // Text and newly unlocked resource chips can wrap the HUD without a window resize.
     if (typeof ResizeObserver !== 'undefined') {
       const layout = new ResizeObserver(layoutPanels);
-      layout.observe($('hud')); layout.observe($('hint'));
+      layout.observe($('hud')); layout.observe($('hint')); layout.observe($('bottom')); layout.observe($('marketBtn'));
     }
     bindPointer(); bindKeys(); bindButtons(); bindMini();
     // A clicked button must not keep the keyboard: Space and Enter belong to the game, not to the last button pressed.
@@ -50,8 +50,11 @@
     if (!hud.getBoundingClientRect) return;
     // Read both sizes before writing styles, and only write when geometry changes.
     const bottom = Math.ceil(hud.getBoundingClientRect().bottom);
-    const hintHeight = hint.offsetHeight;
-    const below = bottom + 8 + (hintHeight ? hintHeight + 8 : 0);
+    const notice = $('marketBtn').offsetHeight || 0, hintHeight = hint.offsetHeight;
+    const controls = $('bottom').offsetHeight || 0;
+    const below = bottom + 8 + (notice ? notice + 6 : 0) + (hintHeight ? hintHeight + 8 : 0);
+    if (notice !== noticeHeight) { $('game').style.setProperty('--notice-space', notice ? notice + 6 + 'px' : '0px'); noticeHeight = notice; }
+    if (controls !== controlsHeight) { $('game').style.setProperty('--controls-height', controls + 'px'); controlsHeight = controls; }
     if (bottom !== hudBottom) { $('game').style.setProperty('--hud-bottom', bottom + 'px'); hudBottom = bottom; }
     if (below !== panelsTop) { $('game').style.setProperty('--panels-top', below + 'px'); panelsTop = below; }
   }
@@ -127,11 +130,29 @@
   }
 
   function setShop(open) {
+    if (open && compact()) { setMobilePanel(''); closeMap(); }
     $('shop').classList.toggle('open', open);
     $('game').classList.toggle('shopping', open); // small screens tuck the selection panel away under the shop
   }
   const shopOpen = () => $('shop').classList.contains('open');
   const modalOpen = () => $('modal').classList.contains('open');
+  const compact = () => innerWidth <= 900 || typeof matchMedia === 'function' && matchMedia('(pointer: coarse) and (max-height: 500px)').matches;
+  function closeMap() { $('game').classList.remove('mini-on'); $('mapBtn').setAttribute('aria-expanded', 'false'); }
+
+  // These disclosures are visible only in the compact layout; desktop keeps its existing panels.
+  function setMobilePanel(name) {
+    for (const [kind, id] of [['resources', 'resourcesBtn'], ['order', 'marketBtn']]) {
+      $('game').classList.toggle(kind + '-open', name === kind);
+      $(id).setAttribute('aria-expanded', String(name === kind));
+    }
+    if (name) { setShop(false); closeMap(); }
+  }
+  function toggleMap() {
+    const open = !$('game').classList.contains('mini-on');
+    if (compact()) { setMobilePanel(''); setShop(false); }
+    $('game').classList.toggle('mini-on', open);
+    $('mapBtn').setAttribute('aria-expanded', String(open));
+  }
 
   ui.toast = function (text) { const t = $('toast'); t.textContent = text; t.classList.add('show'); toastT = 2.6; };
 
@@ -192,7 +213,10 @@
   function click(wx, wy, right, touch, shift) {
     if (G.cine) { if (G.cine.phase === 'talk') LJ.ending.next(); return; }
     if (G.paused || G.arrival) return;
-    if (shopOpen() && innerWidth <= 700) { setShop(false); return; } // on a phone the shop is a sheet: a tap beside it closes it
+    if (compact()) {
+      if (shopOpen()) { setShop(false); return; } // a tap beside a mobile sheet closes it without issuing an order
+      if ($('game').classList.contains('resources-open') || $('game').classList.contains('order-open')) { setMobilePanel(''); return; }
+    }
     if (G.place) {
       if (right) { G.place = null; return; }
       G.hover = [wx, wy];
@@ -391,7 +415,7 @@
       else if (k === 'h' || k === 'home') ui.centerOnCamp();
       else if (k === 'tab') { e.preventDefault(); nextIdle(); }
       else if (k === 'b') setShop(!shopOpen());
-      else if (k === 'm') $('game').classList.toggle('mini-on');
+      else if (k === 'm') toggleMap();
       else if (k === 'x') LJ.cmd.stop([...G.sel]);
       else if (k === 'p') ui.showMenu();
       else if (k === '+' || k === '=') setZoom(zi + 1);
@@ -400,6 +424,9 @@
         // Back out one step at a time; with nothing left to back out of, Escape opens the menu.
         if (G.place || G.wallMode) { G.place = null; G.wallMode = false; G.wallDrag = null; }
         else if (shopOpen()) setShop(false);
+        else if ($('game').classList.contains('resources-open') || $('game').classList.contains('order-open')) setMobilePanel('');
+        else if ($('game').classList.contains('unit-details-open')) { $('game').classList.remove('unit-details-open'); panelSig = ''; }
+        else if ($('game').classList.contains('mini-on')) toggleMap();
         else if (G.sel.size) G.sel.clear();
         else ui.showMenu();
       }
@@ -434,7 +461,7 @@
       else if (b.dataset.act === 'zoomout') setZoom(zi - 1);
       else if (b.dataset.act === 'shop') setShop(!shopOpen());
       else if (b.dataset.act === 'idle') nextIdle();
-      else if (b.dataset.act === 'map') $('game').classList.toggle('mini-on');
+      else if (b.dataset.act === 'map') toggleMap();
     });
     $('shopClose').onclick = () => setShop(false);
     $('shopList').addEventListener('click', e => {
@@ -456,6 +483,7 @@
       else if (a === 'saw') LJ.cmd.saw(sel);
       else if (a === 'stop') LJ.cmd.stop(sel);
       else if (a === 'desel') G.sel.clear();
+      else if (a === 'details') { $('game').classList.toggle('unit-details-open'); panelSig = ''; }
       else if (a === 'cancel') G.place = null;
       else if (a === 'walldone') { G.wallMode = false; G.wallDrag = null; }
     });
@@ -465,7 +493,9 @@
     });
     $('cine').addEventListener('click', () => LJ.ending.next());
     $('again').onclick = () => ui.restart();
-    $('stockBtn').onclick = () => { G.stockpile = !G.stockpile; LJ.sfx('click'); ui.toast(G.stockpile ? 'Wood is now stockpiled at the camp' : 'Wood is now sold at the market'); };
+    $('stockBtn').onclick = $('mobileStockBtn').onclick = () => { G.stockpile = !G.stockpile; LJ.sfx('click'); ui.toast(G.stockpile ? 'Wood is now stockpiled at the camp' : 'Wood is now sold at the market'); };
+    $('resourcesBtn').onclick = () => setMobilePanel($('game').classList.contains('resources-open') ? '' : 'resources');
+    $('marketBtn').onclick = () => setMobilePanel($('game').classList.contains('order-open') ? '' : 'order');
     $('soundBtn').onclick = toggleSound;
     $('menuBtn').onclick = () => ui.showMenu();
     $('findsBtn').onclick = () => { if (!G.cine && !G.arrival) ui.showFinds(); };
@@ -573,7 +603,7 @@
     row('Order', 'Click or right-click a tree, animal, hut, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things. Selected-unit icons: saw lumber, cart to market, square to stop, × to deselect.', 'X stops. Esc deselects.') +
     row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
     row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch.', '− and +') +
-    row('Menus', 'Shop is in the toolbar. ≡ pauses, with volume settings.', 'Shop is in the toolbar. ≡ pauses, with volume settings.', 'B shop. Esc backs out one step, then pauses.') +
+    row('Menus', 'Shop is in the toolbar. ≡ pauses, with volume settings.', 'Camp opens resources, progress and tips. Tap the selected unit’s name for status and XP. Market opens order details. Map shows the minimap and zoom buttons. Shop and ≡ open their menus.', 'B shop. Esc backs out one step, then pauses.') +
     '</table><p class="fine">You can pan past the forest edge to bring the outermost tiles clear of the panels.</p><button>Back to work</button>');
   };
 
@@ -731,7 +761,8 @@
     if (has('jack') || has('truck')) btn += action('sell', has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market', '<path d="M2 4h3l3 12h11l3-9H6M9 11h11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="10" cy="20" r="2" fill="currentColor"/><circle cx="18" cy="20" r="2" fill="currentColor"/>');
     btn += action('stop', 'Stop', '<path d="M6 6h12v12H6z" fill="currentColor"/>', 'Stop the selected units (X)');
     btn += action('desel', 'Deselect', '<path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.5"/>', 'Deselect (Esc)');
-    p.innerHTML = '<div class="unit-info"><div>' + title + '</div><div class="st">' + st + '</div>' + experience + '</div><div class="unit-actions">' + btn + '</div>';
+    p.innerHTML = '<button class="unit-peek mobile-only" data-act="details" title="Selected unit details and experience" aria-label="Selected unit details" aria-expanded="' + $('game').classList.contains('unit-details-open') + '"><span>' + title + '</span><small>' + st + '</small></button>' +
+      '<div class="unit-info"><div>' + title + '</div><div class="st">' + st + '</div>' + experience + '</div><div class="unit-actions">' + btn + '</div>';
     const pic = iconCanvas(S.icons[ICON_OF[u.kind]], 12);
     pic.title = 'Show on the map (F)'; pic.style.cursor = 'pointer'; pic.onclick = () => ui.centerOnSelection();
     p.prepend(pic);
@@ -764,6 +795,13 @@
 
   function refreshOrder() {
     const o = G.order, el = $('order');
+    const market = $('marketBtn');
+    market.hidden = !o;
+    if (o) {
+      const label = o.state === 'offer' ? 'Market offer · ' + Math.ceil(o.ttl) + 's' : 'Order ' + (o.got || 0) + '/' + o.qty + ' · ' + mmss(o.time);
+      if (market.textContent !== label) market.textContent = label;
+      market.classList.toggle('urgent', o.state === 'active' && o.time < 30);
+    } else if ($('game').classList.contains('order-open')) setMobilePanel('');
     const sig = !o ? '' : o.state + o.got + ':' + Math.ceil(o.state === 'offer' ? o.ttl : o.time);
     if (sig === orderSig) return;
     orderSig = sig;
@@ -812,7 +850,11 @@
     mctx.strokeRect(Math.round(G.cam.x / TS) + 0.5, Math.round(G.cam.y / TS) + 0.5, Math.round(vwW() / TS), Math.round(vwH() / TS));
   }
 
-  ui.reset = function () { panelSig = shopSig = orderSig = 'x'; groups = {}; ui.pings.length = 0; $('overlay').innerHTML = ''; ui.introLine(null); };
+  ui.reset = function () {
+    panelSig = shopSig = orderSig = 'x'; groups = {}; ui.pings.length = 0;
+    $('overlay').innerHTML = ''; ui.introLine(null);
+    setMobilePanel(''); closeMap(); $('game').classList.remove('unit-details-open');
+  };
 
   ui.tick = function (dt) {
     const sp = 260 * dt / (zoom / 3);
@@ -839,8 +881,10 @@
     set($('c-money').querySelector('b'), G.money.toLocaleString('en-US'));
     $('c-money').classList.toggle('debt', G.money < 0);
     set($('c-wood').querySelector('b'), G.wood);
+    $('c-wood').classList.toggle('stockpiling', G.stockpile);
     $('stockBtn').style.display = '';
     set($('stockBtn'), G.stockpile ? 'Stockpiling' : 'Selling');
+    set($('mobileStockBtn'), G.stockpile ? 'Stockpiling · resume selling' : 'Selling · stockpile wood');
     $('c-lumber').style.display = G.village ? '' : 'none';
     set($('c-lumber').querySelector('b'), G.lumber);
     $('c-stone').style.display = G.stone > 0 || LJ.countKind('dozer') ? '' : 'none';
@@ -856,6 +900,8 @@
     set($('quota'), quota && !G.levelDone ? '€' + Math.min(G.earned, quota).toLocaleString('en-US') + ' / ' + quota.toLocaleString('en-US') + ' earned' : '');
     $('lvlFill').style.width = 'calc(' + Math.min(1, G.cleared / goal) * 100 + '% - 4px)';
     set($('hint'), hint());
+    const nextWave = LJ.combat.nextWaveIn();
+    $('hint').classList.toggle('urgent', !!(G.place || G.wallMode || G.wave.active && !G.wave.active.retreating || G.money < 0 || LJ.noCrew() || nextWave !== null && nextWave < 30));
     refreshPanel(); refreshShop(); refreshOrder();
   };
 
