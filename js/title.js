@@ -122,6 +122,9 @@
 
   // The curtains of northern lights: time scale, phase, height, and the colours at the bottom and the top.
   const CURTAINS = [[1, 0, 58, '90,255,170', '120,150,255'], [0.8, 2.4, 44, '70,230,200', '170,110,255']];
+  // Where a row of the sky shows in the lake: mirrored about the horizon and squeezed, as water seen at a low angle
+  // is. The lights' bright lower edge lands just below the far shore and their tops reach down towards the near one.
+  const mirrorY = y => HORIZON + 3 + (HORIZON - y) * 0.45;
   // One curtain of northern lights. Drawn again upside down, fainter and rippled, as the reflection in the lake.
   function aurora(t, ph, baseY, rgbBot, rgbTop, mirror) {
     for (let x = 0; x < W; x++) {
@@ -130,14 +133,19 @@
       const glow = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(x * 0.012 - t * 0.12 + ph * 3))) * (0.55 + 0.45 * ray);
       const y0 = baseY + wave, len = 26 + 20 * ray;
       for (let s = 0; s < 7; s++) {
-        const k = s / 7, a = glow * (1 - k) * (1 - k) * (mirror ? 0.3 : 0.62);
+        const k = s / 7, a = glow * (1 - k) * (1 - k) * (mirror ? 0.4 : 0.62);
         if (a < 0.02) continue;
         const c = k < 0.45 ? rgbBot : rgbTop, h = Math.ceil(len / 7);
         ctx.fillStyle = 'rgba(' + c + ',' + a.toFixed(3) + ')';
         if (!mirror) ctx.fillRect(x, Math.round(y0 - k * len - h), 1, h);
         else {
-          const yy = Math.round(2 * HORIZON - (y0 - k * len) * 0.55 + 22);
-          if (yy > HORIZON + 1 && yy < SHORE) ctx.fillRect(x + Math.round(Math.sin(yy * 0.9 + t * 1.6) * 1.2), yy, 1, Math.max(1, h >> 1));
+          // The mirror image of this slice, with each row nudged sideways by ripples that grow towards the viewer.
+          const top = Math.round(mirrorY(y0 - k * len)), rows = Math.max(1, Math.ceil(h * 0.45));
+          for (let yy = top; yy < top + rows && yy < SHORE; yy++) {
+            if (yy <= HORIZON + 1) continue;
+            const ripple = Math.sin(yy * 0.9 + t * 1.6) * (0.6 + (yy - HORIZON) * 0.035);
+            ctx.fillRect(x + Math.round(ripple), yy, 1, 1);
+          }
         }
       }
     }
@@ -217,6 +225,8 @@
       cancelAnimationFrame(raf);
       removeEventListener('resize', resize);
     },
-    isOpen: () => el().classList.contains('open')
+    isOpen: () => el().classList.contains('open'),
+    // For tests: the scene's geometry and where the sky is mirrored.
+    geometry: { H, HORIZON, SHORE, mirrorY }
   };
 })();
