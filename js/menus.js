@@ -101,10 +101,12 @@
     }
   };
 
-  function show() {
+  // how: 'arrive' for the first screen, 'forward' when a screen opens from another, 'backward' on Back. Only the
+  // motion differs (see the motion section of style.css).
+  function show(how) {
     const name = stack[stack.length - 1], sc = SCREENS[name](), m = $('modal'), deep = stack.length > 1;
     const nav = (kind, label) => '<button class="nav" data-a="' + kind + '" title="' + label + '" aria-label="' + label + '"><i data-ic="' + kind + '"></i></button>';
-    m.innerHTML = '<div class="dialog sheet' + (sc.wide ? ' wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="dialog-title">' +
+    m.innerHTML = '<div class="dialog sheet ' + how + (sc.wide ? ' wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="dialog-title">' +
       '<header>' + (deep ? nav('back', 'Back (Esc)') : '<span class="nav"></span>') + '<h1 id="dialog-title">' + sc.title + '</h1>' + nav('close', deep ? 'Close' : 'Close (Esc)') + '</header>' +
       '<div class="body">' + sc.body + '</div>' + (sc.footer ? '<footer>' + sc.footer + '</footer>' : '') + '</div>';
     ui.icons(m);
@@ -131,12 +133,13 @@
       $('modal').classList.toggle('welcome', before.welcome);
       if (before.welcome) $('title').inert = true;
     }
+    const first = !stack.length;
     stack.push(name);
-    show();
+    show(first ? 'arrive' : 'forward');
   }
   function back() {
     stack.pop();
-    if (stack.length) show(); else close();
+    if (stack.length) show('backward'); else close();
   }
   function close() {
     stack.length = 0;
