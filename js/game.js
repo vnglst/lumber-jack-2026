@@ -176,7 +176,7 @@
       villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), sawMask: new Uint8Array(w.N), smokeT: 0,
       fog: new Uint8Array(w.N), fogDirty: true, fogT: 0, fogLeft: w.N, worldVer: 0,
       animals: [], graves: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
-      cine: null, suit: null, props: [], critters: [], dc: null, folkKilled: 0, wallMode: false, wallDrag: null, wallSites: {}, arrival: null
+      cine: null, suit: null, props: [], critters: [], wildlifeT: 8, dc: null, folkKilled: 0, wallMode: false, wallDrag: null, wallSites: {}, arrival: null
     });
     LJ.discoveries.init();
     LJ.combat.reset();
@@ -773,7 +773,7 @@
           speed: cfg.speed * (bear ? 0.85 : 1) * (1 - k * 0.06), repath: k * 0.3, atkCd: 0, dir: 1, walkT: 0, alive: true, flee: false
         });
       }
-      LJ.sfx('howl'); LJ.voice.cue(bear ? 'bear_roar' : 'wolf_howl');
+      LJ.voice.cue(bear ? 'bear_roar' : 'wolf_howl');
       LJ.ui.toast(bear ? 'A bear is coming for ' + tgt.name + '!' : n > 1 ? 'A wolf pack is on the prowl!' : 'A wolf is on the prowl!');
       return;
     }
@@ -1360,6 +1360,7 @@
     if (G.cine) LJ.ending.update(dt);
     else {
       updFog(dt);
+      LJ.critters.updateCalls(dt);
       LJ.discoveries.update();
       updEconomy(dt);
       updAuto(dt);

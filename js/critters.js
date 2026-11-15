@@ -42,6 +42,19 @@
     const w = G.world, W = w.W, H = w.H;
     c.tx = LJ.clamp(x, 8, W * TS - 8); c.ty = LJ.clamp(y, 8, H * TS - 8); c.moving = true;
   }
+  // One quiet call at a time from wildlife actually in view; unexplored or vanished animals stay silent.
+  const CRITTER_CUES = { deer: 'reindeer_call', squirrel: 'squirrel_call', swan: 'swan_call' };
+  function updWildlifeCalls(dt) {
+    if (!LJ.cv || (G.wildlifeT -= dt) > 0) return;
+    G.wildlifeT = 10 + Math.random() * 10;
+    const vw = LJ.cv.width, vh = LJ.cv.height, cx = G.cam.x, cy = G.cam.y;
+    const nearby = G.critters.filter(c => CRITTER_CUES[c.kind] && !c.gone && c.alpha > 0.5 &&
+      LJ.seenPx(c.x, c.y) && c.x >= cx && c.x < cx + vw && c.y >= cy && c.y < cy + vh);
+    if (!nearby.length) return;
+    const c = LJ.pick(nearby), distance = Math.hypot((c.x - cx - vw / 2) / vw, (c.y - cy - vh / 2) / vh);
+    LJ.voice.cue(CRITTER_CUES[c.kind], 0.5 - distance * 0.35);
+  }
+
   function updCritters(dt) {
     const w = G.world, W = w.W, H = w.H;
     for (const c of G.critters) {
@@ -117,5 +130,5 @@
     if (G.bflies.some(b => b.dead)) G.bflies = G.bflies.filter(b => !b.dead);
   }
 
-  LJ.critters = { spawn: spawnCritters, spawnFolk, make: makeCritter, update: updCritters, spawnButterflies, updateButterflies };
+  LJ.critters = { spawn: spawnCritters, spawnFolk, make: makeCritter, update: updCritters, updateCalls: updWildlifeCalls, spawnButterflies, updateButterflies };
 })();

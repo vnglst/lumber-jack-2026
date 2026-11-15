@@ -31,7 +31,7 @@
   }
 
   // Say a recorded line. `who` is the channel (jack, truck, folk...): a new line cuts off the previous one from the same voice.
-  function play(key, who) {
+  function play(key, who, volume = 1) {
     if (!ready || manifest[key] === undefined) return;
     const out = LJ.synth.live();
     if (!out) return;
@@ -42,7 +42,7 @@
       if (prev) { try { prev.stop(); } catch (e) { /* already ended */ } }
       const src = out.ctx.createBufferSource();
       const gain = out.ctx.createGain();
-      gain.gain.value = VOICE_VOLUME;
+      gain.gain.value = VOICE_VOLUME * Math.max(0, Math.min(1, volume));
       src.buffer = buf;
       src.playbackRate.value = 0.97 + Math.random() * 0.07; // never exactly the same twice
       src.connect(gain); gain.connect(out.dest);
@@ -55,7 +55,7 @@
   LJ.voice = {
     SAVED_KEY,
     say: (text, who) => play(LJ.voiceKey(text), who || 'jack'),
-    cue: id => { const c = LJ.CUES.find(x => x.id === id); if (c) play(id, c.who); },
+    cue: (id, volume) => { const c = LJ.CUES.find(x => x.id === id); if (c) play(id, c.who, volume); },
     has: key => manifest[key] !== undefined,
     manifest: () => manifest,
     reload: loadManifest

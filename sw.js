@@ -1,9 +1,9 @@
 'use strict';
 // Bump this with each release that changes the game shell. New versions wait until
 // all old game tabs close, keeping a single coherent version throughout a session.
-const CACHE = 'lumberjack-shell-v6';
+const CACHE = 'lumberjack-shell-v7';
 const CORE = [
-  './', './index.html', './css/style.css', './manifest.webmanifest',
+  './', './index.html', './credits.html', './css/style.css', './manifest.webmanifest',
   './assets/icon.svg', './assets/favicon-32.png', './assets/apple-touch-icon.png',
   './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png',
   './js/util.js', './js/sfx-defs.js', './js/sound.js', './js/lines.js', './js/voice.js', './js/songs.js', './js/music.js',

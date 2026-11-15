@@ -63,6 +63,8 @@ How to read it:
 | 50 | 14 Nov | Music for the opening, play and other scenes | Active |
 | 51 | 15 Nov | Full-campaign playtest: dead ends removed, losses made recoverable | Active |
 | 52 | 15 Nov | Codebase review and refactor | Active |
+| 53 | 15 Nov | Sourced animal sound effects | Active |
+| 55 | 15 Nov | Playful animal voices | Active |
 
 ---
 
@@ -680,3 +682,22 @@ How to read it:
 - *Decision: add `make test` (syntax check plus tests) and `make playtest SEEDS="1 2 3"`; list them in the README and the notes for coding agents, which no longer say there is no test suite.*
 - *Decision: leave the larger files' shape alone. Splitting the shop, building placement or the opening drive out of `game.js`, or the minimap and hints out of `ui.js`, would mean exporting a dozen private helpers each; that trades one kind of clutter for another without a clear gain.*
 - Rules, saves and the interface are unchanged. The offline shell lists the new script and is bumped to v6.
+
+## 53. Sourced animal sound effects (15 Nov 2026)
+
+> Search online for suitable animal sound effects, for all animals. Use these. Replace existing recordings if you find new ones.
+
+- Search online and integrate suitable sound effects for every animal in the game.
+- Replace existing animal recordings where suitable replacements are found.
+- Keep source, creator, license and adaptation details with the distributed recordings.
+- **Status:** §55 specifies the playful cartoon style.
+
+## 55. Playful animal voices (15 Nov 2026)
+
+> Not real sounds, playful and suitable for this game
+
+- Use expressive cartoon animal voices that suit the game's pixel art and humor.
+- *Decision: adapt rubberduck's CC0 mouth-performed creature pack into eight short, distinct wolf, bear, reindeer, red squirrel and whooper swan cues. Replace all five existing wolf/bear recordings; human and forest-folk takes stay unchanged.*
+- *Decision: peaceful animal calls come only from explored, on-screen critters that have not vanished. One shared 10–20-second interval and lower volume keep the forest lively without crowding the music or dialogue. They pause with gameplay and stay silent in the opening drive and ending.*
+- *Decision: use the existing voice mixer, global mute and editable recording-booth pipeline. The transient call timer resets on new games and loading; the save format is unchanged. Recorded sounds still require a connection, following the existing offline policy.*
+- *Decision: show audio credits and previews through a link in Help; retain the original archive URL, filename mapping, CC0 license and edits in `audio/CREDITS.md`. Bump the offline shell to v7 for the changed scripts and credits page.*
