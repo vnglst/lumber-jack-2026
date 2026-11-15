@@ -202,7 +202,7 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
 .switch output { font-size: 14px; color: var(--chalk); }
 .switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .switch .knob { position: relative; width: 52px; height: 28px; background: var(--tar); border: 2px solid var(--tar); }
-.switch .knob::after { content: ''; position: absolute; left: 2px; top: 2px; width: 20px; height: 20px; background: var(--trim-shade); transition: transform 120ms ease-out; }
+.switch .knob::after { content: ''; position: absolute; left: 2px; top: 2px; width: 20px; height: 20px; background: var(--trim-shade); transition: transform 240ms var(--spring), background-color 120ms; }
 .switch input:checked + .knob { background: var(--spruce); }
 .switch input:checked + .knob::after { transform: translateX(24px); background: var(--trim); }
 .switch input:focus-visible + .knob { outline: 2px solid var(--ochre); outline-offset: 2px; }
@@ -417,8 +417,57 @@ button { transition: transform 90ms ease-out, background-color 120ms ease-out, b
 @keyframes ui-arrive { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes dialog-arrive { from { opacity: 0; transform: translateY(4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes dot-pop { from { transform: scale(.6); } to { transform: scale(1); } }
-#shop.open, #panel:not(:empty), #title.open .row button { animation: ui-arrive 160ms ease-out; }
-#modal.open .dialog { animation: dialog-arrive 180ms ease-out; }
+#shop.open, #title.open .row button { animation: ui-arrive 160ms ease-out; }
+
+/* ---------- Playful motion ----------
+   Things arrive like boards dropped into place: a little overshoot, then still. Nothing here delays input: buttons
+   work from the first frame, and every animation is short and runs once. Reduced motion switches all of it off. */
+:root { --spring: cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes drop-in { 0% { opacity: 0; transform: translateY(-22px) rotate(-2.5deg) scale(.95); } 60% { opacity: 1; transform: translateY(5px) rotate(.8deg) scale(1.01); } 100% { transform: none; } }
+@keyframes rise-in { 0% { transform: translateY(100%); } 65% { transform: translateY(-10px); } 100% { transform: none; } }
+@keyframes from-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes from-left { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@keyframes deal-in { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { 0% { transform: scale(0) rotate(-20deg); } 100% { transform: none; } }
+@keyframes stamp { 0% { opacity: 0; transform: scale(1.6) rotate(-6deg); } 100% { opacity: 1; transform: none; } }
+@keyframes hop { 0% { transform: none; } 35% { transform: translateY(-4px) scale(1.18); } 100% { transform: none; } }
+@keyframes spin-hop { 0% { transform: none; } 50% { transform: scale(1.5) rotate(200deg); } 100% { transform: rotate(360deg); } }
+@keyframes toast-in { 0% { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(.9); } 100% { opacity: 1; transform: translateX(-50%); } }
+@keyframes panel-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* A dialog drops in at a slight angle and settles; on a phone it rises from the bottom edge instead. */
+#modal.open .dialog:not(.sheet), #modal.open .sheet.arrive { animation: drop-in 320ms var(--spring); }
+@media (max-width: 700px) {
+  #modal.open .dialog:not(.sheet), #modal.open .sheet.arrive { animation: rise-in 300ms cubic-bezier(.2, .8, .3, 1); }
+}
+/* Moving between screens: the new one comes from the side you are heading to. */
+.sheet.forward header h1, .sheet.forward .body, .sheet.forward footer { animation: from-right 220ms ease-out; }
+.sheet.backward header h1, .sheet.backward .body, .sheet.backward footer { animation: from-left 220ms ease-out; }
+/* Rows deal themselves in one after another, each icon popping a beat after its row. */
+.menu-item { animation: deal-in 260ms var(--spring) both; animation-delay: calc(var(--i, 0) * 45ms + 60ms); }
+.menu-item canvas { animation: pop-in 320ms var(--spring) both; animation-delay: calc(var(--i, 0) * 45ms + 150ms); }
+.menu-item:nth-child(2) { --i: 1; } .menu-item:nth-child(3) { --i: 2; } .menu-item:nth-child(4) { --i: 3; }
+.menu-item:nth-child(5) { --i: 4; } .menu-item:nth-child(6) { --i: 5; } .menu-item:nth-child(7) { --i: 6; }
+.sheet.backward .menu-item, .sheet.backward .menu-item canvas { animation: none; } /* coming back, the list is simply there */
+.dialog .menu-item:active { transform: scale(.98); }
+@media (hover: hover) { .dialog .menu-item:hover b { transform: translateX(4px); } }
+.menu-item b { transition: transform 140ms var(--spring); }
+/* Back and Close pop in after the sheet has landed. */
+.sheet.arrive .nav, .sheet.forward .nav[data-a="back"] { animation: pop-in 280ms var(--spring) 160ms both; }
+/* A message's heading is stamped on: level up, game over. */
+.dialog:not(.sheet) h1 { animation: stamp 380ms var(--spring) 140ms both; }
+/* The shop deals its rows in when it opens. */
+#shop.unfold .item { animation: deal-in 240ms var(--spring) both; }
+#shop.unfold .item:nth-child(2) { animation-delay: 40ms; } #shop.unfold .item:nth-child(3) { animation-delay: 80ms; }
+#shop.unfold .item:nth-child(4) { animation-delay: 120ms; } #shop.unfold .item:nth-child(5) { animation-delay: 160ms; }
+#shop.unfold .item:nth-child(n+6) { animation-delay: 200ms; }
+/* Counters hop when they change; the level badge turns a somersault. */
+.chip b, .count { display: inline-block; }
+.hop { animation: hop 260ms var(--spring); }
+.badge.hop { animation: spin-hop 620ms var(--spring); }
+/* The selection panel hops up from the toolbar; messages drop in. */
+#panel:not(:empty) { animation: panel-in 220ms var(--spring); }
+#toast.show { animation: toast-in 300ms var(--spring); }
 #shopDot.on { animation: dot-pop 160ms ease-out; }
 #title .title-credits { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin-top: 10px; font-size: 12px; line-height: 1.5; }
 #title .title-credits button { padding: 3px 8px; font-size: 12px; color: var(--chalk); border: 0; background: none; box-shadow: none; text-decoration: underline; text-underline-offset: 3px; }
@@ -427,4 +476,6 @@ button { transition: transform 90ms ease-out, background-color 120ms ease-out, b
   #title > canvas, #title > .tbox { transition: none; }
   button, #title, #toast, #lvlFill { transition: none !important; }
   #shop.open, #panel:not(:empty), #title.open .row button, #modal.open .dialog, #shopDot.on, button canvas { animation: none !important; }
+  .dialog *, #shop .item, .hop, #toast.show { animation: none !important; }
+  .switch .knob::after, .menu-item b { transition: none !important; }
 }

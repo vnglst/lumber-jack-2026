@@ -131,9 +131,14 @@
     G.sel = new Set([u]); ui.centerOn(u.x, u.y);
   }
 
+  let unfoldT = 0;
   function setShop(open) {
     if (open && compact()) { setMobilePanel(''); closeMap(); }
     $('shop').classList.toggle('open', open);
+    // The rows deal themselves in when the shop opens, but not each time prices or stock redraw the list.
+    $('shop').classList.toggle('unfold', open);
+    clearTimeout(unfoldT);
+    if (open) unfoldT = setTimeout(() => $('shop').classList.remove('unfold'), 700);
     $('game').classList.toggle('shopping', open); // small screens tuck the selection panel away under the shop
   }
   const shopOpen = () => $('shop').classList.contains('open');
@@ -825,10 +830,16 @@
     while (ui.pings.length && ui.pings[0].t >= PING) ui.pings.shift();
     const idle = G.arrival ? 0 : idleJacks().length;
     $('idleBtn').style.display = idle ? '' : 'none';
-    if ($('idleN').textContent !== String(idle)) $('idleN').textContent = idle;
     $('stopBtn').disabled = !G.sel.size;
 
-    const set = (el, v) => { if (el.textContent !== String(v)) el.textContent = v; };
+    // A changed number hops, so the eye catches what moved: stock and money, the level badge, the idle count.
+    const set = (el, v) => {
+      if (el.textContent === String(v)) return;
+      const first = el.textContent === '';
+      el.textContent = v;
+      if (!first && el.matches('.chip b, .badge, .count')) { el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); }
+    };
+    set($('idleN'), idle);
     set($('c-money').querySelector('b'), G.money.toLocaleString('en-US'));
     $('c-money').classList.toggle('debt', G.money < 0);
     set($('c-wood').querySelector('b'), G.wood);
