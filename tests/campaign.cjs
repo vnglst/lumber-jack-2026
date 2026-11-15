@@ -22,12 +22,12 @@ function campaign(seed, hours = 5, opts = {}) {
   lj.ui.toast = text => {
     const key = text.replace(/[0-9€,.]+/g, '#').replace(/^(\S+) was /, 'X was ');
     toasts[key] = (toasts[key] || 0) + 1;
-    if (/was (eaten|shot)/.test(text)) {
+    if (/was (eaten|killed|mauled|shot)/.test(text)) {
       m.deaths++; perLevel('deaths');
       // Who did it: wildlife, a hut's own defenders, or a war party.
       const name = text.split(' ')[0], dead = g.units.find(u => u.name === name && u.dead);
       const near = dead && g.animals.filter(a => a.alive && a.kind === 'native' && Math.hypot(a.x - dead.x, a.y - dead.y) < 140);
-      const by = /eaten/.test(text) ? 'wildlife' : near && near.some(a => a.defender) && !near.some(a => !a.defender) ? 'hut defenders' : 'war party';
+      const by = !/shot/.test(text) ? 'wildlife' : near && near.some(a => a.defender) && !near.some(a => !a.defender) ? 'hut defenders' : 'war party';
       const home = dead && Math.hypot(dead.x - (g.base.tx + 1.5) * 16, dead.y - (g.base.ty + 1.5) * 16) < 12 * 16;
       m.killers[by] = (m.killers[by] || 0) + 1;
       m.killers['L' + g.level] = (m.killers['L' + g.level] || 0) + 1;
@@ -41,7 +41,7 @@ function campaign(seed, hours = 5, opts = {}) {
     else if (/raided the village/.test(text)) { m.raids++; note('raid', { text }); }
     else if (/Order delivered/.test(text)) m.orders.done++;
     else if (/Order missed/.test(text)) m.orders.missed++;
-    else if (/prowl|bear is coming/.test(text)) { m.packs++; perLevel('packs'); }
+    else if (/prowl|bear is coming|lynx is stalking|[Ww]olverine/.test(text)) { m.packs++; perLevel('packs'); }
     else if (/hut is destroyed/.test(text)) { m.lastHutAt = g.time; perLevel('huts'); }
   };
   const dist = (a, b) => Math.hypot(a % W - b % W, ((a / W) | 0) - ((b / W) | 0));

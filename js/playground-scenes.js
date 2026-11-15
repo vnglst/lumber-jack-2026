@@ -2,7 +2,7 @@
 // Disposable fixtures for manual review. All action after setup runs through the ordinary simulation.
 (function () {
   const G = LJ.G, P = (LJ.playground = {});
-  const SCENES = ['arrival', 'level', 'wolf', 'pack', 'bear', 'hut', 'raid', 'ending'];
+  const SCENES = ['arrival', 'level', 'wolf', 'pack', 'lynx', 'wolverine', 'bear', 'hut', 'raid', 'ending'];
   function put(u, tile) {
     u.tile = tile; u.x = LJ.colOf(tile) * LJ.TS + 8; u.y = LJ.rowOf(tile) * LJ.TS + 10;
     u.path = []; u.state = 'think';
@@ -59,13 +59,14 @@
       if (!chosen) throw new Error('No reachable hut approach on this seed; try another seed');
       put(jack, path[0]);
       LJ.combat.angerHut(chosen); LJ.combat.update(0.05); focus = chosen;
-    } else if (['wolf', 'pack', 'bear'].includes(scene)) {
+    } else if (['wolf', 'pack', 'lynx', 'wolverine', 'bear'].includes(scene)) {
       const path = LJ.bfs(jack.tile, i => Math.hypot(LJ.colOf(i) - w.start.x, LJ.rowOf(i) - w.start.y) >= 10);
       if (path?.length) put(jack, path[0]);
       const spawn = LJ.enemyPath(jack.tile, i => Math.hypot(LJ.colOf(i) - LJ.colOf(jack.tile), LJ.rowOf(i) - LJ.rowOf(jack.tile)) >= 5);
       if (!spawn?.length) throw new Error('No encounter spot on this seed; try another seed');
-      LJ.spawnWildAt(scene === 'bear' ? 'bear' : 'wolf', spawn[0], scene === 'pack' ? 3 : 1);
-      LJ.voice.cue(scene === 'bear' ? 'bear_roar' : 'wolf_howl');
+      const kind = scene === 'pack' ? 'wolf' : scene;
+      LJ.spawnWildAt(kind, spawn[0], scene === 'pack' ? 3 : scene === 'wolverine' ? 2 : 1);
+      LJ.voice.cue(LJ.FOE[kind].appear);
     } else if (scene === 'raid') {
       G.wave.hostile = true; G.wave.next = 0; LJ.combat.update(0.05);
       if (!G.wave.active) throw new Error('No raiding route on this seed; try another seed');
