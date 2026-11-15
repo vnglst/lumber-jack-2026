@@ -67,6 +67,9 @@ How to read it:
 | 54 | 15 Nov | More efficient agent instructions | Active |
 | 55 | 15 Nov | Playful animal voices | Active |
 | 56 | 15 Nov | Review before pushing: displaced units stay on connected ground | Active |
+| 57 | 15 Nov | Welcome screen covers the first paint | Active |
+| 58 | 15 Nov | Subtle interface animations | Active |
+| 59 | 15 Nov | Creator and source-code credits | Active |
 
 ---
 
@@ -721,3 +724,26 @@ How to read it:
 - Review the unpushed playtest and refactor work before it goes to the remote.
 - *Decision: one finding. §51 moves a unit off a hemmed-in building site by searching through anything for the nearest free tile, which could set him down in a walled-in nook or across water. From a site the road reaches, he is now set down only on ground the road still reaches. Added a regression test that fails on the previous code.*
 - The rest of the review found nothing to change. Whole scripted campaigns are still byte-identical to the pre-refactor baseline. The offline shell cache is bumped to v8.
+
+## 57. Welcome screen covers the first paint (15 Nov 2026)
+
+> Fix: there’s a flash of underlying ui when refreshing page before welcome screen is show.
+
+- Cover the underlying game UI from the initial HTML, including while scripts are loading.
+- *Decision: the title starts with its existing `open` class instead of waiting for JavaScript to reveal it. The existing title rendering and close transition still apply.*
+
+## 58. Subtle interface animations (15 Nov 2026)
+
+> Add small and subtle animations to the ui elements. To make them more fun to use.
+
+- Add short, restrained feedback to controls and opening panels without slowing interaction.
+- *Decision: 90–120 ms button transitions, a one-pixel hover lift for toolbar/HUD buttons, 160–180 ms entrances for the shop, selection panel, dialogs and welcome buttons, and a single small pop for the shop notification.*
+- Respect the operating system's reduced-motion preference; avoid continuous decorative motion.
+
+## 59. Creator and source-code credits (15 Nov 2026)
+
+> Add credits with link to my website and source code.
+
+- Link to Koen van Gilst's website and the game's source repository from the welcome screen and credits page.
+- *Decision: use `https://koenvangilst.nl/` and the verified Git remote's repository, `https://github.com/vnglst/lumber-jack-2026`. Keep wildlife sound attribution and previews on the credits page.*
+- The offline shell is bumped to v9 for the welcome-screen, animation and credits changes.
