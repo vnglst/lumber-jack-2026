@@ -84,6 +84,7 @@ How to read it:
 | 71 | 15 Nov | Ore: mining, and ore in the shop and the market | Active |
 | 72 | 15 Nov | Northern lights mirrored in the lake; playtest with ore | Active |
 | 73 | 15 Nov | Review before merging: a palisade may not seal the camp | Active |
+| 74 | 15 Nov | Menus as one stack of screens; pixel-art icon buttons | Active |
 
 ---
 
@@ -918,3 +919,26 @@ How to read it:
 - *Measured after merging all three: the tests pass (199 once the sound-settings and mobile-interface work of §62–70 was merged in as well); the scripted player (which builds no palisades) finishes 8 of 8 maps with careful play and 6 of 6 with slow play, at the same pace as before.*
 - Not covered: nobody has played with palisades by hand since they became solid, and the scripted player does not use them.
 - The offline shell cache is bumped to v15.
+
+## 74. Menus as one stack of screens; pixel-art icon buttons (15 Nov 2026)
+
+> Can you review these and improve when needed. Also implement the following improvements:
+>
+> - refactor ui, especially of the menu's, keeping usability on mobile in mind
+> - redesign icon buttons that were recently added. Should be more playful.
+
+- "These" were the three gaps left open in §73: the sound-settings and mobile-interface commits of §62–70 had not been reviewed, and solid palisades (§61) and mining (§71) had only been exercised by unit tests.
+- **Review:**
+  - *The §62–70 code reads correctly: volumes are clamped and remembered, voices share the effects volume, and wildlife spawning was only moved into a shared function. The findings were in the interface and are addressed below: the phone's Camp drawer repeated sound, finds and help, which the pause menu also offers; every dialog hand-coded where Back should lead; and the new action buttons used thin line drawings (a shopping trolley for "haul to market") unlike anything else in the game.*
+  - *Palisades: the scripted player (§51) can now ring its camp with palisade (`{ walls: true }`). Seven of eight walled campaigns finish with no stalls, so solid walls and the opening rule of §73 hold up over whole games. The eighth is a real defeat, not a dead end: 16 of its 27 deaths were inside the ring, because one opening makes the camp a trap for jacks falling back to heal. Decision: no rule change; over-walling is the player's risk.*
+  - *Mining had already been played through by the scripted player in §72; nothing new was found.*
+- **Menus:**
+  - *Decision: the menus move out of `ui.js` into `js/menus.js` as screens on a stack inside one dialog: Paused, How to play, Forest finds, Sound, Credits and the new-game question. Opening a screen from another pushes it; Back or Escape pops one; the cross closes everything and leaves the game paused or running exactly as it was. This replaces the per-dialog flags for "opened from the menu" and "opened from the welcome screen". One-message dialogs (level up, game over, the ending) stay in `ui.js`.*
+  - *Decision: every screen has the same frame: Back and Close at the top as full 44 px buttons, a body that scrolls, and a footer that stays in place. The pause menu is a list of rows with an icon, a name and a line saying where things stand (finds recovered, current volumes). Forest finds joins the menu.*
+  - *Decision: on a phone every dialog is a sheet rising from the bottom edge at full width, so its buttons are under the thumb; rows are 58 px tall. The Camp drawer now holds only resources, progress and the stockpile switch; help, finds and sound are in the menu. The sound screen has whole-row switches instead of small checkboxes and taller sliders.*
+- **Icon buttons:**
+  - *Decision: the line drawings and text glyphs are replaced by pixel-art icons drawn in code like the rest of the game (`js/art.js`), each a 12 by 12 grid of named colours: a hand saw, a market stall with a striped awning, a red mitten for Stop, a red cross, a folded map, a note, a gold nugget, a speech bubble, a stack of logs for the menu, a heart, a sapling, plus and minus. Icon buttons are cream-painted like the other buttons, so the pictures read on them.*
+  - *Decision: on a desktop the selected-unit buttons show the icon beside the label; on a phone the icon alone. Icons wiggle when pointed at and squash when pressed; with reduced motion they do neither.*
+- Checked in a browser at desktop and phone sizes: 41 behaviour checks (the back stack, Escape, pause state restored, sound controls, credits from the welcome screen, the new-game question, tap-target sizes) and screenshots of every screen. Added a test that every icon a button asks for is drawn and that each pixel icon is a full grid.
+- Not judged by a person: whether the icons read at a glance on a real phone, and how the sheets feel under a thumb.
+- Game rules and saves are unchanged. The offline shell lists the new script and its cache version is bumped.
