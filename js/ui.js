@@ -531,7 +531,7 @@
     '<li><b>Mind the forest.</b> The map is unexplored and it bites back. Jacks heal near home, fall back there by themselves when badly hurt, and learn through work. Forest villages defend themselves; destroying a hut stops its reinforcements for good.</li></ul>' +
     '<table class="keys"><tr><td></td><th>Mouse</th><th>Touch</th><th>Keys</th></tr>' +
     row('Select', 'Click a unit, drag a box. Shift adds. Double-click takes every unit of that kind.', 'Tap a unit. Double-tap takes every unit of that kind.', 'Ctrl/⌘+A all jacks. Shift+1–9 saves a group, 1–9 recalls it.') +
-    row('Order', 'Click or right-click a tree, animal, hut, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things.', 'X stops. Esc deselects.') +
+    row('Order', 'Click or right-click a tree, animal, hut, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things. Selected-unit icons: saw lumber, cart to market, square to stop, × to deselect.', 'X stops. Esc deselects.') +
     row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
     row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch.', '− and +') +
     row('Menus', 'Shop is in the toolbar, ≡ pauses.', 'Shop is in the toolbar, ≡ pauses.', 'B shop. Esc backs out one step, then pauses.') +
@@ -685,10 +685,14 @@
       experience = '<div class="experience" title="Earn XP by felling trees, processing lumber and delivering goods. Higher ranks improve work, carrying and walking.">' +
         rank.name + ' · ' + Math.floor(u.xp || 0) + (next ? '/' + next.xp + ' XP' : ' XP · max') + (bonus ? ' · +' + bonus + '% work' : '') + '</div>';
     }
+    const action = (act, label, path, tip) => '<button data-act="' + act + '" title="' + (tip || label) + '" aria-label="' + label + '">' +
+      '<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">' + path + '</svg><span class="action-label">' + (act === 'desel' ? '✕' : label) + '</span></button>';
     let btn = '';
-    if (has('jack') && G.count.sawmill) btn += '<button data-act="saw">Saw lumber</button>';
-    if (has('jack') || has('truck')) btn += '<button data-act="sell">' + (has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market') + '</button>';
-    p.innerHTML = '<div><div>' + title + '</div><div class="st">' + st + '</div>' + experience + '</div>' + btn + '<button data-act="stop">Stop</button><button data-act="desel">✕</button>';
+    if (has('jack') && G.count.sawmill) btn += action('saw', 'Saw lumber', '<path d="M3 9h13l5 4-3 5-3-3-2 2-2-2-2 2-2-2-2 2-2-2zM17 11l2 2-1 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>');
+    if (has('jack') || has('truck')) btn += action('sell', has('truck') && !has('jack') && !G.up.dispatch ? 'Haul run' : 'Haul to market', '<path d="M2 4h3l3 12h11l3-9H6M9 11h11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="10" cy="20" r="2" fill="currentColor"/><circle cx="18" cy="20" r="2" fill="currentColor"/>');
+    btn += action('stop', 'Stop', '<path d="M6 6h12v12H6z" fill="currentColor"/>', 'Stop the selected units (X)');
+    btn += action('desel', 'Deselect', '<path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.5"/>', 'Deselect (Esc)');
+    p.innerHTML = '<div class="unit-info"><div>' + title + '</div><div class="st">' + st + '</div>' + experience + '</div><div class="unit-actions">' + btn + '</div>';
     const pic = iconCanvas(S.icons[ICON_OF[u.kind]], 12);
     pic.title = 'Show on the map (F)'; pic.style.cursor = 'pointer'; pic.onclick = () => ui.centerOnSelection();
     p.prepend(pic);

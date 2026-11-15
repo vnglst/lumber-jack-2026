@@ -110,6 +110,8 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
 #panel:empty { display: none; }
 #panel canvas { width: 36px; height: 36px; background: var(--tar); border-radius: 2px; }
 #panel .st { font-weight: 600; color: var(--chalk); font-size: 13px; }
+#panel .unit-actions { display: flex; gap: 10px; flex-shrink: 0; }
+#panel .action-icon { display: none; width: 24px; height: 24px; }
 #panel button, .dialog button, .item button, #title button {
   font: inherit; color: var(--tar); background: var(--trim); border: 2px solid var(--tar);
   border-radius: 2px; padding: 6px 12px; cursor: pointer; box-shadow: inset 0 -3px 0 var(--trim-shade), 0 2px 0 rgba(0, 0, 0, .4);
@@ -210,6 +212,19 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
   #mini { display: none; width: 156px; height: 108px; bottom: calc(126px + env(safe-area-inset-bottom)); }
   .mini-on #mini { display: block; }
   #toolbar #mapBtn { display: grid; }
+}
+
+/* Keep the crew's status legible and their orders within thumb reach in either phone orientation. */
+@media (max-width: 900px), (pointer: coarse) and (max-height: 500px) {
+  .shopping #panel { display: none; }
+  #panel { gap: 6px; padding: 6px; font-size: 13px; }
+  #panel > canvas { width: 28px; height: 28px; flex-shrink: 0; }
+  #panel .unit-info { min-width: 0; overflow-wrap: anywhere; }
+  #panel .st { font-size: 12px; }
+  #panel .unit-actions { gap: 4px; }
+  #panel .unit-actions button { width: 40px; height: 44px; padding: 6px; display: grid; place-items: center; }
+  #panel .action-icon { display: block; }
+  #panel .action-label { display: none; }
 }
 
 /* The opening ride: one short story beat at a time, with room to see the road. */
