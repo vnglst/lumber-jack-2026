@@ -277,6 +277,7 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
   .arriving #hud, .cine #hud { display: flex; justify-content: flex-end; }
   .arriving #hud #hudDetails, .cine #hud #hudDetails { display: contents !important; }
   .arriving #hudDetails > :not(#soundBtn), .cine #hudDetails > :not(#soundBtn) { display: none !important; }
+  .arriving #hudDetails .hbtn, .cine #hudDetails .hbtn { width: 44px; }
   .arriving #resourcesBtn, .arriving #marketBtn, .cine #resourcesBtn, .cine #marketBtn, .cine #hud > .chip { display: none !important; }
 }
 @media (min-width: 600px) and (max-width: 900px) and (max-height: 500px), (min-width: 600px) and (pointer: coarse) and (max-height: 500px) {

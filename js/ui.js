@@ -565,7 +565,7 @@
         const name = kind === 'music' ? 'Music' : 'Sound effects', value = Math.round(LJ.volumeOf(kind) * 100);
         return '<div class="volume-control"><label for="volume-' + kind + '">' + name + ' volume</label><output for="volume-' + kind + '">' + value + '%</output>' +
           '<input id="volume-' + kind + '" data-volume="' + kind + '" type="range" min="0" max="100" step="1" value="' + value + '"></div>';
-      }).join('') + '<p class="fine">Sound effects include voices and wildlife.</p></div><button data-a="back" data-esc>Back</button>', {
+      }).join('') + '<p class="fine">Sound effects include voices and wildlife.</p></div><button data-a="back" data-esc title="' + (fromMenu ? 'Back to paused menu' : 'Return to the game') + ' (Escape)">Back</button>', {
       back: () => {
         if (fromMenu) { ui.showMenu(); $('modal').querySelector('[data-a="audio"]').focus({ preventScroll: true }); }
         else { G.paused = wasPaused; $('soundBtn').focus({ preventScroll: true }); }
