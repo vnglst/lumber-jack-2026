@@ -1148,8 +1148,8 @@
     if (!afford(c)) { G.place = null; LJ.sfx('no'); return false; }
     // The road must reach the new building, and a building may not cut any ground off from the road. Houses packed
     // around the camp could otherwise seal it off from the market for good, or leave a pocket for the crew to be trapped in.
-    let open = floodFromRoad();
-    for (let y = ty; y < ty + p.h; y++) for (let x = tx; x < tx + p.w; x++) if (vis[y * W + x] === stamp) open--; // the footprint itself
+    let open = floodFromRoad(), onRoad = false; // onRoad: the site itself is ground the road reaches
+    for (let y = ty; y < ty + p.h; y++) for (let x = tx; x < tx + p.w; x++) if (vis[y * W + x] === stamp) { open--; onRoad = true; } // the footprint itself
     const b = addBuilding(p.kind, tx, ty, p.w, p.h), mask = new Uint8Array(w.N);
     ring(b, mask);
     if (floodFromRoad() < open || !mask.some((m, i) => m && vis[i] === stamp)) {
@@ -1161,11 +1161,14 @@
     G.place = null;
     levelFootprint(b);
     // Anyone standing on the building site steps aside, to the nearest free tile however hemmed in the site is
-    // (searching only walkable ground left a jack walled into the new building for good). Anyone whose route
-    // crossed the site plans a new one.
+    // (searching only walkable ground left a jack walled into the new building for good). The search goes through
+    // anything, so from a site the road reaches he must also land on ground the road still reaches, not across a
+    // river. Anyone whose route crossed the site plans a new one.
+    const road = new Uint8Array(w.N);
+    if (onRoad) { floodFromRoad(); for (let i = 0; i < w.N; i++) if (vis[i] === stamp) road[i] = 1; }
     for (const u of G.units) {
       if (w.bld[u.tile]) {
-        const pth = bfs(u.tile, n => pass(n), () => true);
+        const pth = bfs(u.tile, n => pass(n) && (!onRoad || road[n] === 1), () => true);
         if (pth && pth.length) { u.tile = pth[0]; u.x = midX(u.tile); u.y = feetY(u.tile); }
       } else if (!u.path.some(n => w.bld[n])) continue;
       u.path = []; if (u.state !== 'idle') u.state = 'think';
