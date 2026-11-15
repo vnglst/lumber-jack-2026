@@ -66,6 +66,9 @@ How to read it:
 | 53 | 15 Nov | Sourced animal sound effects | Active |
 | 54 | 15 Nov | More efficient agent instructions | Active |
 | 55 | 15 Nov | Playful animal voices | Active |
+| 56 | 15 Nov | Welcome screen covers the first paint | Active |
+| 57 | 15 Nov | Subtle interface animations | Active |
+| 58 | 15 Nov | Creator and source-code credits | Active |
 
 ---
 
@@ -712,3 +715,27 @@ How to read it:
 - *Decision: peaceful animal calls come only from explored, on-screen critters that have not vanished. One shared 10–20-second interval and lower volume keep the forest lively without crowding the music or dialogue. They pause with gameplay and stay silent in the opening drive and ending.*
 - *Decision: use the existing voice mixer, global mute and editable recording-booth pipeline. The transient call timer resets on new games and loading; the save format is unchanged. Recorded sounds still require a connection, following the existing offline policy.*
 - *Decision: show audio credits and previews through a link in Help; retain the original archive URL, filename mapping, CC0 license and edits in `audio/CREDITS.md`. Bump the offline shell to v7 for the changed scripts and credits page.*
+
+
+## 56. Welcome screen covers the first paint (15 Nov 2026)
+
+> Fix: there’s a flash of underlying ui when refreshing page before welcome screen is show.
+
+- Cover the underlying game UI from the initial HTML, including while scripts are loading.
+- *Decision: the title starts with its existing `open` class instead of waiting for JavaScript to reveal it. The existing title rendering and close transition still apply.*
+
+## 57. Subtle interface animations (15 Nov 2026)
+
+> Add small and subtle animations to the ui elements. To make them more fun to use.
+
+- Add short, restrained feedback to controls and opening panels without slowing interaction.
+- *Decision: 90–120 ms button transitions, a one-pixel hover lift for toolbar/HUD buttons, 160–180 ms entrances for the shop, selection panel, dialogs and welcome buttons, and a single small pop for the shop notification.*
+- Respect the operating system's reduced-motion preference; avoid continuous decorative motion.
+
+## 58. Creator and source-code credits (15 Nov 2026)
+
+> Add credits with link to my website and source code.
+
+- Link to Koen van Gilst's website and the game's source repository from the welcome screen and credits page.
+- *Decision: use `https://koenvangilst.nl/` and the verified Git remote's repository, `https://github.com/vnglst/lumber-jack-2026`. Keep wildlife sound attribution and previews on the credits page.*
+- The offline shell is bumped to v8 for the welcome-screen, animation and credits changes.

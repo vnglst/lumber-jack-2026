@@ -286,3 +286,24 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
   #title .row button { padding: 8px 20px; font-size: 17px; }
   #title .site-actions { margin: 10px 0; }
 }
+
+/* Small, one-shot responses keep the painted controls tactile without delaying interaction. */
+button { transition: transform 90ms ease-out, background-color 120ms ease-out, box-shadow 90ms ease-out; }
+@media (hover: hover) {
+  .hbtn:hover:not(:disabled), #toolbar button:hover:not(:disabled) { transform: translateY(-1px); }
+  .hbtn:active:not(:disabled), #toolbar button:active:not(:disabled) { transform: translateY(2px); }
+}
+@keyframes ui-arrive { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes dialog-arrive { from { opacity: 0; transform: translateY(4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes dot-pop { from { transform: scale(.6); } to { transform: scale(1); } }
+#shop.open, #panel:not(:empty), #title.open .row button { animation: ui-arrive 160ms ease-out; }
+#modal.open .dialog { animation: dialog-arrive 180ms ease-out; }
+#shopDot.on { animation: dot-pop 160ms ease-out; }
+#title .title-credits { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin-top: 10px; font-size: 12px; line-height: 1.5; }
+#title .title-credits a { color: #c5d6e6; text-decoration-color: #6a869d; text-underline-offset: 3px; }
+#title .title-credits a:hover { color: #fff; }
+#title .title-credits a:focus-visible { outline: 2px solid #f6c453; outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  button, #title, #toast, #lvlFill { transition: none !important; }
+  #shop.open, #panel:not(:empty), #title.open .row button, #modal.open .dialog, #shopDot.on { animation: none; }
+}
