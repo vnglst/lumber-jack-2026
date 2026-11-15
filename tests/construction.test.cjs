@@ -156,8 +156,8 @@ test('save/load preserves unfinished buildings, upgrades and walls without grant
   const lj = village(), g = lj.G;
   const mill = place(lj, 'sawmill');
   lj.buy('base');
-  const tile = g.world.wall.findIndex((v, i) => lj.canWall(i));
-  lj.buildWalls([tile]);
+  // The first spot where a section is allowed: one that would cut ground off from the road is refused.
+  const tile = g.world.wall.findIndex((v, i) => lj.canWall(i) && lj.buildWalls([i]) === 1);
   step(lj, 1);
   const left = mill.construction.t, upgradeLeft = g.base.construction.t;
   lj.saveGame();

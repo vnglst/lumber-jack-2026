@@ -71,8 +71,10 @@ How to read it:
 | 58 | 15 Nov | Subtle interface animations | Active |
 | 59 | 15 Nov | Creator and source-code credits | Active |
 | 60 | 15 Nov | Agent notes from the interface, playtest and refactor sessions | Active |
-| 61 | 15 Nov | Ore: mining, and ore in the shop and the market | Active |
-| 62 | 15 Nov | Northern lights mirrored in the lake; playtest with ore | Active |
+| 61 | 15 Nov | Palisades block every unit | Active |
+| 62 | 15 Nov | Ore: mining, and ore in the shop and the market | Active |
+| 63 | 15 Nov | Northern lights mirrored in the lake; playtest with ore | Active |
+| 64 | 15 Nov | Review before merging: a palisade may not seal the camp | Active |
 
 ---
 
@@ -762,7 +764,18 @@ How to read it:
 - *Decision: tools. Short, single-purpose shell commands, so they match the user's allow rules; plain git diffs past the external diff tool; zsh word splitting.*
 - No game code changes.
 
-## 61. Ore: mining, and ore in the shop and the market (15 Nov 2026)
+## 61. Palisades block every unit (15 Nov 2026)
+
+> Palisades should block Jacks as well (or any unit).
+
+- Palisades obstruct Jacks, all vehicles, hostile units and walking wildlife; player units must find an opening instead of passing through walls.
+- Apply the same blocking to unfinished stakes and completed sections, including diagonal corners and walls built after a route was planned.
+- *Decision: remove the implicit friendly gate behavior. The shop and placement hint explain that players must leave openings for their crews and market trucks. Enemies still have to break a wall before crossing it.*
+- *Decision: refuse placement on occupied tiles so construction cannot embed a unit in a solid wall. Existing saved walls gain the blocking behavior without a save-format change; destroying a section opens the route again.*
+- *Decision: the ending cancels palisade placement and prevents new wall construction, keeping the visitor's planned route clear.*
+- Bump the offline shell for the changed movement and interface scripts. Regression checks cover every player unit kind, wildlife, enemies, live route obstruction, deliberate gaps and saved walls.
+
+## 62. Ore: mining, and ore in the shop and the market (15 Nov 2026)
 
 > Allow extracting ore from rocks and using it as a resource. Integrate this in the gameplay, shop and general economy.
 
@@ -783,7 +796,7 @@ How to read it:
 - Not judged by a person: whether mining is fun, and the look of the ore on a phone-sized screen, where the HUD now wraps to one more chip.
 - Added eight tests (`tests/ore.test.cjs`). The offline shell lists the new script and its cache version is bumped.
 
-## 62. Northern lights mirrored in the lake; playtest with ore (15 Nov 2026)
+## 63. Northern lights mirrored in the lake; playtest with ore (15 Nov 2026)
 
 > Northern lights should be reflected in the water.
 > Test game mechanics when done. Make sure game is still engaging and enjoyable.
@@ -796,3 +809,14 @@ How to read it:
 - *Measured: ore is a real choice. A player who never mines finishes 8 of 8, but without most ore-priced upgrades loses about 25 jacks instead of 7 and ends with a third of the money. On each map 60 to 100% of the ore is extracted, the 92 needed for upgrades is always reachable, and the rest is sold. The first ore-priced upgrade arrives between minute 14 and 23 depending on where the veins lie.*
 - *Decision: no rule changes from this playtest.*
 - Not judged by a person: whether the reflection looks right in motion, and whether mining is enjoyable to play. A scripted player finds dead ends and balance problems; it cannot tell fun.
+
+## 64. Review before merging: a palisade may not seal the camp (15 Nov 2026)
+
+> other agent is done, review, mergen and push
+
+- Review the solid palisades (§61) together with ore (§62) and the northern lights (§63), merge and push.
+- *Decision: one finding. Since §61, palisades stop the player's own jacks and trucks, and a palisade cannot be taken down. A closed ring around the camp therefore cut it off from the market for good: the dead end §51 removed for buildings. A test built all 32 sections of such a ring. Now a section that would cut any ground off from the road is not built, and the player is told that an opening was left. This applies §51's rule for buildings to palisades; §61's "leave openings" still describes what the player should do, the game now also guarantees one.*
+- *Decision: the rule is strict on purpose. Even a small pocket behind a wall may hold the only way to some trees, and every tree has to go.*
+- *Measured after merging all three: 191 tests pass; the scripted player (which builds no palisades) finishes 8 of 8 maps with careful play and 6 of 6 with slow play, at the same pace as before.*
+- Not covered: nobody has played with palisades by hand since they became solid, and the scripted player does not use them.
+- The offline shell cache is bumped to v11.

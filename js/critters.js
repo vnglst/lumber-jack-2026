@@ -42,6 +42,7 @@
     const w = G.world, W = w.W, H = w.H;
     c.tx = LJ.clamp(x, 8, W * TS - 8); c.ty = LJ.clamp(y, 8, H * TS - 8); c.moving = true;
   }
+  const crossesWall = (c, x, y) => LJ.wallInWay(LJ.tileOfPx(c.x, c.y), LJ.tileOfPx(x, y)) >= 0;
   // One quiet call at a time from wildlife actually in view; unexplored or vanished animals stay silent.
   const CRITTER_CUES = { deer: 'reindeer_call', squirrel: 'squirrel_call', swan: 'swan_call' };
   function updWildlifeCalls(dt) {
@@ -66,7 +67,11 @@
         if (c.moving) {
           const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy), dist = Math.min(d, 16 * dt);
           if (d < 1) critterStop(c, 2 + Math.random() * 4);
-          else { c.x += dx / d * dist; c.y += dy / d * dist; c.dir = dx > 0 ? 1 : -1; c.walkT += dt; }
+          else {
+            const nx = c.x + dx / d * dist, ny = c.y + dy / d * dist;
+            if (crossesWall(c, nx, ny)) critterStop(c, 1);
+            else { c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1; c.walkT += dt; }
+          }
         }
         continue;
       }
@@ -76,7 +81,7 @@
         if (!c.moving && (c.t -= dt) <= 0) critterGo(c, c.x + (Math.random() - 0.5) * 70, c.y + (Math.random() - 0.5) * 40);
         if (!c.moving) continue;
         const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy), nx = c.x + (dx / d) * 7 * dt, ny = c.y + (dy / d) * 7 * dt;
-        if (d < 1.5 || w.type[LJ.tileOfPx(nx + Math.sign(dx) * 9, ny)] !== T.WATER || w.type[LJ.tileOfPx(nx, ny + Math.sign(dy) * 7)] !== T.WATER) { critterStop(c, 2 + Math.random() * 6); continue; }
+        if (d < 1.5 || crossesWall(c, nx, ny) || w.type[LJ.tileOfPx(nx + Math.sign(dx) * 9, ny)] !== T.WATER || w.type[LJ.tileOfPx(nx, ny + Math.sign(dy) * 7)] !== T.WATER) { critterStop(c, 2 + Math.random() * 6); continue; }
         c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1;
         continue;
       }
@@ -97,7 +102,7 @@
       const sp = c.flee ? (deer ? 85 : 70) : deer ? 16 : 24;
       if (d < 1.5) { critterStop(c, 1.5 + Math.random() * 5); continue; }
       const nx = c.x + (dx / d) * sp * dt, ny = c.y + (dy / d) * sp * dt;
-      if (!LJ.wildPass(LJ.tileOfPx(nx, ny))) { critterStop(c, 0.4); continue; }
+      if (!LJ.wildPass(LJ.tileOfPx(nx, ny)) || crossesWall(c, nx, ny)) { critterStop(c, 0.4); continue; }
       c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1; c.walkT += dt;
     }
     if (G.critters.some(c => c.alpha <= 0)) G.critters = G.critters.filter(c => c.alpha > 0);

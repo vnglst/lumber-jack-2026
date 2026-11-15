@@ -114,7 +114,7 @@
     vehItem('truck', 2, 250, 'Hauls 60 goods per trip down the road to market, much faster than walking.', 'truck'),
     vehItem('shuttle', 3, 150, 'Tap a forest clearing to set a route. Jacks load it there; it shuttles up to 40 wood back to the village automatically.', 'shuttle'),
     bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Fires laser bursts at forest folk and wild animals. Sees far, and jacks nearby heal quickly.', 'tower'),
-    { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Takes ' + WALL_BUILD_TIME + ' seconds per section. Your people use the gates; enemies break through. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
+    { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Takes ' + WALL_BUILD_TIME + ' seconds per section. Blocks every unit: leave openings for your crew and trucks. Enemies can break through. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
     vehItem('dozer', 4, 600, 'Uproots stumps for extra wood, clears rocks for stone (and any ore in them) and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
     { id: 'steel', name: 'Steel Axe Heads', desc: 'Forged from your own ore. Jacks chop 20% faster.', icon: 'axe', level: 4, need: 'pick', cost: () => ({ m: 200, o: 12 }) },
     { id: 'foreman', name: 'Keen-eyed Foreman', desc: 'Jacks spot trees from 50% further away.', icon: 'hat', level: 5, cost: () => ({ m: 500 }) },
@@ -132,17 +132,29 @@
   const Q_NORMAL = LN.normal, Q_ANNOYED = LN.annoyed, Q_FUNNY = LN.funny, Q_ACK = LN.ack, Q_BROKE = LN.broke, Q_NONE = LN.none, Q_VEH = LN.veh;
 
   const isTree = i => w.obj[i] >= 1 && w.obj[i] <= 3;
-  const pass = i => { const t = w.type[i]; return t !== T.WATER && t !== T.ROCK && !isTree(i) && w.bld[i] === 0; };
+  const pass = i => { const t = w.type[i]; return t !== T.WATER && t !== T.ROCK && !isTree(i) && w.bld[i] === 0 && !w.wall[i]; };
   const blocked = i => w.type[i] === T.WATER || w.type[i] === T.ROCK;
   const isRoot = i => w.obj[i] === STUMP && !w.bld[i];
   const canDoze = (LJ.canDoze = i => !w.bld[i] && (blocked(i) || isRoot(i)));
-  // Animals slip between the trees; only water, rock and buildings stop them.
+  // Hostile routes may include palisades to attack; movement still stops at the wall.
+  // Animals slip between trees, but water, rock and buildings block their routes.
   const wildPass = i => !blocked(i) && w.bld[i] === 0;
   // A bulldozer plans its route straight through rock and water.
-  const dozePass = i => w.bld[i] === 0 && !isTree(i);
+  const dozePass = i => w.bld[i] === 0 && !isTree(i) && !w.wall[i];
   // The market sits where the road meets the west edge; nothing gets built right in front of it.
   const nearMarket = (x, y) => x < 4 && Math.abs(y - w.roadY) < 2;
   LJ.isTree = isTree; LJ.pass = pass; LJ.blocked = blocked; LJ.wildPass = wildPass;
+  // Check both sides of a diagonal as well as its destination, including walls built after a route was planned.
+  const wallInWay = (LJ.wallInWay = (from, to) => {
+    if (from === to) return -1;
+    if (w.wall[to]) return to;
+    const fx = colOf(from), fy = rowOf(from), tx = colOf(to), ty = rowOf(to);
+    if (fx !== tx && fy !== ty) {
+      if (w.wall[fy * W + tx]) return fy * W + tx;
+      if (w.wall[ty * W + fx]) return ty * W + fx;
+    }
+    return -1;
+  });
   // Everything that attacks the operation. wild: roams as wildlife (the forest folk come in waves instead).
   const FOE = (LJ.FOE = {
     wolf: { pelt: 15, wild: true, wallDmg: 6, hit: LN.hit.wolf, cry: 'wolf_snarl', die: 'wolf_yelp', death: n => n + ' was eaten by a wolf.' },
@@ -378,7 +390,7 @@
     let dist = (speed === undefined ? speedOf(u) : speed) * dt;
     while (dist > 0 && u.path.length) {
       const n = u.path[u.path.length - 1];
-      if (!pass(n)) { u.path = []; u.state = 'think'; return; }
+      if (!pass(n) || wallInWay(u.tile, n) >= 0) { u.path = []; u.state = 'think'; return; }
       const tx = midX(n), ty = feetY(n);
       const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy);
       if (Math.abs(dx) > 0.01) u.dir = dx > 0 ? 1 : -1;
@@ -735,17 +747,28 @@
   const WALL_HP = 60, WALL_COST = (LJ.WALL_COST = { m: 4, w: 2 });
   LJ.canWall = i => {
     if (i < 0 || i >= w.N || w.wall[i] || w.bld[i] || isTree(i) || !G.fog[i] || LJ.combat.hutAt(i)) return false;
+    const occupies = u => u.tile === i || tileOfPx(u.x, u.y) === i;
+    if (G.units.some(u => !u.dead && occupies(u)) || G.animals.some(a => a.alive && occupies(a)) ||
+        G.critters.some(c => !c.gone && c.alpha > 0 && occupies(c))) return false;
     const t = w.type[i], x = colOf(i), y = rowOf(i);
     return (t === T.GRASS || t === T.DIRT || t === T.MUD || t === T.GRAVEL || t === T.ROAD) && !nearMarket(x, y);
   };
   LJ.buildWalls = function (tiles) {
-    let n = 0;
+    if (G.cine) return 0;
+    // Palisades stop the player's own units and cannot be taken down again, so like a building (see tryPlace) a
+    // section may not cut any ground off from the road. One that would is left out: that gap is the way through.
+    let n = 0, gaps = 0, open = floodFromRoad();
     for (const i of tiles) {
       if (!LJ.canWall(i)) continue;
       if (G.money < WALL_COST.m || G.wood < WALL_COST.w) { LJ.ui.toast('Not enough money or wood for more palisade.'); break; }
-      G.money -= WALL_COST.m; G.wood -= WALL_COST.w; w.wall[i] = 1;
+      w.wall[i] = 1;
+      const left = floodFromRoad();
+      if (left < open - 1) { w.wall[i] = 0; gaps++; continue; }
+      open = left;
+      G.money -= WALL_COST.m; G.wood -= WALL_COST.w;
       G.wallSites[i] = { t: WALL_BUILD_TIME, total: WALL_BUILD_TIME }; n++;
     }
+    if (gaps) LJ.ui.toast('Left an opening in the palisade: closing it would cut your crew and trucks off from the road.');
     if (n) { LJ.sfx('build'); G.worldVer++; }
     return n;
   };

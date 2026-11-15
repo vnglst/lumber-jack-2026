@@ -642,7 +642,7 @@
   function hint() {
     if (G.arrival) return '';
     if (G.levelDone || G.cine) return '';
-    if (G.wallMode) return 'Drag to build a line of palisade. Enemies walk around open ends, so close the ring around what you want to protect.';
+    if (G.wallMode) return 'Drag to build solid palisades. They block every unit: leave openings for your crew and trucks. Enemies can use openings or break through.';
     if (G.place) return 'Pick a clear, explored spot the road can reach.';
     const nw = LJ.combat.nextWaveIn();
     if (G.wave.active && !G.wave.active.retreating) return 'The forest folk are attacking! Guard towers and jacks with laser pistols can hold them off.';
