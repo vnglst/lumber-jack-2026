@@ -215,6 +215,8 @@
       root.classList.add('open');
       resize();
       draw(40); // one frame straight away, so the scene is there before the first animation tick
+      // Let the dark backdrop paint before revealing the complete opening screen.
+      if (!root.classList.contains('ready')) requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('ready')));
       addEventListener('resize', resize);
       cancelAnimationFrame(raf);
       t0 = performance.now(); last = 0;

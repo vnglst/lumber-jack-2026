@@ -85,6 +85,8 @@ How to read it:
 | 72 | 15 Nov | Northern lights mirrored in the lake; playtest with ore | Active |
 | 73 | 15 Nov | Review before merging: a palisade may not seal the camp | Active |
 | 74 | 15 Nov | Menus as one stack of screens; pixel-art icon buttons | Active |
+| 75 | 15 Nov | Fade in the initial welcome screen | Active |
+| 76 | 15 Nov | Review the startup fade before pushing | Done |
 
 ---
 
@@ -942,3 +944,21 @@ How to read it:
 - Checked in a browser at desktop and phone sizes: 41 behaviour checks (the back stack, Escape, pause state restored, sound controls, credits from the welcome screen, the new-game question, tap-target sizes) and screenshots of every screen. Added a test that every icon a button asks for is drawn and that each pixel icon is a full grid.
 - Not judged by a person: whether the icons read at a glance on a real phone, and how the sheets feel under a thumb.
 - Game rules and saves are unchanged. The offline shell lists the new script and its cache version is bumped.
+
+## 75. Fade in the initial welcome screen (15 Nov 2026)
+
+> Can you improve how the game loads initially, by using a fadein.
+
+- Fade in the initial welcome screen as it becomes ready.
+- *Decision: keep the opaque night backdrop from §57 covering the game while scripts load. After the first scene is drawn and the start buttons are populated, allow the backdrop to paint, then fade the artwork and controls in together over 700 ms. Later openings do not repeat the startup fade.*
+- Respect reduced motion by showing the prepared screen without the opacity transition.
+- Syntax checks and all 201 tests pass. Browser verification was blocked by the automation browser's busy profile and no available alternative browser; the appearance and timing in motion have not been visually verified.
+- The offline shell cache is bumped to v17. No changes to shell loading, game rules or save data.
+
+## 76. Review the startup fade before pushing (15 Nov 2026)
+
+> Review and push
+
+- Review the startup fade (§75) before publishing it.
+- *Decision: fix one finding. Giving the title's children explicit visible status kept the invisible welcome screen intercepting game input after it closed. Once ready, the children now inherit the parent's visibility, preserving its existing close transition and releasing game input afterward.*
+- A focused isolated-browser check failed before the fix and passed afterward at desktop, narrow portrait and landscape sizes. It checks the fade in progress, reduced motion, child visibility after closing and clicks reaching the underlying game. The real game also boots, displays the welcome screen and starts a new game with the title no longer intercepting input. An isolated headless browser resolved the verification blocker recorded in §75; a screenshot was inspected, but nobody judged the fade's feel in motion.
