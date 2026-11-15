@@ -16,7 +16,7 @@ Opens the development game at http://localhost:5173 (needs Python 3). The server
 
 The game saves itself in the browser as you play. Tap **?** in the game for the controls. Share it from the opening screen. On supported browsers, **Install game** adds it to your device; on iPhone/iPad use Safari's Share → Add to Home Screen. After one online visit, the game works offline (recorded voices need a connection).
 
-Production is a static site deployed through Coolify. Run `make release` to check and package the game into `dist/`; publish only that directory. Production needs no Python process, recording API, application server or credentials. See [deployment and release checks](docs/DEPLOYMENT.md) for the release flow and the hosting copy change required for `dist/`.
+Production is a static site deployed through Coolify. Run `make release` to check and package the game into `dist/`; hosting publishes only that directory. Production needs no Python process, recording API, application server or credentials. See [deployment and release checks](docs/DEPLOYMENT.md) for the release flow and verification steps.
 
 Before each release, bump `CACHE` in `sw.js` whenever the HTML, CSS or game scripts change, and include any new game scripts in `CORE`. An update waits until all game tabs close; reopen to use it. For local development, use the browser's service-worker **Bypass for network** option (or unregister it) to see live edits after the first visit.
 

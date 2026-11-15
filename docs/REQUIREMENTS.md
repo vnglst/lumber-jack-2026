@@ -90,6 +90,7 @@ How to read it:
 | 77 | 15 Nov | Separate development from the production package | Active |
 | 78 | 15 Nov | Publishing safeguards and licensing | Active |
 | 79 | 15 Nov | Document the Coolify static release flow | Active |
+| 80 | 15 Nov | Switch hosting to the static package | Active |
 
 ---
 
@@ -989,9 +990,20 @@ How to read it:
 
 ## 79. Document the Coolify static release flow (15 Nov 2026)
 
+**Status:** §80 completes the hosting transition described here.
+
 > Deployment happens on coolify, check repo in parent folder. Document how it’s deployed without providing details about actual infrastructure and servers.
 
 - Check the existing deployment workflow and describe it without publishing infrastructure or server details.
 - *Decision: document immutable source selection, the source updater, Coolify deployment, release verification and rollback. Generated `dist/` belongs in a release commit so hosting only needs to copy static files.*
 - *Finding: the current hosting recipe copies only `index.html`, `css`, `js` and `audio`; it omits the PWA files and icons and includes developer scripts. Document the required hosting transition to checking `dist/index.html` and copying only `dist/.`. The hosting checkout has unrelated edits, so leave it untouched; no deployment or push is part of this change.*
 - Checked: all 201 JavaScript tests and six deployment checks pass. The hidden-file regression failed against the original development server. The 82-file package boots and starts a game in an isolated browser, serves the production assets, returns 404 for the tested development/private paths and restores the saved campaign after an offline reload without page errors. Analytics dashboard registration and listening to recordings remain manual checks.
+
+## 80. Switch hosting to the static package (15 Nov 2026)
+
+> Switch hosting to dist
+
+- Publish the committed static package through the existing Coolify workflow.
+- *Decision: the hosting recipe requires `dist/index.html` and copies only `dist/.`. Packaging stays in the game repository; production serves static files. Use a clean hosting checkout to preserve unrelated local edits.*
+- Update the deployment guide to describe the active release flow without infrastructure or server details.
+- Verified: Coolify finished deployment of hosting commit `a85bc92`. All 80 packaged game files match the committed release byte for byte; the hosting-generated robots file and sitemap are valid. Ten tested development/private paths return 404. The game HTML, manifest and service worker require cache revalidation. The existing local hosting edits remain untouched.

@@ -47,15 +47,13 @@ keep its `CORE` list complete. Keep the manifest and service worker available
 with revalidation; avoid long-lived caching for files without versioned names.
 Old game tabs must close before a waiting service-worker update activates.
 
-### Hosting transition to the package
+### Hosting output
 
-The hosting recipe checked for this change copies `index.html`, `css`, `js`
-and `audio` directly. That omits the PWA shell and icons and copies development
-scripts. Before releasing this split, change the game stage to require
-`dist/index.html` and copy **only `dist/.`** into its static output directory.
+The hosting recipe requires `dist/index.html` and copies **only `dist/.`**
+into its static output directory. This includes the PWA shell and icons and
+excludes the development tools. This switch was deployed on 15 November 2026.
 The source commit it selects must include the generated `dist/` artifact.
-Do not add Python, Node, a package command or a recording API to the production
-runtime. Keep the existing static hosting and HTTPS delivery.
+Production serves the prepared files directly over HTTPS.
 
 After deployment, confirm that `/manifest.webmanifest`, `/sw.js`, the icon
 paths and `/audio/voice/manifest.json` load, while `/voices.html`,
