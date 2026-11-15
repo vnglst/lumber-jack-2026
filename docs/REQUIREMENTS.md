@@ -61,6 +61,7 @@ How to read it:
 | 48 | 14 Nov | An interface of its own: painted boards, not Stardew wood | Active |
 | 49 | 14 Nov | Predictable navigation and controls | Active |
 | 50 | 14 Nov | Music for the opening, play and other scenes | Active |
+| 51 | 15 Nov | Full-campaign playtest: dead ends removed, losses made recoverable | Active |
 
 ---
 
@@ -364,7 +365,7 @@ How to read it:
 
 ## 27. Playtest and improve the full gameplay loop (14 Nov 2026)
 
-**Status:** §40 adds persistent hut defenders, independent of raiding-party retreat and last-tree limits.
+**Status:** §40 adds persistent hut defenders, independent of raiding-party retreat and last-tree limits. §51 repeats the playtest over the whole campaign.
 
 > Test & review game mechanics. Make sure the game is engaging, fun and unpredictable up until the end.
 >
@@ -640,3 +641,27 @@ How to read it:
 - *Decision: the ♪ button now mutes everything, music included. Music has its own on/off in the pause menu, remembered in the browser (`lumberjack-music`), separate from saves.*
 - *Decision: browsers only allow sound after a first tap or key press. The first one anywhere, including on the opening screen, starts the audio, so the title music begins then rather than on page load.*
 - Added tests that every score parses, fills whole bars and that tracks of one song line up. The offline shell includes the two new scripts and is bumped to v4.
+
+## 51. Full-campaign playtest: dead ends removed, losses made recoverable (15 Nov 2026)
+
+> Test & review game mechanics. Make sure the game is engaging, fun and unpredictable up until the end.
+>
+> Use the playtesting results to identify and correct gameplay issues.
+
+- Play the whole campaign, not only the opening, on many maps and with weaker play styles, and fix what that demonstrates. §27 covered the opening and controlled late-game fixtures; much has been added since.
+- *Decision: add `tests/campaign.cjs`, a scripted player that plays from the tent to the ending with legal commands only and reports pacing per level, deaths and their cause, vehicles lost, raids, debt, idle time and stalls. Styles: careful, slow (acts every six seconds), never attacks huts, never builds towers.*
+- **Measured before the fixes** (16 maps, careful play): none of the first five maps reached the ending. Once the scripted player itself was competent, 10 of 16 finished; the rest ended in sealed-in villages, frozen crews or wipe-outs. About 29 jacks died per campaign.
+- **Dead ends found and removed:**
+  - A bulldozer sent to a rock or river first uprooted every stump along its route, with trips home to unload, so opening a way through could take many minutes. *Decision: an order clears only rock and water on the route plus the tile pointed at. Automatic root-pulling nearby (§30) is unchanged.*
+  - Buildings could be placed so that they sealed the camp, or an empty pocket beside it, off from the road. Nothing could then be sold and new jacks appeared inside the pocket; there is no way to demolish. *Decision: a building may not cut any walkable ground off from the road. The refusal message says so.*
+  - A jack standing on a building site that was hemmed in stayed embedded in the new building for good. *Decision: he always steps out to the nearest free tile, and units whose route crossed the site plan a new one.*
+  - A hauler whose way to the market was blocked kept his load for ever. *Decision: the load goes back into stock.*
+  - An attack on a hut with no free tile beside it (huts stand among trees) left the jacks waiting silently for ever. *Decision: jacks attack a hut from anywhere within reach of their weapon; if there is no such spot they say so and go back to work. Supplements §40.*
+- **Losses made recoverable:**
+  - Losing the last jack ended the game at once, even with money to hire another. *Decision: the game is only lost when nobody can fell trees, nobody is in training, and a jack cannot be afforded even after a truck sells the stock. Otherwise a message and the hint say to hire.*
+  - Crews were picked off one by one: with a slow player 5 of 8 maps ended in a wipe-out around minute 30. *Decision: a jack below 35 health falls back by himself to the nearest place that heals (the camp or a guard tower), rests to 80 and then picks his job back up. He does this once per wound, so a new order from the player overrides it; a jack told to stop stays put. §39's manual retreat is unchanged.*
+- **Measured after the fixes:** careful play finishes 16 of 16 maps in 26–48 minutes of game time with about 8 deaths; the slow player finishes 8 of 8 with about 15; no towers 8 of 8. No stalls, no debt spirals, no game overs. War parties keep coming until about seven minutes before the end and wolf packs until the end.
+- *Decision: levels, prices, wave sizes and wildlife strength are unchanged. The pacing held up (levels 2–8 take two to three and a half minutes each, the last two longer), so the fixes target dead ends and unrecoverable losses rather than numbers.*
+- **Observed, not changed** (judgment calls for a person): money piles up once everything is bought (about €28,000 unspent at the end); guard towers make little measurable difference; after the last hut falls only wildlife remains for the final minutes; a style that never attacks huts can end with a few trees it cannot reach.
+- A scripted player finds dead ends and balance cliffs. It cannot judge fun, and a person has not played these changes through.
+- Added eight regression tests, each failing on the previous code. Saves are compatible; a falling-back jack reloads into the job he left. The offline shell cache is bumped to v5.

@@ -5,7 +5,9 @@ Lumberjack is a browser game in plain JavaScript: no build step, no dependencies
 ## Running and checking
 
 - `make` serves the game at http://localhost:5173 with caching disabled (`tools/serve.py`).
-- `make check` syntax-checks all scripts. There is no test suite: check behaviour in the browser, or by stepping the simulation from the console (`LJ.update(0.05)` in a loop, then inspect `LJ.G`).
+- `make check` syntax-checks all scripts. `node --test tests/` runs the tests, which step the real simulation without a browser (`tests/harness.cjs`).
+- `node tests/campaign.cjs 1 2 3` plays whole campaigns on those map seeds with a scripted player and reports pacing, losses, debt and stalls. Run it after changing rules: it finds dead ends that single-rule tests miss.
+- Check the interface in the browser, or step the simulation from the console (`LJ.update(0.05)` in a loop, then inspect `LJ.G`).
 
 ## Code
 
