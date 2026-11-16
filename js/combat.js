@@ -158,9 +158,22 @@
       wall = LJ.wallInWay(a.tile, n);
       if (wall >= 0) break;
       const px = colOf(n) * TS + 8, py = rowOf(n) * TS + 10, dx = px - a.x, dy = py - a.y, d = Math.hypot(dx, dy);
+      // A flock follows a corridor, not a single-file chain of exact pixel centres.
+      // Passing through the waypoint's tile is enough; forcing its centre fights
+      // separation and can leave a whole pack circling the same point.
+      if (LJ.tileOfPx(a.x, a.y) === n && d < 12) { a.path.pop(); a.tile = n; continue; }
+      // Separation may have moved us off the planned corridor. Validate the real
+      // step, including corner clearance, before following an old waypoint.
+      const step = Math.min(d, dist), nx = a.x + dx / d * step, ny = a.y + dy / d * step;
+      const from = LJ.tileOfPx(a.x, a.y), to = LJ.tileOfPx(nx, ny);
+      const fx = colOf(from), fy = rowOf(from), tx = colOf(to), ty = rowOf(to);
+      if (!LJ.wildPass(to) || (fx !== tx && fy !== ty &&
+          (!LJ.wildPass(fy * G.world.W + tx) || !LJ.wildPass(ty * G.world.W + fx)))) {
+        a.tile = from; a.repath = 0; break;
+      }
       if (Math.abs(dx) > 0.01) a.dir = dx > 0 ? 1 : -1;
       if (d <= dist) { a.x = px; a.y = py; dist -= d; a.path.pop(); a.tile = n; }
-      else { a.x += (dx / d) * dist; a.y += (dy / d) * dist; dist = 0; }
+      else { a.x = nx; a.y = ny; dist = 0; }
     }
     a.vx = (a.x - x0) / dt; a.vy = (a.y - y0) / dt; a.movedT = G.time; // for whoever is aiming at it
     if (wall < 0) a.walkT += dt;
@@ -323,6 +336,7 @@
     updHuts(dt);
     for (const u of G.units) if (u.flash > 0) u.flash -= dt;
     for (const a of G.animals) if (a.alive && a.kind === 'native') updFolk(a, dt);
+    LJ.separateFlock(G.animals, dt, true);
     updTowers(dt);
     updLasers(dt);
     updArrows(dt);

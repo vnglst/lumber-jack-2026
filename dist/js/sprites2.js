@@ -33,6 +33,26 @@
     ['...gGgG.....gGgG......', '....gG......gG........', '...g..g....g..g.......', '...K..K....K..K.......']];
   S.wolf = WOLF_LEGS.map((l, i) => creature(WOLF_BODY.concat(l), WP, { G: ['#656a74', '#a8adb6'] }, 31 + i));
 
+  // ---------- Eurasian lynx: tawny and spotted, long-legged, black ear tufts and a short black-tipped tail ----------
+  const LP = { T: '#c39a5c', t: '#9a7340', l: '#dcbb82', w: '#efe6d2', s: '#6e4f28', K: '#16181d', E: '#ffd23a', N: '#3a2018' };
+  const LYNX_BODY = [
+    '..............K..K..', '..............tT.tT.', '.............lTTTTTt', '.............TTETTTN', 'K...........lTTTwww.',
+    'tt.lllTTTTTTTTTTww..', '.tTlTTsTTTsTTTTTw...', '..TTTsTTTTTTsTTw....', '..tTTTTTsTTTTTtw....', '..ttTwwwwwwwTTt.....'];
+  const LYNX_LEGS = [
+    ['..tT.tT....tT.tT....', '..t..tT....t..tT....', '..t..t.....t...t....', '..l..l.....l...l....'],
+    ['...tTtT....tTtT.....', '....tT.....tT.......', '...t..t...t..t......', '...l..l...l..l......']];
+  S.lynx = LYNX_LEGS.map((l, i) => creature(LYNX_BODY.concat(l), LP, { T: ['#a8824a', '#dcbb82'] }, 71 + i));
+
+  // ---------- Wolverine: low and dark, a pale band along the flank, a bushy tail, pale claws ----------
+  const VP = { D: '#4a3424', d: '#2a1d15', s: '#c2a273', m: '#7a5636', K: '#0c0c10', c: '#e8e0d0' };
+  const WOLVERINE_BODY = [
+    '.dd............dd...', 'dDDd.ssss....dDDDDd.', 'dDDDsDDDDsss.dDKDmmK', '.dDDDDDDDDDDsDDDDmm.', '..DDDDDDDDDDDDDDDd..',
+    '..dDDDDDDDDDDDDDd...', '..dDDDsssssssDDd....'];
+  const WOLVERINE_LEGS = [
+    ['..dDDd.....dDDd.....', '..dDd......dDd......', '..ccc......ccc......'],
+    ['...dDDd...dDDd......', '...dDd.....dDd......', '..ccc......ccc......']];
+  S.wolverine = WOLVERINE_LEGS.map((l, i) => creature(WOLVERINE_BODY.concat(l), VP, { D: ['#3a281b', '#6b4c33'] }, 83 + i));
+
   // ---------- Bear ----------
   const BP = { B: '#6b4526', b: '#4a2f1a', l: '#8f6038', m: '#c9a074', K: '#0c0c10', c: '#e8e0d0' };
   const BEAR_BODY = [
@@ -158,6 +178,16 @@
     return c;
   }
   S.dcBlocks = [dcModule(3), dcModule(17), dcModule(29)];
+  // The south wall of a module, shown where it faces open ground. The renderer blinks lights along the dark band.
+  S.dcFacade = (function () {
+    const c = mk(DCB, 14), x = cx2(c);
+    R(x, 0, 0, DCB, 12, '#9a9ea8'); R(x, 0, 0, DCB, 1, '#6f737c');
+    for (let i = 0; i < DCB; i += 8) R(x, i, 1, 1, 11, '#878b95');
+    R(x, 1, 4, DCB - 2, 4, '#1a2a4a'); R(x, 1, 4, DCB - 2, 1, '#2a3e62');
+    R(x, 0, 10, DCB, 2, '#5f636c');
+    R(x, 0, 12, DCB, 2, 'rgba(20,24,30,0.35)'); // shadow on the ground in front
+    return c;
+  })();
   // Under construction: a concrete slab with a steel frame going up.
   S.dcFrame = (function () {
     const c = mk(DCB, DCB), x = cx2(c);

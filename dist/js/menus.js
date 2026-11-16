@@ -72,6 +72,7 @@
         '<p>Koen &amp; Tibo for play testing the game and the voice recordings.</p>' +
         '<p><a href="https://github.com/vnglst/lumber-jack-2026" target="_blank" rel="noopener">Source code</a></p>' +
         '<p>Playful animal voices adapted from <a href="https://opengameart.org/content/80-cc0-creature-sfx" target="_blank" rel="noopener">80 CC0 creature SFX</a> by rubberduck, under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0 1.0</a>.</p>' +
+        '<p>Song excerpts: Monty Python, The Lumberjack Song. From the original Lumber Jack game.</p>' +
         '<p class="fine">Shortened, pitched and softened for this forest. Human dialogue and forest-folk voices were recorded for Lumberjack.</p>'
     }),
 
@@ -87,12 +88,12 @@
       return {
         title: 'How to play',
         wide: true,
-        body: '<ul><li><b>Clear the forest.</b> Send a jack to a tree and he keeps cutting whatever he can see. Wood goes back to camp; your truck sells the surplus at the market down the road west.</li>' +
-          '<li><b>Grow the camp.</b> The Shop has tools, more jacks, buildings and machines. With Pickaxes, jacks mine ore from glinting rocks; it sells well and the late machines need it. Upgrade the tent into a village; sawmills turn wood into lumber, Logging Trucks fetch wood from deep in the forest.</li>' +
-          '<li><b>Mind the forest.</b> The map is unexplored and it bites back. Jacks heal near home, fall back there by themselves when badly hurt, and learn through work. Forest villages defend themselves; destroying a hut stops its reinforcements for good.</li></ul>' +
+        body: '<ul><li><b>Clear the forest.</b> Send a jack to a tree and he cuts whatever he can see from there, then waits for you; later a Foreman keeps the crew moving by itself. Wood goes back to camp; your truck sells the surplus at the market down the road west.</li>' +
+          '<li><b>Grow the camp.</b> The Shop has tools, more jacks, buildings and machines. With Pickaxes, jacks mine ore from glinting rocks (it sells well and the late machines need it) and break up plain rock that is in the way. Upgrade the tent into a village; sawmills turn wood into lumber, Logging Trucks fetch wood from deep in the forest.</li>' +
+          '<li><b>Mind the forest.</b> The map is unexplored and it bites back. Jacks heal near home, fall back there by themselves when badly hurt, and learn through work. Forest villages defend themselves; destroying a hut stops its reinforcements for good. Later, war parties march on your village: Guard Towers stop them, and jacks near the village or a tower join in.</li></ul>' +
           '<table class="keys"><tr><td></td><th>Mouse</th><th>Touch</th><th>Keys</th></tr>' +
           row('Select', 'Click a unit, drag a box. Shift adds. Double-click takes every unit of that kind.', 'Tap a unit. Double-tap takes every unit of that kind.', 'Ctrl/⌘+A all jacks. Shift+1–9 saves a group, 1–9 recalls it.') +
-          row('Order', 'Click or right-click a tree, animal, hut, a glinting ore rock, the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things. The buttons beside a selected unit: saw lumber, haul to market, stop, deselect.', 'X stops. Esc deselects.') +
+          row('Order', 'Click or right-click a tree, animal, hut, a glinting ore rock (or any rock, to break it up), the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things. The buttons beside a selected unit: saw lumber, haul to market, stop, deselect.', 'X stops. Esc deselects.') +
           row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap and zoom.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
           row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch, or the map button.', '− and +') +
           row('Menus', 'Shop is in the toolbar. The log stack pauses and holds help, finds, sound and credits; the note opens sound directly.', 'Camp shows resources and progress. Tap a selected unit’s name for its status and experience. The log stack pauses and holds help, finds, sound and credits.', 'B shop. Esc backs out one step, then pauses.') +
@@ -101,10 +102,12 @@
     }
   };
 
-  function show() {
+  // how: 'arrive' for the first screen, 'forward' when a screen opens from another, 'backward' on Back. Only the
+  // motion differs (see the motion section of style.css).
+  function show(how) {
     const name = stack[stack.length - 1], sc = SCREENS[name](), m = $('modal'), deep = stack.length > 1;
     const nav = (kind, label) => '<button class="nav" data-a="' + kind + '" title="' + label + '" aria-label="' + label + '"><i data-ic="' + kind + '"></i></button>';
-    m.innerHTML = '<div class="dialog sheet' + (sc.wide ? ' wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="dialog-title">' +
+    m.innerHTML = '<div class="dialog sheet ' + how + (sc.wide ? ' wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="dialog-title">' +
       '<header>' + (deep ? nav('back', 'Back (Esc)') : '<span class="nav"></span>') + '<h1 id="dialog-title">' + sc.title + '</h1>' + nav('close', deep ? 'Close' : 'Close (Esc)') + '</header>' +
       '<div class="body">' + sc.body + '</div>' + (sc.footer ? '<footer>' + sc.footer + '</footer>' : '') + '</div>';
     ui.icons(m);
@@ -131,12 +134,13 @@
       $('modal').classList.toggle('welcome', before.welcome);
       if (before.welcome) $('title').inert = true;
     }
+    const first = !stack.length;
     stack.push(name);
-    show();
+    show(first ? 'arrive' : 'forward');
   }
   function back() {
     stack.pop();
-    if (stack.length) show(); else close();
+    if (stack.length) show('backward'); else close();
   }
   function close() {
     stack.length = 0;

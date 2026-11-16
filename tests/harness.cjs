@@ -21,6 +21,7 @@ function game(seed = 42, arrive = true) {
     if (name === 'world') {
       ctx.LJ.sprites = {
         trees: [[{ ay: 64 }]], base: Array.from({ length: 4 }, () => ({ width: 48, height: 48 })),
+        bunk: { width: 38, height: 42 }, sawmill: { width: 54, height: 46 },
         tower: { width: 32, height: 64, muzzle: { x: 16, y: 12 } },
         dcFrame: { width: 48 }, dcStage1: {}, dcStage2: {}, datacenter: {}, mixer: { l: {} }
       };

@@ -7,6 +7,7 @@
   const SITE_W = 7, SITE_H = 5, BONUS = 1000000, SPREAD = 16;
   const BLOCK = S.dcFrame.width / TS; // tiles per data-center module
 
+  const ease = k => { k = Math.min(1, k); return k * k * (3 - 2 * k); }; // smoothstep for the camera moves
   const lines = () => LJ.LINES.ending.map(l => ({ who: l.who, text: l.text.replace('{n}', G.cleared.toLocaleString('en-US')) }));
 
   // Flood fill from the market road: which tiles can someone walking in actually reach?
@@ -25,24 +26,40 @@
     return seen;
   }
 
-  // Where the first building goes: a clear patch, reachable, close to the settlement.
+  // Would a building drawn in front of them hide someone standing on tile i? The grown village is six tiles tall
+  // on a three-tile footprint, so the ground just behind it is out of sight.
+  function screened(i) {
+    const W = G.world.W, x = (i % W) * TS + 8, y = ((i / W) | 0) * TS + 10;
+    return G.buildings.some(b => {
+      if (b.dead || b.pending || (b.ty + b.h) * TS <= y) return false;
+      const spr = LJ.bldSprite(b), [ox, oy] = LJ.bldOrigin(b);
+      return ox < x + 6 && ox + spr.width > x - 6 && oy < y && oy + spr.height > y - 20;
+    });
+  }
+
+  // Where the first building goes: a clear patch, reachable, close to the settlement, preferably with its front
+  // in plain view (a crowded town may have no such patch; then any clear one will do).
   function findSite() {
     const w = G.world, W = w.W, reach = reachable(), v = G.base;
     const vx = v.tx + v.w / 2, vy = v.ty + v.h / 2;
-    let best = null, bd = 1e9;
-    for (let ty = 1; ty < w.H - SITE_H - 2; ty++) for (let tx = 4; tx < W - SITE_W - 1; tx++) {
-      const front = (ty + SITE_H) * W + tx + 3;
-      if (!reach[front]) continue;
-      const d = Math.hypot(tx + SITE_W / 2 - vx, ty + SITE_H / 2 - vy);
-      if (d >= bd || d < 6) continue;
-      let ok = true;
-      for (let y = ty; y < ty + SITE_H && ok; y++) for (let x = tx; x < tx + SITE_W; x++) {
-        const i = y * W + x;
-        if (LJ.blocked(i) || w.bld[i]) { ok = false; break; }
+    const scan = inView => {
+      let best = null, bd = 1e9;
+      for (let ty = 1; ty < w.H - SITE_H - 2; ty++) for (let tx = 4; tx < W - SITE_W - 1; tx++) {
+        const front = (ty + SITE_H) * W + tx + 3;
+        if (!reach[front]) continue;
+        const d = Math.hypot(tx + SITE_W / 2 - vx, ty + SITE_H / 2 - vy);
+        if (d >= bd || d < 6) continue;
+        let ok = true;
+        for (let y = ty; y < ty + SITE_H && ok; y++) for (let x = tx; x < tx + SITE_W; x++) {
+          const i = y * W + x;
+          if (LJ.blocked(i) || w.bld[i]) { ok = false; break; }
+        }
+        if (ok && inView && (screened(front) || screened(front + W))) ok = false;
+        if (ok) { bd = d; best = { tx, ty }; }
       }
-      if (ok) { bd = d; best = { tx, ty }; }
-    }
-    return best || { tx: Math.min(w.W - SITE_W - 1, v.tx + v.w + 2), ty: Math.max(1, v.ty - 1) }; // next to the village
+      return best;
+    };
+    return scan(true) || scan(false) || { tx: Math.min(w.W - SITE_W - 1, v.tx + v.w + 2), ty: Math.max(1, v.ty - 1) }; // next to the village
   }
 
   E.start = function () {
@@ -58,14 +75,15 @@
     }
     LJ.markAround((site.ty + 2) * W + site.tx + 3, 5);
     const fx = site.tx + 3, fy = site.ty + SITE_H;
-    const path = LJ.bfs(G.exitIdx, c => Math.abs((c % W) - fx) <= 1 && Math.abs(((c / W) | 0) - fy) <= 1) || [];
+    const near = c => Math.abs((c % W) - fx) <= 1 && Math.abs(((c / W) | 0) - fy) <= 1;
+    const path = LJ.bfs(G.exitIdx, c => near(c) && !screened(c)) || LJ.bfs(G.exitIdx, near) || [];
     G.suit = { x: (G.exitIdx % W) * TS + 8, y: ((G.exitIdx / W) | 0) * TS + 10, path, dir: 1, walkT: 0 };
     G.cine = { phase: 'walk', t: 0, line: 0, site, lines: lines() };
     // The crew gathers to see who is coming.
     for (const u of G.units) {
       for (let k = 0; k < 30; k++) {
         const x = fx - 4 + ((Math.random() * 9) | 0), y = fy + 1 + ((Math.random() * 3) | 0);
-        if (x > 0 && y > 0 && x < W && y < w.H && LJ.pass(y * W + x)) { LJ.cmd.move([u], y * W + x); break; }
+        if (x > 0 && y > 0 && x < W && y < w.H && LJ.pass(y * W + x) && !screened(y * W + x)) { LJ.cmd.move([u], y * W + x); break; }
       }
     }
     LJ.ui.cineStart();
@@ -98,15 +116,47 @@
     ];
   };
 
+  // Is tile i under a data-center module that has started going up? Excluded blocks never start.
+  E.covers = function (i) {
+    const dc = G.dc;
+    if (!dc) return false;
+    const W = G.world.W, k = ((((i / W) | 0) / BLOCK) | 0) * dc.BW + (((i % W) / BLOCK) | 0);
+    return G.time >= dc.start[k];
+  };
+
   // Every 3x3-tile block of the map gets a start time, rippling outward from the first building with a ragged edge.
+  // The data center swallows the land but leaves an island: the first building, the village, everyone standing
+  // watching, and the river and lakes (Mr. Grant's "excellent cooling water").
   function planSpread() {
-    const w = G.world, s = G.cine.site, BW = Math.ceil(w.W / BLOCK), BH = Math.ceil(w.H / BLOCK);
-    const start = new Float32Array(BW * BH).fill(Infinity), order = [];
-    const cx = (s.tx + SITE_W / 2) / BLOCK, cy = (s.ty + SITE_H / 2) / BLOCK;
+    const w = G.world, W = w.W, s = G.cine.site, BW = Math.ceil(W / BLOCK), BH = Math.ceil(w.H / BLOCK);
+    const start = new Float32Array(BW * BH).fill(Infinity), order = [], keep = new Uint8Array(BW * BH);
+    const keepTiles = (x0, y0, x1, y1) => {
+      for (let by = Math.max(0, Math.floor(y0 / BLOCK)); by <= Math.min(BH - 1, Math.floor(y1 / BLOCK)); by++)
+        for (let bx = Math.max(0, Math.floor(x0 / BLOCK)); bx <= Math.min(BW - 1, Math.floor(x1 / BLOCK)); bx++) keep[by * BW + bx] = 1;
+    };
+    keepTiles(s.tx, s.ty - 1, s.tx + SITE_W - 1, s.ty + SITE_H - 1);
+    const v = G.base;
+    if (v) keepTiles(v.tx - 1, v.ty - 1, v.tx + v.w, v.ty + v.h);
+    for (const p of [...G.units, G.suit]) {
+      const tx = Math.floor(p.x / TS), ty = Math.floor(p.y / TS);
+      keepTiles(tx - 1, ty - 1, tx + 1, ty);
+    }
     for (let by = 0; by < BH; by++) for (let bx = 0; bx < BW; bx++) {
       const x0 = bx * BLOCK, y0 = by * BLOCK;
-      // Leave the first building itself uncovered.
-      if (x0 + BLOCK > s.tx && x0 < s.tx + SITE_W && y0 + BLOCK > s.ty - 1 && y0 < s.ty + SITE_H) continue;
+      let wet = 0, n = 0;
+      for (let y = y0; y < Math.min(w.H, y0 + BLOCK); y++) for (let x = x0; x < Math.min(W, x0 + BLOCK); x++) { n++; if (w.type[y * W + x] === T.WATER) wet++; }
+      if (wet * 2 > n) keep[by * BW + bx] = 1;
+    }
+    // A building partly on open ground stays whole, or a module would cut it in two; the rest are swallowed.
+    for (const b of G.buildings) {
+      if (b.dead || b.pending) continue;
+      let open = false;
+      for (let y = b.ty; y < b.ty + b.h && !open; y++) for (let x = b.tx; x < b.tx + b.w; x++) if (keep[((y / BLOCK) | 0) * BW + ((x / BLOCK) | 0)]) { open = true; break; }
+      if (open) keepTiles(b.tx, b.ty, b.tx + b.w - 1, b.ty + b.h - 1);
+    }
+    const cx = (s.tx + SITE_W / 2) / BLOCK, cy = (s.ty + SITE_H / 2) / BLOCK;
+    for (let by = 0; by < BH; by++) for (let bx = 0; bx < BW; bx++) {
+      if (keep[by * BW + bx]) continue;
       order.push({ k: by * BW + bx, d: Math.hypot(bx + 0.5 - cx, by + 0.5 - cy) + LJ.hash(bx, by, 77) * 3 });
     }
     order.sort((a, b) => a.d - b.d);
@@ -146,10 +196,10 @@
       if (c.t > 2.5 && dc.spr === S.dcStage1) { dc.spr = S.dcStage2; LJ.sfx('build'); }
       if (c.t > 5.5 && dc.spr === S.dcStage2) { dc.spr = S.datacenter; G.props = [dc]; LJ.sfx('build'); }
       if (c.t < 5.5 && Math.random() < dt * 30) LJ.dust(cx + (Math.random() - 0.5) * SITE_W * TS, by - Math.random() * 20);
-      if (c.t > 7) { c.phase = 'spread'; c.t = 0; c.zoom0 = LJ.ui.zoom(); planSpread(); }
+      if (c.t > 7) { c.phase = 'spread'; c.t = 0; c.zoom0 = LJ.ui.zoom(); LJ.cmd.stop(G.units); planSpread(); }
     } else if (c.phase === 'spread') {
       // Zoom out to the whole map while the data center grows over it.
-      const k = Math.min(1, c.t / (SPREAD * 0.8)), e = k * k * (3 - 2 * k), fit = LJ.ui.fitZoom();
+      const e = ease(c.t / (SPREAD * 0.8)), fit = LJ.ui.fitZoom();
       LJ.ui.zoomTo(c.zoom0 + (fit - c.zoom0) * e);
       const s = c.site;
       LJ.ui.centerOn((s.tx + SITE_W / 2) * TS * (1 - e) + (w.W * TS / 2) * e, (s.ty + SITE_H / 2) * TS * (1 - e) + (w.H * TS / 2) * e);
@@ -159,7 +209,14 @@
         if (Math.random() < 0.5) LJ.dust(bx + 24, byy + 40);
         if (dcs.next % 12 === 0) LJ.sfx('build');
       }
-      if (G.time > dcs.end + 3 && c.phase === 'spread') { c.phase = 'end'; LJ.ui.endScreen(); }
+      if (G.time > dcs.end + 1.5) { c.phase = 'home'; c.t = 0; c.zoomFit = LJ.ui.zoom(); }
+    } else if (c.phase === 'home') {
+      // Last shot: drift back down to the little red village and its crew, alone in a sea of servers.
+      const e = ease(c.t / 4.5), who = c.jack || G.suit;
+      const z1 = Math.max(c.zoomFit, c.zoom0 * 0.7);
+      LJ.ui.zoomTo(c.zoomFit + (z1 - c.zoomFit) * e);
+      LJ.ui.centerOn((w.W * TS / 2) * (1 - e) + who.x * e, (w.H * TS / 2) * (1 - e) + (who.y - 16) * e);
+      if (c.t > 5.5) { c.phase = 'end'; LJ.ui.endScreen(); }
     }
   };
 })();

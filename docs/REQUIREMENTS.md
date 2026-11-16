@@ -100,6 +100,8 @@ How to read it:
 | 87 | 16 Nov | The data center leaves the village standing | Active |
 | 88 | 16 Nov | Rare Lumberjack Song Easter eggs and playground scenes | Active |
 | 89 | 16 Nov | Review song playback under slow loading | Done |
+| 90 | 16 Nov | Natural spacing for wildlife and locals | Active |
+| 91 | 16 Nov | Preserve concurrent work and continue integration | Active |
 
 ---
 
@@ -1159,3 +1161,27 @@ How to read it:
 - *Decision: refresh captions when audio actually starts, using the decoded clip duration, so a slow load cannot consume their display time.*
 - Add a delayed-loading regression, observed failing before each fix and passing afterwards. Cache bumped to v23 for the corrected playback module.
 - Final verification: 246 JavaScript tests and seven server/package checks pass. Isolated browser checks again confirm the solo, chorus, ten real pointer taps, phone-sized playground controls and no page errors. Both reviewers rechecked the fixes with no remaining findings. Nobody listened to judge the mix. Changes remain uncommitted.
+
+## 90. Natural spacing for wildlife and locals (16 Nov 2026)
+
+> Groups of wildlife or locals should not walk on top of each other. Add some kind of flocking behavior. Make it look natural.
+
+- Give peaceful wildlife, hut residents, predators and war parties personal space while moving and resting.
+- *Decision: use local flock separation with species-sized footprints. Nearby neighbours gently yield in opposite directions; existing paths and destinations keep groups together. Exact spawn overlaps separate deterministically, without consuming extra random numbers. Swans drift slowly, small animals shuffle faster, and larger animals need more room.*
+- *Decision: enemies may pass through a path tile without touching its exact centre, so separation does not make a pack jam at shared waypoints. Movement stays bounded by terrain, buildings, map edges and palisades; swans keep their clearance from banks. Resting critters animate their small shuffles.*
+- Added ten focused checks for separation, bounded movement, route progress and obstacle boundaries. The five initial separation/progress checks failed before the implementation; the route-displacement regression failed before its review fix.
+- Review: shared separation belongs to the simulation (`game.js`), with an explicit combat setting. A neighbour could nudge an enemy beside its route and make the next step cut through rock. Marching now validates the actual next step and its corner clearance, then requests replanning if blocked. The regression verifies both safe movement and replacement-route progress.
+- Final checks: all 248 JavaScript tests and seven Python checks pass. An isolated browser boots from the new cache offline and restores the saved seed and money without page errors.
+- *Decision: fill in the harness's missing bunkhouse and sawmill sprite dimensions, which the existing ending now reads. This fixes a campaign-check crash without changing game code.*
+- Browser checks cover packs, wolverines, hut defenders and a war party, with no page errors. Screenshots and measured spacing do not establish whether the motion feels natural to a person.
+- Combat comparison after review over seeds 1–4: all eight campaigns finish without stalls. With towers there are 41 crew deaths total and 118 tower kills; without towers there are 69 deaths. Spacing changes encounters, but towers still reduce losses across these maps.
+- Save shape and shell loading are unchanged. The worktree uses a distinct `v21-flocking` cache; assign the next entry number and release cache version at integration. Production `dist/` is not rebuilt.
+
+## 91. Preserve concurrent work and continue integration (16 Nov 2026)
+
+> Change that agents file to make sure this is never blocking and commit and push or merge
+
+- Pending work from another chat must not by itself block an authorized commit, merge or push.
+- *Decision: inspect and preserve pending project changes in a separate commit, then continue integration. Inspect and finish an existing merge, retaining both changesets; resolve overlaps and check the combined result. Recheck repository state before Git mutations and never discard another chat's work.*
+- Integrate the reviewed song changes and flocking, retaining both requirement entries and all shared script/test changes. The combined offline cache is v24; rebuild the production package from the integrated source.
+- Combined verification: 256 JavaScript tests and seven Python checks pass; the 85-file production package is rebuilt. An isolated browser boots the v24 shell offline and restores the saved campaign without page errors.

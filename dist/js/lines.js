@@ -21,6 +21,7 @@ LJ.LINES = {
     "You've got €80 for another Jack. Open the Shop—an extra pair of hands goes a long way.",
     'Tap a tree to get chopping. Select a Jack and tap the ground to send him somewhere.'
   ],
+  song: ['*breaks into song*', '*joins in*'],
   normal: ['Yes, boss?', 'Ready to chop!', 'Timber?', 'Axe me anything.', "What'll it be?", 'Wood you like something?'],
   annoyed: ["I'm working here!", 'Stop poking me.', 'Do I poke YOU?', 'That flannel was clean.', "Trees don't cut themselves, you know."],
   funny: ["I'm a lumberjack and I'm NOT okay.", 'Poke me again and I unionize.', "Fun fact: I'm allergic to pollen.",
@@ -44,6 +45,8 @@ LJ.LINES = {
   hit: {
     wolf: ['WOLF!', 'Ow!', 'Bad dog!', 'Get off me!'],
     bear: ['BEAR!', 'Nice bear. NICE BEAR.'],
+    lynx: ['LYNX!', 'Here, kitty... OW!', 'Not the face!'],
+    wolverine: ['WOLVERINE!', 'It is so small. And so angry!', 'Get it off me!'],
     native: ['Arrows!', 'Ouch!', 'We come in peace! Mostly.', 'Tiny archers!']
   },
   // The conversation at the end: Mr. Grant (suit) and the player's own jack.
@@ -74,6 +77,10 @@ LJ.CUES = [
   { id: 'wolf_yelp', who: 'wolf', label: 'Yelp', hint: 'A wolf is killed', try: 'A short "Yip!"' },
   { id: 'bear_roar', who: 'bear', label: 'Roar', hint: 'A bear appears, or attacks a jack', try: 'A big deep ROAAAR' },
   { id: 'bear_groan', who: 'bear', label: 'Groan', hint: 'A bear is killed', try: 'A long sad low groan' },
+  { id: 'lynx_yowl', who: 'lynx', label: 'Yowl', hint: 'A lynx appears, or pounces on a jack', try: 'A rising cat yowl, "mrrOWW"' },
+  { id: 'lynx_hiss', who: 'lynx', label: 'Hiss', hint: 'A lynx is killed', try: 'A short spitting hiss' },
+  { id: 'wolverine_growl', who: 'wolverine', label: 'Growl', hint: 'Wolverines appear, or one bites a jack', try: 'A low rattling growl, far too big for the animal' },
+  { id: 'wolverine_squeal', who: 'wolverine', label: 'Squeal', hint: 'A wolverine is killed', try: 'A short furious squeal' },
   { id: 'reindeer_call', who: 'deer', label: 'Reindeer chirrup', hint: 'Occasionally near a visible reindeer', try: 'A mellow, playful two-note chirrup' },
   { id: 'squirrel_call', who: 'squirrel', label: 'Red squirrel chatter', hint: 'Occasionally near a visible red squirrel', try: 'Three tiny cartoon chitters' },
   { id: 'swan_call', who: 'swan', label: 'Whooper swan call', hint: 'Occasionally near a visible swan', try: 'A comical little questioning honk' }
@@ -120,6 +127,8 @@ LJ.voiceGroups = function () {
     [m.cantReach, m.cantGet, m.noHaul, m.lost, m.noRoad, m.noStore, m.noSawmill, m.market, m.sawdust, m.duty, m.patchUp, m.ore, m.who]);
   add('wolf', 'jack', 'Jack: bitten by a wolf', 'A wolf attacks.', L.hit.wolf);
   add('bear', 'jack', 'Jack: mauled by a bear', 'A bear attacks.', L.hit.bear);
+  add('lynx', 'jack', 'Jack: pounced on by a lynx', 'A lynx attacks.', L.hit.lynx);
+  add('wolverine', 'jack', 'Jack: bitten by a wolverine', 'A wolverine attacks.', L.hit.wolverine);
   add('native', 'jack', 'Jack: shot by the forest folk', 'Arrows incoming.', L.hit.native);
   add('truck', 'truck', 'Truck', 'Said when you tap a truck.', L.veh.truck);
   add('dozer', 'dozer', 'Bulldozer', 'Said when you tap or order a bulldozer.', L.veh.dozer);

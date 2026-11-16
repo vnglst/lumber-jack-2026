@@ -47,13 +47,14 @@ Lumberjack is a browser game in plain JavaScript: no build step, no dependencies
 
 Other chats work in this repository at the same time and merge into the same `main` checkout, without coordinating with you:
 - Create your worktree first and read the files there. The main checkout may be newer than what you read a minute ago.
-- Before merging or pushing, look at the main checkout: `git status` and whether `.git/MERGE_HEAD` exists. If a merge is in progress or there are changes you did not make, wait until it is finished. Never commit, stash or reset over it.
+- Before integrating, inspect main's HEAD, status and any merge in progress. A request to commit, merge or push authorizes preserving pending project work from other chats in a separate, clearly described commit; inspect it, retain all changes, then continue integration without asking again. Pending work alone is not a reason to stop or wait indefinitely.
+- If a merge is already in progress, inspect its parents and conflicts, preserve both changesets and finish it before starting another. Resolve overlapping edits and run the combined checks. Recheck HEAD and status before each Git mutation so new concurrent edits are included deliberately. Never discard work with a reset, checkout or clean; keep unrelated changes out of the feature commit where practical.
 - Choose the `REQUIREMENTS.md` entry number and the `sw.js` `CACHE` version when you merge, not when you start: take the next free one. When both sides appended to the log, keep both entries in request order.
 - Commit and merge when asked to; push only when asked to. A push sends everything on `main`, other chats' merges included: say so.
 
 When using worktrees/subagents:
 - Pin the base commit and assign file boundaries, entry numbers and an integration owner before work starts. Give shared files (`docs/REQUIREMENTS.md`, `index.html`, `sw.js`, common UI/game tables) one owner; other agents provide their required edits and decisions in the handoff. The log owner appends entries and index rows in request order as part of integration.
-- Workers commit in their own worktrees and report the commit, exact checks/results and remaining limitations. The integration owner reviews each change and serialises merges into main. Recheck main's HEAD/status before merging: other chats may have advanced it. Preserve their work and review overlapping conflict resolutions.
+- Workers commit in their own worktrees and report the commit, exact checks/results and remaining limitations. The integration owner reviews each change and serialises merges into main, using the preservation procedure above for concurrent work. Review overlapping conflict resolutions.
 - Review against the pinned base, then check the combined result. After fixes, review the changed area and affected checks rather than restarting an unchanged review.
 
 ## Conventions

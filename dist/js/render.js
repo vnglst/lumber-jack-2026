@@ -101,10 +101,17 @@
       ctx.fillRect(tx * TS - cx, ty * TS - cy, p.w * TS, p.h * TS);
     }
 
+    // The data center at the end lies flat over the ground: everything still standing on the island draws over it,
+    // and whatever it has swallowed (rocks, stumps, sheds, critters) is no longer drawn.
+    const under = G.dc ? LJ.ending.covers : () => false;
+    const underPx = G.dc ? (x, y) => under(LJ.tileOfPx(x, y)) : () => false;
+    if (G.dc) drawDataCenter(ctx, G, cx, cy, vw, vh);
+
     // Collect everything that stands upright and sort by its base line, so things overlap correctly.
     const list = [];
     for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
       const i = ty * W + tx, o = w.obj[i];
+      if (under(i)) continue;
       if (o >= 1 && o <= 3 && G.fog[i]) list.push({ k: 0, i, bx: LJ.treeX(w, i), y: LJ.treeY(w, i) });
       else if (o === LJ.STUMP) list.push({ k: 11, i, bx: LJ.treeX(w, i), y: LJ.treeY(w, i) - 1 });
       else if (w.type[i] === T.ROCK) { const oy = ((hash(i, 7, s) * 9) | 0) - 4; list.push({ k: 1, i, tx, ty, oy, y: ty * TS + 14 + oy }); }
@@ -112,13 +119,13 @@
       const dc = w.deco[i];
       if (dc && decoShown(w, i, dc)) list.push({ k: 12, i, tx, ty, dc, y: ty * TS + LJ.DECO[dc].y + ((hash(i, 5, s) * 5) | 0) - 2 });
     }
-    for (const c of G.critters) list.push({ k: 13, c, y: c.y });
-    for (const b of G.buildings) if (!b.dead && !b.pending) list.push({ k: 2, b, y: (b.ty + b.h) * TS });
-    list.push({ k: 5, y: w.roadY * TS + 1 });
+    for (const c of G.critters) if (!underPx(c.x, c.y)) list.push({ k: 13, c, y: c.y });
+    for (const b of G.buildings) if (!b.dead && !b.pending && !under((b.ty + (b.h >> 1)) * W + b.tx + (b.w >> 1))) list.push({ k: 2, b, y: (b.ty + b.h) * TS });
+    if (!under(w.roadY * W)) list.push({ k: 5, y: w.roadY * TS + 1 });
     for (const u of G.units) list.push({ k: 3, u, y: u.y });
     for (const f of G.falls) list.push({ k: 4, f, y: f.y });
     for (const a of G.animals) list.push({ k: 6, a, y: a.y });
-    for (const g of G.graves) list.push({ k: 7, g, y: g.y });
+    for (const g of G.graves) if (!underPx(g.x, g.y)) list.push({ k: 7, g, y: g.y });
     for (const p of G.props) list.push({ k: 9, p, y: p.y });
     if (G.suit) list.push({ k: 10, y: G.suit.y });
     if (G.place && G.hover) list.push({ k: 8, y: (Math.floor(G.hover[1] / TS) - (G.place.h >> 1) + G.place.h) * TS });
@@ -152,7 +159,7 @@
         case 13: {
           const c = d.c;
           ctx.globalAlpha = Math.max(0, c.alpha);
-          drawCreature(ctx, S[c.kind], c.moving ? Math.floor(c.walkT * 8) % 2 : 0, c.dir, c.x, c.y, 2, cx, cy);
+          drawCreature(ctx, S[c.kind], c.moving || c.shuffling ? Math.floor(c.walkT * 8) % 2 : 0, c.dir, c.x, c.y, 2, cx, cy);
           ctx.globalAlpha = 1;
           break;
         }
@@ -290,14 +297,13 @@
     }
     for (const b of G.bflies) {
       const x = Math.round(b.x) - cx, y = Math.round(b.y + Math.sin(b.ph * 0.3) * 2) - cy;
-      if (x < -4 || y < -4 || x > vw + 4 || y > vh + 4) continue;
+      if (x < -4 || y < -4 || x > vw + 4 || y > vh + 4 || underPx(b.x, b.y)) continue;
       ctx.fillStyle = b.col;
       if (Math.sin(b.ph) > 0) { ctx.fillRect(x - 1, y, 1, 2); ctx.fillRect(x + 1, y, 1, 2); }
       else { ctx.fillRect(x - 1, y, 3, 1); }
       ctx.fillStyle = '#222'; ctx.fillRect(x, y, 1, 1);
     }
 
-    if (G.dc) drawDataCenter(ctx, G, cx, cy, vw, vh);
     if (LJ.ore) LJ.ore.draw(ctx, cx, cy, vw, vh);
     if (LJ.discoveries) LJ.discoveries.draw(ctx, cx, cy);
     drawFog(ctx, G, w, cx, cy);
@@ -348,7 +354,7 @@
   function drawDataCenter(ctx, G, cx, cy, vw, vh) {
     const dc = G.dc, B = S.dcFrame.width, t = G.time;
     const bx0 = Math.max(0, Math.floor(cx / B)), bx1 = Math.min(dc.BW - 1, Math.floor((cx + vw) / B));
-    const by0 = Math.max(0, Math.floor(cy / B)), by1 = Math.min(dc.BH - 1, Math.floor((cy + vh) / B));
+    const by0 = Math.max(0, Math.floor(cy / B) - 1), by1 = Math.min(dc.BH - 1, Math.floor((cy + vh) / B));
     for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
       const k = by * dc.BW + bx, age = t - dc.start[k];
       if (!(age >= 0)) continue;
@@ -359,6 +365,16 @@
           const on = hash(bx * 7 + i, by, Math.floor(t * 4 + i)) < 0.6;
           ctx.fillStyle = on ? (i % 3 ? '#3fb8ff' : '#7dffb0') : '#1d4a6a';
           ctx.fillRect(x + 5 + i * 7, y + 44, 2, 1);
+        }
+        // Where the module looks out over open ground (the island, the river, land still waiting), show its south wall
+        // so the data center reads as a building with height instead of a grey floor.
+        if (by + 1 < dc.BH && !(t >= dc.start[k + dc.BW])) {
+          const F = S.dcFacade;
+          ctx.drawImage(F, x, y + B);
+          for (let i = 0; i < 9; i++) if (hash(bx * 13 + i, by, Math.floor(t * 1.5 + i * 0.37)) < 0.7) {
+            ctx.fillStyle = i % 4 === 1 ? '#7dffb0' : '#3fb8ff';
+            ctx.fillRect(x + 3 + i * 5, y + B + 5, 2, 1);
+          }
         }
       }
     }

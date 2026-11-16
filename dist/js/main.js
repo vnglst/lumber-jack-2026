@@ -27,6 +27,7 @@
     LJ.ui.tick(dt);
     LJ.music.tick(scene());
     if (!G.paused) LJ.update(dt);
+    else LJ.jackSong.pause();
     if (!LJ.title.isOpen()) { LJ.render(); LJ.ui.sync(); } // the opening screen covers the whole game
     requestAnimationFrame(frame);
   }

@@ -90,6 +90,21 @@ LJ.SFX_DEFAULTS = {
       { "type": "tone", "wave": "triangle", "freq": 660, "to": 1120, "dur": 0.7, "vol": 0.03, "at": 0, "attack": 0.15, "vibRate": 5, "vibDepth": 0.03 }
     ]
   },
+  "yowl": {
+    "desc": "A lynx yowls from the trees", "vol": 1, "jitter": 0.06, "repeat": 1, "gap": 0.1, "step": 0,
+    "layers": [
+      { "type": "tone", "wave": "sawtooth", "freq": 420, "to": 860, "dur": 0.32, "vol": 0.09, "at": 0, "attack": 0.05, "vibRate": 9, "vibDepth": 0.04 },
+      { "type": "tone", "wave": "sawtooth", "freq": 860, "to": 520, "dur": 0.4, "vol": 0.09, "at": 0.3, "attack": 0.01, "vibRate": 11, "vibDepth": 0.06 },
+      { "type": "noise", "filter": "bandpass", "freq": 2600, "to": 1800, "q": 2, "dur": 0.55, "vol": 0.05, "at": 0.1, "attack": 0.1 }
+    ]
+  },
+  "growl": {
+    "desc": "A wolverine's rattling growl", "vol": 1, "jitter": 0.08, "repeat": 2, "gap": 0.26, "step": -2,
+    "layers": [
+      { "type": "tone", "wave": "sawtooth", "freq": 92, "to": 70, "dur": 0.3, "vol": 0.16, "at": 0, "attack": 0.02, "vibRate": 31, "vibDepth": 0.22 },
+      { "type": "noise", "filter": "lowpass", "freq": 600, "to": 300, "q": 1, "dur": 0.28, "vol": 0.12, "at": 0, "attack": 0.02 }
+    ]
+  },
   "laser": {
     "desc": "Pew! Laser pistol", "vol": 1, "jitter": 0.1, "repeat": 1, "gap": 0.1, "step": 0,
     "layers": [
