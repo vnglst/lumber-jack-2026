@@ -21,6 +21,7 @@ LJ.LINES = {
     "You've got €80 for another Jack. Open the Shop—an extra pair of hands goes a long way.",
     'Tap a tree to get chopping. Select a Jack and tap the ground to send him somewhere.'
   ],
+  song: ['*breaks into song*', '*joins in*'],
   normal: ['Yes, boss?', 'Ready to chop!', 'Timber?', 'Axe me anything.', "What'll it be?", 'Wood you like something?'],
   annoyed: ["I'm working here!", 'Stop poking me.', 'Do I poke YOU?', 'That flannel was clean.', "Trees don't cut themselves, you know."],
   funny: ["I'm a lumberjack and I'm NOT okay.", 'Poke me again and I unionize.', "Fun fact: I'm allergic to pollen.",

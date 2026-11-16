@@ -39,6 +39,8 @@ Before each release, bump `CACHE` in `sw.js` whenever the HTML, CSS or game scri
 
 Choose **Level 5 — thriving logging village**, **Level 8 — automated timber town**, or **Level 10 — final forest frontier** for a ready-to-play settlement: 8/12/16 jacks, completed housing, sawmills and towers, an equipped fleet, and 16%/48%/85% of the forest already cut. These presets choose their own level and equipment; the map seed is still adjustable. Logging and market hauling start immediately, with spare crew and a bulldozer awaiting orders. Wildlife, raids and normal progression continue. Use **Load / replay** to reset or **Hide controls** for more playing room.
 
+Choose **Song — repeated taps on Jack** to test the solo: tap Jack ten times at a steady pace (about half a second apart). Choose **Song — crew call and response** and press **Load / replay** to hear three resting jacks sing after a three-second lead-in. Each Easter egg plays once per campaign; replay resets both without touching your campaign save. Both samples follow the effects volume and mute.
+
 `voices.html` is the recording booth: every line the characters say (the jacks, the vehicles, Mr. Grant, the war cries of the forest folk) is listed, and you record it with a microphone of your choice. Use [**Wildlife sounds**](voices.html#wildlife) to find the animal cues, preview the downloaded originals and record replacements. **Use original** restores a downloaded take. Press **Use this** on the best take and the game plays it from then on; lines without a recording stay silent text bubbles. Recordings are saved as `audio/voice/*.wav` (needs `make` running).
 
 

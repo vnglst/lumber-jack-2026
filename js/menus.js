@@ -72,6 +72,7 @@
         '<p>Koen &amp; Tibo for play testing the game and the voice recordings.</p>' +
         '<p><a href="https://github.com/vnglst/lumber-jack-2026" target="_blank" rel="noopener">Source code</a></p>' +
         '<p>Playful animal voices adapted from <a href="https://opengameart.org/content/80-cc0-creature-sfx" target="_blank" rel="noopener">80 CC0 creature SFX</a> by rubberduck, under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0 1.0</a>.</p>' +
+        '<p>Song excerpts: Monty Python, The Lumberjack Song. From the original Lumber Jack game.</p>' +
         '<p class="fine">Shortened, pitched and softened for this forest. Human dialogue and forest-folk voices were recorded for Lumberjack.</p>'
     }),
 

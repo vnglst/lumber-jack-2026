@@ -98,6 +98,8 @@ How to read it:
 | 85 | 16 Nov | Playable developed towns in the playground | Active |
 | 86 | 16 Nov | Playtest to the end: towers that matter, automation that is earned, a livelier finish | Active |
 | 87 | 16 Nov | The data center leaves the village standing | Active |
+| 88 | 16 Nov | Rare Lumberjack Song Easter eggs and playground scenes | Active |
+| 89 | 16 Nov | Review song playback under slow loading | Done |
 
 ---
 
@@ -1133,3 +1135,27 @@ How to read it:
 - *Decision: a last shot: after the whole map is covered, the camera drifts back down to Jack and the little red village alone in a sea of servers, then "Game over." appears. The ending runs about five seconds longer.*
 - Checked in a browser (playground ending, seed 42): the full-map view with the river open and the village island, the closing shot with Jack, the truck and the village drawn above the modules, the end screen, and no console errors. Not judged by a person: whether the closing shot lands emotionally or the pacing feels right.
 - Added 2 tests (`tests/ending.test.cjs`), which fail on the previous code. The second gives the harness's stub town hall its real 74 by 96 size, since the harness draws no sprites. The offline shell cache is bumped to v21.
+
+## 88. Rare Lumberjack Song Easter eggs and playground scenes (16 Nov 2026)
+
+> I like 1 and 3! Implement these. Add them to the playground for testing, so I can test the feature.
+
+- Implement the repeated-click solo and rare crew call-and-response proposed after reviewing the original Lumber Jack game.
+- Add an easy-to-test playground scene for each.
+- *Decision: ten steady taps on one jack trigger the solo once per campaign. Existing double-click crew selection still works; space taps about half a second apart. Normal annoyed responses precede the song.*
+- *Decision: after three to five minutes (derived from the map seed without consuming random draws), three or more resting jacks within six tiles of camp can sing after twelve peaceful seconds. One sings the solo; the others answer with the chorus. No orders, movement or production are changed. Raids, nearby enemies and fighting prevent singing; danger, a singer leaving/dying and pause stop the crew performance.*
+- *Decision: each Easter egg has its own saved flag; save format 10 retains compatibility with formats 2–9. New campaigns and playground replays reset both. Older saves initialise fresh flags without changing their world.*
+- *Decision: reuse the two original MP3 files unchanged, at quiet gain through the effects bus. Include them in the offline shell and release package; document provenance and third-party rights in audio/CREDITS.md and attribute Monty Python in Credits. Offline shell cache: v22.*
+- *Decision: playground scenes Song — repeated taps on Jack and Song — crew call and response isolate the triggers from enemies. The crew fixture starts three seconds before the solo. Load / replay enables audio and resets the fixture without touching campaign storage.*
+- Checked in an isolated browser: ten real pointer taps trigger the solo; crew solo and chorus produce measurable audio, speech captions appear, replay works at narrow portrait and landscape sizes, and no page errors occur. Nobody listened to judge the audio mix.
+- Final checks: 245 JavaScript tests and seven server/package checks pass. An isolated installed-worker check boots offline, decodes both cached MP3s, and restores the saved solo flag. The first offline test attempted to save before the existing one-second throttle allowed it; repeating after that interval passed. Changes are left uncommitted; dist/ is not rebuilt.
+
+## 89. Review song playback under slow loading (16 Nov 2026)
+
+> Review when done
+
+- Review the completed Easter eggs against repository standards and the approved feature.
+- *Decision: independent standards and specification reviews found that simulation timers could truncate or skip samples while they were still loading. Playback now waits through fetch/decode and advances to the chorus or completion only after the audio source ends. Silent performances retain the simulation fallback.*
+- *Decision: refresh captions when audio actually starts, using the decoded clip duration, so a slow load cannot consume their display time.*
+- Add a delayed-loading regression, observed failing before each fix and passing afterwards. Cache bumped to v23 for the corrected playback module.
+- Final verification: 246 JavaScript tests and seven server/package checks pass. Isolated browser checks again confirm the solo, chorus, ten real pointer taps, phone-sized playground controls and no page errors. Both reviewers rechecked the fixes with no remaining findings. Nobody listened to judge the mix. Changes remain uncommitted.

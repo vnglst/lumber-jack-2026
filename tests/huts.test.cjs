@@ -150,7 +150,7 @@ test('hut damage, anger and permanent destruction survive save/load', () => {
   const other = g.huts[1];
   lj.combat.hurtHut(other, 20);
   lj.saveGame();
-  assert.equal(JSON.parse(storage(lj).getItem('lumberjack-save')).v, 9);
+  assert.equal(JSON.parse(storage(lj).getItem('lumberjack-save')).v, 10);
   assert.ok(lj.loadGame());
   assert.equal(g.huts[0].alive, false);
   assert.equal(g.world.deco[hut.tile], 0);

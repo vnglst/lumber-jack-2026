@@ -7,7 +7,7 @@
     town8: { level: 8, crew: 12, mills: 2, towers: 3, trucks: 2, harvesters: 2, cleared: 0.48 },
     town10: { level: 10, crew: 16, mills: 3, towers: 4, trucks: 3, harvesters: 3, cleared: 0.85 }
   };
-  const SCENES = ['arrival', 'level', ...Object.keys(TOWNS), 'wolf', 'pack', 'lynx', 'wolverine', 'bear', 'hut', 'raid', 'ending'];
+  const SCENES = ['arrival', 'level', 'song-poke', 'song-crew', ...Object.keys(TOWNS), 'wolf', 'pack', 'lynx', 'wolverine', 'bear', 'hut', 'raid', 'ending'];
   function town(config) {
     const w = G.world;
     Object.assign(G, { money: 100000, wood: 5000, lumber: 2000, ore: 500 });
@@ -121,7 +121,29 @@
     const jack = LJ.jacks()[0], w = G.world;
     G.sel = new Set([jack]);
     let focus = jack;
-    if (scene === 'hut') {
+    if (scene.startsWith('song-')) {
+      G.wave.hostile = G.level >= LJ.combat.HOSTILE_LEVEL; G.wave.next = 1e9;
+      if (scene === 'song-crew') {
+        G.tier = Math.max(1, G.tier); G.village = G.base;
+        while (LJ.jacks().length < 3) {
+          if (!LJ.buy('jack')) throw new Error('Could not prepare singers');
+          G.village.queue[0].t = 0; LJ.update(0.05); LJ.cmd.stop(G.units);
+        }
+        G.time = 180 + w.seed % 120;
+        const spots = Array.from({ length: w.N }, (_, i) => i).filter(i => LJ.pass(i) &&
+          Math.hypot(LJ.colOf(i) - G.base.tx - G.base.w / 2, LJ.rowOf(i) - G.base.ty - G.base.h / 2) < 5 &&
+          LJ.bfs(G.exitIdx, n => n === i));
+        spots.sort((a, b) => Math.abs(LJ.rowOf(a) - G.base.ty - G.base.h) - Math.abs(LJ.rowOf(b) - G.base.ty - G.base.h));
+        LJ.jacks().forEach((u, n) => put(u, spots[n]));
+        G.jackSong.quiet = 9;
+      }
+      LJ.cmd.stop(G.units);
+      jack.clicks = 0; jack.lastClick = -100;
+      G.ground.renderAll();
+      LJ.ui.centerOn(jack.x, jack.y); G.paused = false;
+      return scene === 'song-poke' ? 'Song Easter egg: tap the selected Jack ten times at a steady pace (about half a second apart). Once per campaign. Replay resets it.' :
+        'Crew singalong: three resting jacks near camp. The solo starts in three seconds, followed by the chorus. Once per campaign. Replay resets it; click Load / replay to enable audio.';
+    } else if (scene === 'hut') {
       let chosen = null, path = null;
       for (const h of G.huts) {
         const route = LJ.bfs(G.exitIdx, i => Math.hypot(LJ.colOf(i) - LJ.colOf(h.tile), LJ.rowOf(i) - LJ.rowOf(h.tile)) <= 4);

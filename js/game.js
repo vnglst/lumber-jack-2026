@@ -231,6 +231,7 @@
       animals: [], graves: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
       cine: null, suit: null, props: [], critters: [], wildlifeT: 8, dc: null, folkKilled: 0, wallMode: false, wallDrag: null, wallSites: {}, arrival: null
     });
+    LJ.jackSong.reset();
     LJ.discoveries.init();
     LJ.ore.init();
     LJ.combat.reset();
@@ -1262,6 +1263,7 @@
     u.clicks = G.time - u.lastClick < 4 ? u.clicks + 1 : 0;
     u.lastClick = G.time;
     if (u.kind !== 'jack') { say(u, LJ.pick(Q_VEH[VEH[u.kind].voice || u.kind])); return; }
+    if (LJ.jackSong.poke(u)) return;
     say(u, LJ.pick(G.money < 0 && u.hired ? Q_BROKE : u.clicks < 3 ? Q_NORMAL : u.clicks < 6 ? Q_ANNOYED : Q_FUNNY));
   };
 
@@ -1603,6 +1605,8 @@
       LJ.combat.update(dt);
       checkLevel();
     }
+
+    LJ.jackSong.update(dt);
 
     for (const f of G.falls) f.t += dt;
     G.falls = G.falls.filter(f => f.t < 0.9);

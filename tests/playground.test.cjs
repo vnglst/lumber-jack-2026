@@ -123,6 +123,11 @@ for (const scene of scenes) {
           const [kind, count] = encounters[scene];
           assert.equal(g.animals.length, count, label);
           assert.ok(g.animals.every(a => a.kind === kind && a.alive && a.hp > 0), label);
+        } else if (scene.startsWith('song-')) {
+          assert.equal(g.jackSong.poke, false, label);
+          assert.equal(g.jackSong.crew, false, label);
+          assert.equal(lj.jacks().length, scene === 'song-crew' ? 3 : 1, label);
+          assert.ok(lj.jacks().every(u => u.hold && !u.task), label);
         } else if (scene === 'hut') {
           assert.equal(g.animals.filter(a => a.defender).length, 2, label);
         } else if (scene === 'raid') {

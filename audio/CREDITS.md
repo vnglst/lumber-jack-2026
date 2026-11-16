@@ -40,3 +40,12 @@ These original clips were converted to mono 22,050 Hz PCM WAV, filtered at 100�
 The recording booth can preview these originals alongside the current game sound in `audio/voice/`, replace a cue with a microphone take, or restore its original through the local save API. The source, CC0 license and processing above apply to the preserved originals and unchanged copies in `audio/voice/`, not personal replacements. `audio/voice/wolf_snarl.wav` is a personal replacement; its downloaded original remains in `audio/voice-defaults/`.
 
 Koen & Tibo contributed play testing and voice recordings. The recording booth may replace any animal voice later; the table above describes the downloaded originals. Player-facing credits appear in the in-game popup reached from the welcome screen or settings menu.
+
+## The Lumberjack Song excerpts
+
+Two Monty Python song excerpts are carried over, byte-for-byte, from Koen van Gilst’s original Lumber Jack game:
+
+- Solo: `audio/song/im-a-lumberjack.mp3`, from https://github.com/vnglst/lumber-jack/blob/master/public/audio/im-a-lumberjack.mp3
+- Chorus: `audio/song/hes-a-lumberjack.mp3`, from https://github.com/vnglst/lumber-jack/blob/master/public/audio/hes-a-lumberjack.mp3
+
+Source revision: `67b6e4c090e6b912f01978f831c4a6cd2b2b87b8`. No trimming, pitch changes or re-encoding; playback gain is 0.45 on the effects bus. These third-party recordings are excluded from the code/art MIT license and the creature recordings’ CC0 license. The original repository does not state a license for the song excerpts; no additional permission is asserted here. Player-facing attribution appears in Credits.

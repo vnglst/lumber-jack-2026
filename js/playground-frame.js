@@ -23,6 +23,7 @@
     const scene = G.cine ? (['walk', 'talk'].includes(G.cine.phase) ? null : 'ending') : G.arrival ? 'road' : G.wave.active && !G.wave.active.retreating ? 'raid' : G.level >= 5 ? 'deep' : 'work';
     LJ.music.tick(scene);
     if (!G.paused) LJ.update(dt);
+    else LJ.jackSong.pause();
     LJ.render(); LJ.ui.sync();
     requestAnimationFrame(frame);
   }

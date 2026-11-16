@@ -35,6 +35,7 @@ def build(root=ROOT):
     resources.feed((root / 'index.html').read_text())
     files = resources.paths | {
         'index.html', 'sw.js', 'manifest.webmanifest', 'robots.txt', 'sitemap.xml',
+        'audio/song/im-a-lumberjack.mp3', 'audio/song/hes-a-lumberjack.mp3',
         'assets/social-card.png', 'LICENSE', 'audio/CREDITS.md', 'audio/voice/manifest.json'
     }
     manifest = json.loads((root / 'manifest.webmanifest').read_text())
