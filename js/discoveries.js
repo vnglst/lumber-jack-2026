@@ -50,7 +50,7 @@
   function draw(ctx, cx, cy) {
     const w = G.world;
     for (const f of G.finds) {
-      if (f.found || !G.fog[f.tile]) continue;
+      if (f.found || !G.fog[f.tile] || (G.dc && LJ.ending.covers(f.tile))) continue;
       const x = f.tile % w.W * LJ.TS + 8 - cx, y = Math.floor(f.tile / w.W) * LJ.TS + 10 - cy;
       ctx.fillStyle = '#211b22'; ctx.fillRect(x - 4, y - 4, 8, 6);
       ctx.fillStyle = recipes[f.kind] ? '#fff0b0' : '#dfac32'; ctx.fillRect(x - 3, y - 3, 6, 4);
