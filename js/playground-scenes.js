@@ -2,7 +2,69 @@
 // Disposable fixtures for manual review. All action after setup runs through the ordinary simulation.
 (function () {
   const G = LJ.G, P = (LJ.playground = {});
-  const SCENES = ['arrival', 'level', 'wolf', 'pack', 'lynx', 'wolverine', 'bear', 'hut', 'raid', 'ending'];
+  const TOWNS = {
+    town5: { level: 5, crew: 8, mills: 1, towers: 2, trucks: 2, harvesters: 0, cleared: 0.16 },
+    town8: { level: 8, crew: 12, mills: 2, towers: 3, trucks: 2, harvesters: 2, cleared: 0.48 },
+    town10: { level: 10, crew: 16, mills: 3, towers: 4, trucks: 3, harvesters: 3, cleared: 0.85 }
+  };
+  const SCENES = ['arrival', 'level', ...Object.keys(TOWNS), 'wolf', 'pack', 'lynx', 'wolverine', 'bear', 'hut', 'raid', 'ending'];
+  function town(config) {
+    const w = G.world;
+    Object.assign(G, { money: 100000, wood: 5000, lumber: 2000, ore: 500 });
+    G.wave.next = 1e9;
+    const buy = id => { if (!LJ.buy(id)) throw new Error('Could not prepare town purchase: ' + id); };
+    const finish = () => {
+      for (const b of G.buildings) if (b.construction) b.construction.t = 0;
+      LJ.update(0.05);
+      LJ.cmd.stop(G.units);
+    };
+    // Use normal placement and completion so footprints, services and road access agree.
+    G.tier = 0; G.village = null;
+    for (let n = 0; n < (config.level >= 6 ? 3 : 2); n++) { buy('base'); finish(); }
+    const sites = Array.from({ length: w.N }, (_, i) => i).sort((a, b) =>
+      Math.hypot(LJ.colOf(a) - w.start.x, LJ.rowOf(a) - w.start.y) - Math.hypot(LJ.colOf(b) - w.start.x, LJ.rowOf(b) - w.start.y));
+    for (const [kind, count] of [['bunk', Math.ceil((config.crew - LJ.popCap()) / 3)], ['sawmill', config.mills], ['tower', config.towers]]) {
+      for (let n = 0; n < count; n++) {
+        buy(kind);
+        const placed = sites.some(i => {
+          const x = LJ.colOf(i), y = LJ.rowOf(i), p = G.place;
+          if (G.buildings.some(b => x < b.tx + b.w + 2 && x + p.w + 2 > b.tx && y < b.ty + b.h + 2 && y + p.h + 2 > b.ty)) return false;
+          return LJ.canPlace(x, y) && LJ.tryPlace(x, y);
+        });
+        if (!placed) throw new Error('No town building site; try another seed');
+        finish();
+      }
+    }
+    while (LJ.jacks().length < config.crew) { buy('jack'); G.village.queue[0].t = 0; finish(); }
+    for (const [kind, count] of [['truck', config.trucks], ['shuttle', 1], ['dozer', 1], ['feller', 1], ['harv', config.harvesters]]) {
+      while (LJ.countKind(kind) < count) buy(kind);
+    }
+    for (const it of LJ.SHOP) if (!it.repeat && it.level <= G.level && LJ.shopState(it).st === 'ok') buy(it.id);
+    LJ.cmd.stop(G.units);
+    const parking = [];
+    for (const i of sites) {
+      if (LJ.pass(i) && LJ.bfs(G.exitIdx, n => n === i)) parking.push(i);
+      if (parking.length >= G.units.length * 2) break;
+    }
+    G.units.forEach((u, n) => put(u, parking[n * 2]));
+    Object.assign(G, { money: config.level * 1500, wood: 600, lumber: 250, stone: 100, ore: 80, animalCd: 45, orderCd: 8 });
+    G.wave.next = 90;
+    LJ.cmd.sell(G.units.filter(u => u.kind === 'truck'));
+    // Start a logging crew at the nearest reachable forest edge; leave spare hands and machines at camp.
+    const adjacentTrees = i => [i - 1, i + 1, i - w.W, i + w.W].filter(t =>
+      t >= 0 && t < w.N && Math.abs(LJ.colOf(t) - LJ.colOf(i)) <= 1 && LJ.isTree(t));
+    const edge = LJ.bfs(G.exitIdx, i => adjacentTrees(i).length > 0);
+    if (edge?.length) {
+      const tile = edge[0], tree = adjacentTrees(tile)[0];
+      const crew = [...LJ.jacks().slice(0, 4), ...G.units.filter(u => LJ.VEH[u.kind]?.chop)];
+      crew.forEach(u => put(u, tile));
+      LJ.cmd.chop(crew, tree);
+      LJ.cmd.move(G.units.filter(u => u.kind === 'shuttle'), tile);
+    }
+    if (!G.up.steam) LJ.cmd.saw(LJ.jacks().slice(4, 6));
+    G.sel = new Set([LJ.jacks()[config.crew - 1]]);
+    return 'Level ' + G.level + ' town: ' + config.crew + ' jacks, completed buildings and an equipped fleet; ' + Math.round(config.cleared * 100) + '% of the forest cut. Level and equipment are preset. Logging and market trucks are working; spare crew and bulldozer await orders. Wildlife and raids remain active. Load / replay resets the town.';
+  }
   function put(u, tile) {
     u.tile = tile; u.x = LJ.colOf(tile) * LJ.TS + 8; u.y = LJ.rowOf(tile) * LJ.TS + 10;
     u.path = []; u.state = 'think';
@@ -37,8 +99,9 @@
       return 'Opening: the full drive and tutorial. Tap captions to advance; the truck keeps its own pace.';
     }
     arrived();
-    G.level = scene === 'ending' ? 10 : scene === 'raid' ? Math.max(5, level) : level;
-    clearTrees(scene === 'ending' ? G.total : G.level > 1 ? G.thr[G.level - 2] : 0);
+    const config = TOWNS[scene];
+    G.level = config ? config.level : scene === 'ending' ? 10 : scene === 'raid' ? Math.max(5, level) : level;
+    clearTrees(config ? Math.round(G.total * config.cleared) : scene === 'ending' ? G.total : G.level > 1 ? G.thr[G.level - 2] : 0);
     G.earned = G.level > 1 ? G.quota[G.level - 2] : 0;
     Object.assign(G, { money: 10000, wood: 500, lumber: 200, stone: 100, animalCd: 1e9, orderCd: 25 });
     G.tier = G.level >= 6 ? 3 : G.level >= 3 ? 2 : G.level >= 2 ? 1 : 0;
@@ -47,6 +110,14 @@
     G.up.sharpaxe = gear === 'chainsaw'; G.up.chainsaw = gear === 'chainsaw';
     G.up.rifles = gear === 'laser' || gear === 'scope'; G.up.scope = gear === 'scope';
     LJ.revealAll();
+    if (config) {
+      G.up = {};
+      const description = town(config);
+      G.ground.renderAll();
+      LJ.ui.centerOn((G.base.tx + G.base.w / 2) * LJ.TS, (G.base.ty + G.base.h / 2) * LJ.TS);
+      G.paused = false;
+      return description;
+    }
     const jack = LJ.jacks()[0], w = G.world;
     G.sel = new Set([jack]);
     let focus = jack;

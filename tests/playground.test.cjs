@@ -100,6 +100,22 @@ for (const scene of scenes) {
         assert.equal(store.getItem('lumberjack-save'), 'campaign sentinel', label);
         if (scene === 'arrival') { assert.ok(g.arrival, label); continue; }
         assert.ok(!g.arrival && !g.paused, label);
+        if (scene.startsWith('town')) {
+          assert.equal(g.level, Number(scene.slice(4)), label);
+          assert.equal(lj.jacks().length, { town5: 8, town8: 12, town10: 16 }[scene], label);
+          assert.ok(g.up.chainsaw && g.up.rifles && g.up.dispatch, label);
+          assert.equal(!!g.up.steam, g.level >= 7, label);
+          assert.equal(!!g.up.mega, g.level >= 9, label);
+          assert.ok(g.count.bunk && g.count.sawmill && g.count.tower, label);
+          assert.ok(g.buildings.every(b => !b.construction), label);
+          assert.ok(g.cleared >= g.thr[g.level - 2] && g.cleared < g.thr[g.level - 1], label);
+          assert.equal(Array.from(g.world.obj).filter(o => o >= 1 && o <= 3).length, g.total - g.cleared, label);
+          assert.ok(g.units.every(u => lj.pass(u.tile) && lj.bfs(g.exitIdx, i => i === u.tile)), label);
+          assert.ok(!g.cine && !g.levelDone && g.ore > 0, label);
+          assert.ok(g.animalCd < 100 && g.wave.next <= 90, label);
+          step(lj, 0.1);
+          continue;
+        }
         assert.equal(g.up.chainsaw, gear === 'chainsaw', label);
         assert.equal(g.up.rifles, gear === 'laser' || gear === 'scope', label);
         assert.equal(g.up.scope, gear === 'scope', label);
@@ -119,6 +135,19 @@ for (const scene of scenes) {
     }
   });
 }
+
+test('town presets keep logging, processing and selling in the live simulation', () => {
+  const lj = playground();
+  for (const scene of ['town5', 'town8', 'town10']) {
+    lj.ui.centerOn = (x, y) => assert.ok(Number.isFinite(x) && Number.isFinite(y), 'camera has a real town position');
+    lj.playground.load({ scene, seed: 42 });
+    const cleared = lj.G.cleared, earned = lj.G.earned;
+    step(lj, 30);
+    assert.ok(lj.G.cleared > cleared, scene + ' logs trees');
+    assert.ok(lj.G.earned > earned, scene + ' delivers to market');
+    assert.ok(!lj.G.cine && !lj.G.paused, scene + ' remains playable');
+  }
+});
 
 test('opening and ending replay never alter campaign storage, including restart hooks', () => {
   const lj = playground(), store = storage(lj);

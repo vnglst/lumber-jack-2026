@@ -4,6 +4,11 @@
   const $ = id => document.getElementById(id), frame = $('review-game');
   const status = text => { $('review-status').textContent = text; };
   let ready = false;
+  $('review-scene').addEventListener('change', () => {
+    const preset = $('review-scene').value.startsWith('town');
+    $('review-level').disabled = $('review-gear').disabled = preset;
+    if (preset) $('review-level').value = $('review-scene').value.slice(4);
+  });
   function load() {
     if (!ready || !$('review-form').reportValidity()) return;
     try {

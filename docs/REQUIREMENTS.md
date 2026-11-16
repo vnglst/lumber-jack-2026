@@ -95,6 +95,7 @@ How to read it:
 | 82 | 15 Nov | Playful motion in menus and the interface | Active |
 | 83 | 15 Nov | Playground source stays current | Active |
 | 84 | 15 Nov | Every playground scene in the test suite | Active |
+| 85 | 16 Nov | Playable developed towns in the playground | Active |
 
 ---
 
@@ -1063,3 +1064,16 @@ How to read it:
 - Check every scene offered by the playground, including lynx and wolverine, and run those checks through `make test`.
 - *Decision: derive scene coverage from the actual menu, require explicit outcome assertions for new scenes, and exercise 444 setups/replays across seeds 1, 42 and 999, all four equipment choices, all ten level announcements and early/middle/late encounter levels. Verify animal kinds/counts, defenders, raids, arrival, ending, equipment and campaign-save isolation. Exercise real combat for all five animal encounter scenes and the full ending separately.*
 - Browser checks pass with the stale production cache active: all ten scenes with all four equipment choices, all ten level announcements, full ending/restart, pause/resume, narrow portrait/landscape controls and campaign-save isolation; no page errors. These checks verify behavior, not whether the game is fun or how the audio sounds.
+
+## 85. Playable developed towns in the playground (16 Nov 2026)
+
+> Can you add to the playground a way to play test certain in-game moment. For instance, when you have a successful town at level 5, 8 and 10. Create different scenario's for me to test the game, with a complete town and large parts of the forest cut down.
+>
+> Create a worktree for this that you merge back to main at the end.
+
+- Add three playable town presets to the existing playground, with completed buildings, crews, vehicles and cleared forest.
+- *Decision: level 5 has 8 jacks and 16% clearing; level 8 has 12 jacks and 48%; level 10 has 16 jacks and 85%. Each is within its actual progression thresholds, with forest left to play through. Buildings include housing, sawmills and guard towers; equipment and fleet sizes grow with the level.*
+- *Decision: use ordinary purchases, placement and completion to preserve building services and road access. Start logging, sawmilling and market hauling, leaving spare hands and a bulldozer for manual orders. Restore normal wildlife and raid timers after setup. Reveal the map for inspection; supplies and earned income are staged.*
+- Presets own their level and equipment, disabling those selectors; seeds remain adjustable. Replay resets the scenario without touching campaign saves.
+- Development-only changes: production rules, saves and offline shell are unchanged; no cache bump or production package rebuild is needed.
+- Checks cover all presets across three seeds and equipment selections, physical tree counts, completed services, reachable units, continued logging and sales. Isolated browser checks cover desktop, narrow portrait and landscape with no page errors and a preserved campaign save. Nobody has judged game feel or listened to audio.
