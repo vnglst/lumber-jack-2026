@@ -213,8 +213,10 @@
     const beast = hutAt(wx, wy, 0) || pickAnimal(wx, wy, 0);
     if (beast && LJ.seenPx(beast.x, beast.y)) return 'crosshair';
     const idx = tileAt(wx, wy);
-    return treeAt(wx, wy) >= 0 || (G.veins[idx] && G.fog[idx]) ? 'pointer' : 'default';
+    return treeAt(wx, wy) >= 0 || (G.veins[idx] && G.fog[idx]) || canQuarry(idx, G.sel) ? 'pointer' : 'default';
   }
+  // With pickaxes, selected jacks can break up a plain rock that is in the way.
+  const canQuarry = (idx, sel) => G.up.pick && G.fog[idx] && G.world.type[idx] === LJ.T.ROCK && !G.veins[idx] && !G.world.bld[idx] && [...sel].some(s => s.kind === 'jack');
   function setCursor(c) { if (c !== cursor) cv.style.cursor = cursor = c; }
   const isExit = i => { const w = G.world, x = i % w.W, y = (i / w.W) | 0; return x <= 1 && Math.abs(y - w.roadY) <= 1; };
 
@@ -265,6 +267,10 @@
         if (near) { miners = [near]; G.sel.add(near); }
       }
       if (LJ.cmd.mine(miners, idx)) { LJ.sfx('click'); tilePing(idx, '#f2b866'); }
+      return;
+    }
+    if (canQuarry(idx, sel)) {
+      if (LJ.cmd.mine(sel, idx)) { LJ.sfx('click'); tilePing(idx, '#d8d4cc'); }
       return;
     }
     if (!sel.length) {
@@ -653,9 +659,9 @@
     if (G.wallMode) return 'Drag to build solid palisades. They block every unit: leave openings for your crew and trucks. Enemies can use openings or break through.';
     if (G.place) return 'Pick a clear, explored spot the road can reach.';
     const nw = LJ.combat.nextWaveIn();
-    if (G.wave.active && !G.wave.active.retreating) return 'The forest folk are attacking! Guard towers and jacks with laser pistols can hold them off.';
+    if (G.wave.active && !G.wave.active.retreating) return 'A war party is marching on the village! Guard towers out-range its bows; jacks near the village or a tower fight too.';
     if (nw !== null && nw < 30) return 'War drums in the forest… the next war party arrives in ' + mmss(nw) + '.';
-    if (G.wave.hostile && !G.count.tower && G.level >= 3) return 'The forest folk will be back. Build Guard Towers and a palisade around the village.';
+    if (G.wave.hostile && !G.count.tower && G.level >= 3) return 'War parties march on the village, not on your crews. Build Guard Towers around it: they shoot further than a bow.';
     if (LJ.noCrew()) return 'Your crew is gone. Hire a jack in the Shop to carry on' + (G.money < LJ.hireCost() ? ', once your truck has sold enough to pay for one.' : '.');
     if (G.money < 0) return "You're in debt: hired jacks and machines slack off until you're back in the black.";
     if (G.stockpile) return 'Stockpiling: automatic market loading is paused. Jacks and Logging Trucks still deliver to camp. Tap “Stockpiling” to resume selling.';
@@ -667,7 +673,12 @@
     if (!G.village && LJ.jackCount() < LJ.popCap() && G.money >= LJ.hireCost()) return 'Hire an extra Jack in the Shop — he starts walking to your tent right away.';
     if (G.cleared === 0 && !tasks('work')) return 'Tap a tree to send your jack to work.';
     const idle = idleJacks().length;
-    if (idle && G.cleared < G.total) return idle + (idle > 1 ? ' jacks see' : ' jack sees') + ' no trees. Find them with the idle button (Tab) and tap near the forest to send them there.';
+    if (idle && G.cleared < G.total) {
+      const who = idle + (idle > 1 ? ' jacks see' : ' jack sees') + ' no trees. ';
+      // With a foreman the crew finds explored trees by itself, so whatever is left is hidden or walled in.
+      if (G.up.foreman) return who + 'What is left is unexplored, or behind rock or water: explore, send a bulldozer' + (G.up.pick ? ', or select jacks and tap a rock to break it up.' : '.');
+      return who + 'Find them with the idle button (Tab) and tap near the forest to send them there.' + (G.level >= 4 ? ' A Foreman from the Shop does that for you.' : '');
+    }
     if (!G.village) {
       if (G.sold === 0) return 'Jacks bring wood to the tent. Your truck sells wood above the 20-wood building reserve; switch to Stockpiling to keep it all.';
       if (!Object.keys(G.up).length && G.money >= 40) return 'You can afford an upgrade — open the Shop.';

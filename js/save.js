@@ -31,7 +31,7 @@
     switch (t.type) {
       case 'work': return { type: 'work', ax: t.ax, ay: t.ay };
       case 'saw': return { type: 'saw' };
-      case 'mine': return { type: 'mine', ax: t.ax, ay: t.ay };
+      case 'mine': return t.rock >= 0 ? null : { type: 'mine', ax: t.ax, ay: t.ay }; // breaking up one rock is a short errand, not a job to keep
       case 'shuttle': return { type: 'shuttle', ax: t.ax, ay: t.ay };
       case 'haul': return { type: 'haul', once: t.once, resume: taskOut(t.resume, jobs) };
       case 'doze': {

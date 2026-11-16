@@ -5,6 +5,7 @@
   const G = (LJ.G = {});
   const PRICE = (LJ.PRICE = { wood: 3, lumber: 10, stone: 6, ore: 14 });
   const MINE_TIME = 3, ORE_LOAD = 6; // seconds to pick out one ore, and how much of it a jack carries (it is heavy)
+  const QUARRY_TIME = 8; // seconds for a jack to break up one plain rock with a pickaxe: slow next to a bulldozer's 2.5
   const MAX_LEVEL = 10, WAGE = 20, PAY_EVERY = 60, SAW_TIME = 3.5, INTRO_BEAT_TIME = 4.5, WALL_BUILD_TIME = 3;
   // Share of the forest that must be cleared to complete each of the 10 levels. The last level needs every single tree.
   const FR = [0.005, 0.03, 0.07, 0.12, 0.19, 0.28, 0.4, 0.55, 0.74, 1];
@@ -55,10 +56,12 @@
   // Buildings: the base (the tent and its upgrades) and the ones the player places around it.
   // sight: how far it lifts the fog; heals: jacks nearby heal quickly; mask: which list of standing spots its ring joins.
   const BLD = (LJ.BLD = {
-    base: { name: 'Village', sight: 5, heals: true, hp: 500, raid: true }, // raid: raided at 0 HP instead of destroyed
+    // raid: raided at 0 HP instead of destroyed; target: what a war party marches on
+    base: { name: 'Village', sight: 5, heals: true, hp: 500, raid: true, target: true },
     bunk: { name: 'Bunkhouse', size: [2, 2], build: 12, max: 4, sight: 5 },
     sawmill: { name: 'Sawmill', size: [3, 2], build: 18, max: 3, sight: 5, mask: 'sawMask' },
-    tower: { name: 'Guard Tower', size: [2, 2], build: 20, max: 6, sight: 13, heals: true, hp: 320 }
+    // brace: extra hit points from an upgrade, by its id
+    tower: { name: 'Guard Tower', size: [2, 2], build: 20, max: 6, sight: 13, heals: true, hp: 320, target: true, brace: { twin: 160 } }
   });
   let w, W, H, vis, par, q, stamp = 0;
   // A tile is an index into the map's layers. Its column and row, and where a unit standing on it is drawn:
@@ -109,19 +112,20 @@
     bldItem('sawmill', 2, () => ({ m: 150 + 150 * buildingCount('sawmill'), w: 20 }), 'Jacks turn 2 wood into 1 lumber here. Lumber sells for €' + PRICE.lumber + '.', 'blade'),
     { id: 'rifles', name: 'Laser Pistols', desc: 'Jacks fire bursts of laser bolts at anything that attacks them.', icon: 'rifle', level: 2, cost: () => ({ m: 150 }) },
     { id: 'barrow', name: 'Wheelbarrows', desc: 'Jacks carry 24.', icon: 'barrow', level: 2, need: 'sling', cost: () => ({ m: 160, w: 20 }) },
-    { id: 'pick', name: 'Pickaxes', desc: 'Jacks can mine the ore that glints in the rocks. Ore sells for €' + PRICE.ore + ' and the best machines need it. A mined-out rock crumbles to gravel.', icon: 'pick', level: 3, cost: () => ({ m: 120 }) },
+    { id: 'pick', name: 'Pickaxes', desc: 'Jacks can mine the ore that glints in the rocks. Ore sells for €' + PRICE.ore + ' and the best machines need it. They can also break up a plain rock that is in the way, slowly.', icon: 'pick', level: 3, cost: () => ({ m: 120 }) },
     { id: 'chainsaw', name: 'Chainsaws', desc: 'Chop twice as fast. Loud.', icon: 'chainsaw', level: 3, need: 'sharpaxe', cost: () => ({ m: 300 }) },
     vehItem('truck', 2, 250, 'Hauls 60 goods per trip down the road to market, much faster than walking.', 'truck'),
     vehItem('shuttle', 3, 150, 'Tap a forest clearing to set a route. Jacks load it there; it shuttles up to 40 wood back to the village automatically.', 'shuttle'),
-    bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Fires laser bursts at forest folk and wild animals. Sees far, and jacks nearby heal quickly.', 'tower'),
+    bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Stops war parties and wild animals: its laser bursts out-range a bow and are aimed ahead of whatever runs at it. Sees far, and jacks nearby heal quickly.', 'tower'),
     { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Takes ' + WALL_BUILD_TIME + ' seconds per section. Blocks every unit: leave openings for your crew and trucks. Enemies can break through. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
     vehItem('dozer', 4, 600, 'Uproots stumps for extra wood, clears rocks for stone (and any ore in them) and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
     { id: 'steel', name: 'Steel Axe Heads', desc: 'Forged from your own ore. Jacks chop 20% faster.', icon: 'axe', level: 4, need: 'pick', cost: () => ({ m: 200, o: 12 }) },
-    { id: 'foreman', name: 'Keen-eyed Foreman', desc: 'Jacks spot trees from 50% further away.', icon: 'hat', level: 5, cost: () => ({ m: 500 }) },
+    { id: 'foreman', name: 'Foreman', desc: 'Jacks follow the forest edge as they clear it, and idle hands walk on to the nearest trees you have explored. They also spot trees from 50% further away.', icon: 'hat', level: 4, cost: () => ({ m: 500 }) },
     { id: 'dispatch', name: 'Dispatcher', desc: 'Trucks keep hauling on their own whenever there are goods.', icon: 'clip', level: 5, need: 'truck', cost: () => ({ m: 450 }) },
     vehItem('feller', 4, 480, 'A compact tree-cutting tractor. Fells a tree in 2.4 seconds and delivers 24 wood at a time. Wolves ignore it.', 'feller'),
     vehItem('harv', 6, 900, 'A machine that fells and carries trees by itself. Wolves ignore it.', 'harv'),
     { id: 'scope', name: 'Overcharged Lasers', desc: 'Longer range and 4-bolt bursts that hit harder.', icon: 'rifle', level: 6, need: 'rifles', cost: () => ({ m: 400, o: 10 }) },
+    { id: 'twin', name: 'Twin Tower Lasers', desc: 'Guard towers fire six bolts in a burst instead of four, and are braced to take ' + BLD.tower.brace.twin + ' more damage.', icon: 'tower', level: 7, need: 'tower', cost: () => ({ m: 900, o: 15 }) },
     { id: 'steam', name: 'Steam Sawmills', desc: 'Every sawmill saws lumber by itself.', icon: 'blade', level: 7, need: 'sawmill', cost: () => ({ m: 1200, l: 40, o: 20 }) },
     { id: 'turbo', name: 'Turbo Harvesters', desc: 'Harvesters and felling tractors fell trees 40% faster. Harvesters also drive faster.', icon: 'harv', level: 8, need: 'harv', cost: () => ({ m: 1500, o: 25 }) },
     { id: 'mega', name: 'Mega Haulers', desc: 'Trucks carry 120, harvesters 60.', icon: 'truck', level: 9, need: 'truck', cost: () => ({ m: 1500, o: 25 }) }
@@ -139,7 +143,7 @@
   // Hostile routes may include palisades to attack; movement still stops at the wall.
   // Animals slip between trees, but water, rock and buildings block their routes.
   const wildPass = i => !blocked(i) && w.bld[i] === 0;
-  // A bulldozer plans its route straight through rock and water.
+  // Where a bulldozer may plan a route: rock and water included, which it clears on the way (see dozeRoute).
   const dozePass = i => w.bld[i] === 0 && !isTree(i) && !w.wall[i];
   // The market sits where the road meets the west edge; nothing gets built right in front of it.
   const nearMarket = (x, y) => x < 4 && Math.abs(y - w.roadY) < 2;
@@ -311,13 +315,14 @@
   // The sprite a building is drawn with, and the top-left corner (world pixels) where it goes:
   // centred on its footprint, standing on its bottom edge.
   LJ.bldSprite = b => (b.kind === 'base' ? LJ.sprites.base[G.tier] : LJ.sprites[b.kind]);
+  const bldCenter = (LJ.bldCenter = b => [(b.tx + b.w / 2) * TS, (b.ty + b.h / 2) * TS]);
   LJ.bldOrigin = b => {
     const spr = LJ.bldSprite(b);
     return [b.tx * TS + ((b.w * TS - spr.width) >> 1), (b.ty + b.h) * TS + 1 - spr.height];
   };
 
   function addBuilding(kind, tx, ty, bw, bh, pending = false) {
-    const hp = BLD[kind].hp || 160;
+    const brace = BLD[kind].brace || {}, hp = (BLD[kind].hp || 160) + Object.keys(brace).reduce((n, id) => n + (G.up[id] ? brace[id] : 0), 0);
     const duration = BLD[kind].build;
     const b = { kind, tx, ty, w: bw, h: bh, queue: [], hp, max: hp, pending, construction: duration ? { t: duration, total: duration } : null };
     G.buildings.push(b);
@@ -397,6 +402,50 @@
     return null;
   }
   LJ.bfs = bfs;
+
+  // A bulldozer's way to a tile: over open ground where it can, through rock and water only where that is quicker
+  // than driving round. Each tile costs about the time it takes (driving one, clearing rock six, filling water nine),
+  // so the cheapest route is the one that opens the way soonest. Returns the path reversed, like bfs, or null.
+  const DOZE_COST = { open: 1, rock: 6, water: 9 };
+  function dozeRoute(start, target) {
+    const cost = new Int32Array(w.N).fill(1e9), heap = [[0, start]];
+    cost[start] = 0; par[start] = -1;
+    while (heap.length) {
+      // A small binary heap, cheapest first.
+      const top = heap[0], last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        for (let i = 0; ;) {
+          const l = 2 * i + 1, r = l + 1;
+          let m = i;
+          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+          if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+          if (m === i) break;
+          [heap[i], heap[m]] = [heap[m], heap[i]]; i = m;
+        }
+      }
+      const [d, c] = top;
+      if (d > cost[c]) continue;
+      if (c === target) {
+        const path = [];
+        for (let n = c; n !== start; n = par[n]) path.push(n);
+        return path;
+      }
+      const cx = colOf(c), cy = rowOf(c);
+      for (let k = 0; k < 4; k++) {
+        const nx = cx + DX[k], ny = cy + DY[k];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const n = ny * W + nx;
+        if (!dozePass(n)) continue;
+        const nd = d + (w.type[n] === T.WATER ? DOZE_COST.water : w.type[n] === T.ROCK ? DOZE_COST.rock : DOZE_COST.open);
+        if (nd >= cost[n]) continue;
+        cost[n] = nd; par[n] = c;
+        let i = heap.push([nd, n]) - 1;
+        while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[i], heap[p]] = [heap[p], heap[i]]; i = p; }
+      }
+    }
+    return null;
+  }
 
   const capOf = u => (u && u.kind !== 'jack' ? VEH[u.kind].cap() : (G.up.barrow ? 24 : G.up.sling ? 14 : 8) + (u ? rankOf(u).carry : 0) + (G.recipes.includes('sling') ? 4 : 0));
   // Unpaid hired jacks slack off, and unpaid machines run out of fuel, until the debt is cleared.
@@ -530,6 +579,14 @@
     if (!t) { u.state = 'idle'; return; }
     if (t.type === 'move') { u.task = null; u.state = 'idle'; return; }
     if (t.type === 'retreat') { if (!walkTo(u, healsAt, 'retreat')) endTask(u); return; }
+    if (t.type === 'mine' && t.rock >= 0) {
+      // Breaking up one plain rock that is in the way. Once it is gravel the jack is free again.
+      const r = w.type[t.rock] === T.ROCK ? nearestAdj(u, n => n === t.rock) : null;
+      if (r && r.path) { w.claim[r.found] = u.id; u.target = r.found; u.path = r.path; u.state = 'toOre'; return; }
+      endTask(u);
+      if (r && !r.sawClaimed) say(u, M.cantReach);
+      return;
+    }
     if (t.type === 'mine') {
       // Keep at the nearest vein in sight of the work spot, taking the ore home whenever the load is full.
       if (u.ore >= ORE_LOAD) { if (!walkTo(u, storeGoal, 'oreHome', M.noStore)) endTask(u); return; }
@@ -546,7 +603,7 @@
     }
     if (t.type === 'hunt') {
       const a = t.a;
-      if (!a.alive) { if (t.resume) { setTask(u, t.resume); think(u); } else endTask(u); return; }
+      if (!a.alive || (a.wave && a.retreat)) { if (t.resume) { setTask(u, t.resume); think(u); } else endTask(u); return; } // a beaten war party is let go
       const ax = colOf(a.tile), ay = rowOf(a.tile);
       // A hut stands still among the trees: anywhere within reach of the weapon will do. If there is no such spot,
       // say so and go back to work instead of waiting for ever. Animals move, so for them it is worth waiting.
@@ -667,7 +724,9 @@
     u.carry += SPECIES[w.obj[t]].y + (w.variant[t] === 2 ? 1 : 0);
     w.obj[t] = STUMP; w.claim[t] = 0; G.cleared++; G.worldVer++;
     gainXP(u, 4);
-    if (u.task && u.task.type === 'work') { u.task.ax = tx; u.task.ay = ty; } // the work spot follows the forest edge
+    // A jack clears what he can see from the spot he was sent to, then waits for the next order. Machines, and
+    // crews with a foreman, move the work spot along with the forest edge instead.
+    if (u.task && u.task.type === 'work' && (u.kind !== 'jack' || G.up.foreman)) { u.task.ax = tx; u.task.ay = ty; }
     // The land around a felled tree loses some of its lushness - cut enough and it turns to wasteland.
     for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
       const x = tx + dx, y = ty + dy;
@@ -712,7 +771,7 @@
   // ---------- Wildlife & combat ----------
   function blood(x, y) { for (let i = 0; i < 5; i++) chip(x, y - 6, '#d5392f'); }
 
-  function hurtAnimal(a, dmg) {
+  function hurtAnimal(a, dmg, from) { // from: who fired, for whoever keeps score (unused by the rules)
     if (a.kind === 'hut') { LJ.combat.hurtHut(a, dmg); return; }
     a.hp -= dmg; blood(a.x, a.y);
     if (a.hp <= 0 && a.alive) {
@@ -736,17 +795,13 @@
     if (jack) blood(u.x, u.y);
     else for (let i = 0; i < 5; i++) chip(u.x, u.y - 6, '#c9ad70');
     LJ.sfx('hurt');
-    // Jacks nearby drop what they're doing and come to help, then go back to work.
-    for (const v of G.units) {
-      if (!a.alive || v === u || v.kind !== 'jack' || v.dead || v.fighting || Math.hypot(v.x - u.x, v.y - u.y) > 140) continue;
-      const vt = v.task && v.task.type;
-      if (vt === 'hunt' || vt === 'move' || vt === 'retreat') continue;
-      setTask(v, { type: 'hunt', a, resume: v.task });
-    }
+    // Jacks nearby drop what they're doing and come to help, then go back to work. A war party on the march is only
+    // fought on defended ground (atWar): crews it passes in the forest shoot back from where they stand.
+    rally(u.x, u.y, 140, a, u);
     const task = u.task && u.task.type;
     if (jack && u.hp > 0 && u.hp < FLEE_HP && !u.fled && !u.hold && task !== 'move' && !nearHome(u)) fallBack(u);
     // Shot from out of reach: go after the attacker, unless retreating.
-    else if (u.hp > 0 && a.alive && jack && !u.fighting && task !== 'hunt' && task !== 'move' && task !== 'retreat') setTask(u, { type: 'hunt', a, resume: u.task });
+    else if (u.hp > 0 && a.alive && atWar(u, a) && jack && !u.fighting && task !== 'hunt' && task !== 'move' && task !== 'retreat') setTask(u, { type: 'hunt', a, resume: u.task });
     if (u.hp > 0) return;
     u.dead = true; release(u);
     G.sel.delete(u);
@@ -757,10 +812,33 @@
   LJ.hurtUnit = hurtUnit; LJ.hurtAnimal = hurtAnimal;
 
   // ---------- Buildings and walls under attack ----------
-  LJ.damageBuilding = function (b, dmg) {
+  const GUARD_REACH = 12 * TS, REPAIR_AFTER = 12, REPAIR_RATE = 4; // pixels, seconds without a hit, hit points a second
+  // A war party is after the village, not the crews. It and a jack fight each other only on defended ground (near the
+  // village or a guard tower), or when the jack has been ordered to attack it.
+  const defended = u => G.buildings.some(b => {
+    if (b.dead || !BLD[b.kind].target) return false;
+    const [bx, by] = bldCenter(b);
+    return Math.hypot(u.x - bx, u.y - by) <= GUARD_REACH;
+  });
+  const huntingRaid = u => !!(u.task && u.task.type === 'hunt' && u.task.a.wave);
+  const atWar = (LJ.atWar = (u, a) => !a.wave || defended(u) || huntingRaid(u));
+  // Jacks within reach of (x, y) take on attacker a, then go back to work. Not those already fighting, on the move
+  // or told to stop, and against a war party only those who are at war with it.
+  function rally(x, y, reach, a, except) {
+    if (!a.alive) return;
+    for (const v of G.units) {
+      if (v === except || v.kind !== 'jack' || v.dead || v.fighting || v.hold || Math.hypot(v.x - x, v.y - y) > reach) continue;
+      const vt = v.task && v.task.type;
+      if (vt !== 'hunt' && vt !== 'move' && vt !== 'retreat' && atWar(v, a)) setTask(v, { type: 'hunt', a, resume: v.task });
+    }
+  }
+  LJ.damageBuilding = function (b, dmg, from) {
     if (b.dead) return;
-    b.hp -= dmg;
-    chip((b.tx + b.w / 2) * TS, (b.ty + b.h / 2) * TS, '#8a5a30');
+    b.hp -= dmg; b.hitT = G.time;
+    const [bx, by] = bldCenter(b);
+    // Jacks who are in the village come to its defence. Crews out in the forest do not hear it.
+    if (from) rally(bx, by, GUARD_REACH, from);
+    chip(bx, by, '#8a5a30');
     if (b.hp > 0) return;
     if (BLD[b.kind].raid) { b.hp = b.max * 0.4; LJ.combat.raid(); return; }
     if (buildingReady(b)) G.count[b.kind]--;
@@ -820,7 +898,8 @@
     const tt = u.task && u.task.type;
     if (tt === 'move' || (tt === 'retreat' && u.path.length)) { u.fighting = false; return false; } // a move order, or falling back hurt, means: run!
     const range = weaponRange();
-    let best = LJ.nearest(G.animals, u.x, u.y, range, a => a.alive);
+    const raidable = defended(u) || huntingRaid(u); // atWar(u, a) for every enemy, worked out once
+    let best = LJ.nearest(G.animals, u.x, u.y, range, a => a.alive && (!a.wave || raidable));
     const target = u.task && u.task.type === 'hunt' && u.task.a;
     if (!best && target && target.kind === 'hut' && target.alive && Math.hypot(target.x - u.x, target.y - u.y) <= range) best = target;
     u.fighting = !!best;
@@ -1011,15 +1090,16 @@
         break;
       case 'return': u.state = 'idle'; break;
       case 'toOre':
-        if (G.veins[u.target]) { u.state = 'mine'; u.sawT = 0; u.swing = 0; face(u, midX(u.target)); }
+        if (G.veins[u.target] || quarrying(u)) { u.state = 'mine'; u.sawT = 0; u.swing = 0; face(u, midX(u.target)); }
         else { release(u); think(u); }
         break;
       case 'mine': {
-        const t = u.target;
-        if (!G.veins[t]) { release(u); think(u); break; }
+        const t = u.target, quarry = quarrying(u);
+        if (!G.veins[t] && !quarry) { release(u); think(u); break; }
         u.sawT += dt * effort(u) * rankOf(u).work; u.swing += dt;
-        if (u.swing > 0.5) { u.swing = 0; LJ.sfx('rock'); chip(midX(t), rowOf(t) * TS + 8, '#c8732e'); }
-        if (u.sawT < MINE_TIME) break;
+        if (u.swing > 0.5) { u.swing = 0; LJ.sfx('rock'); chip(midX(t), rowOf(t) * TS + 8, quarry ? '#a9a59d' : '#c8732e'); }
+        if (u.sawT < (quarry ? QUARRY_TIME : MINE_TIME)) break;
+        if (quarry) { gainXP(u, 2); crumble(t); release(u); think(u); break; }
         u.sawT = 0; u.ore++; G.veins[t]--;
         gainXP(u, 2);
         LJ.float(u.x, u.y - 18, '+1 ore', '');
@@ -1064,6 +1144,9 @@
     }
   }
 
+  // Is this jack at the plain rock he was told to break up?
+  const quarrying = u => !!u.task && u.task.rock === u.target && w.type[u.target] === T.ROCK && !G.veins[u.target];
+
   // A mined-out rock falls apart: gravel that can be walked over, and a stone for the pile.
   function crumble(t) {
     w.type[t] = T.GRAVEL;
@@ -1093,7 +1176,19 @@
     // Mine a vein: that rock first, then whatever ore is in sight around it. Needs pickaxes.
     mine(units, tile) {
       units = units.filter(u => u.kind === 'jack');
-      if (!units.length || !G.up.pick || !G.veins[tile]) return false;
+      if (!units.length || !G.up.pick) return false;
+      if (!G.veins[tile]) {
+        // Plain rock: no ore, but it can be broken up to open a way. One rock each: the one pointed at, then its neighbours.
+        if (w.type[tile] !== T.ROCK || w.bld[tile]) return false;
+        const tx = colOf(tile), ty = rowOf(tile), rocks = [];
+        someNear(tx, ty, 2, i => { if (w.type[i] === T.ROCK && !G.veins[i] && !w.bld[i]) rocks.push(i); });
+        const far = i => (colOf(i) - tx) ** 2 + (rowOf(i) - ty) ** 2;
+        rocks.sort((a, b) => far(a) - far(b));
+        if (!rocks.length) return false;
+        units.forEach((u, k) => setTask(u, { type: 'mine', ax: tx, ay: ty, first: -1, rock: rocks[k % rocks.length] }));
+        say(units[0], LJ.pick(Q_ACK));
+        return true;
+      }
       units.forEach((u, k) => setTask(u, { type: 'mine', ax: colOf(tile), ay: rowOf(tile), first: k === 0 ? tile : -1 }));
       say(units[0], M.ore);
       return true;
@@ -1102,7 +1197,7 @@
     dozeTo(units, idx) {
       const dz = units.filter(u => u.kind === 'dozer');
       if (!dz.length) return false;
-      const path = bfs(dz[0].tile, c => c === idx, dozePass, true);
+      const path = dozeRoute(dz[0].tile, idx);
       if (!path) { say(dz[0], M.cantGet); return false; }
       // Only what is in the way: rock and water on the route, plus the tile that was pointed at.
       // Stumps along the route can be driven over; uprooting each one first made the breach wait for minutes.
@@ -1232,6 +1327,7 @@
     }
     else if (VEH[id]) spawnVehicle(id);
     else G.up[id] = true;
+    for (const b of G.buildings) { const extra = !b.dead && BLD[b.kind].brace && BLD[b.kind].brace[id]; if (extra) { b.max += extra; b.hp += extra; } }
     if (id === 'dispatch') for (const u of G.units) if (u.task && u.task.type === 'haul') u.task.once = false;
     LJ.sfx('build');
     return true;
@@ -1315,8 +1411,8 @@
       case 'toSaw': return 'Walking to the sawmill';
       case 'saw': return G.wood < 2 ? 'Sawing (out of wood!)' : 'Sawing lumber';
       case 'move': return 'Walking';
-      case 'toOre': return 'Walking to the ore';
-      case 'mine': return 'Mining ore';
+      case 'toOre': return u.task && u.task.rock >= 0 ? 'Walking to the rock' : 'Walking to the ore';
+      case 'mine': return quarrying(u) ? 'Breaking up rock' : 'Mining ore';
       case 'oreHome': return 'Carrying ore to camp';
       case 'retreat': return moving ? 'Falling back to heal' : 'Resting';
       case 'hunt': return u.task && u.task.a.kind === 'hut' ? 'Attacking hut' : 'Hunting';
@@ -1341,6 +1437,10 @@
         LJ.ui.toast(BLD[b.kind].name + ' is ready!');
       }
       LJ.sfx('build');
+    }
+    // Left alone for a while, a damaged building is patched up by the people who use it.
+    for (const b of G.buildings) {
+      if (b.hp < b.max && buildingReady(b) && G.time - (b.hitT || -99) > REPAIR_AFTER) b.hp = Math.min(b.max, b.hp + REPAIR_RATE * dt);
     }
     for (const i in G.wallSites) {
       const c = G.wallSites[i];
@@ -1423,6 +1523,14 @@
       else if (canChop(u)) {
         const tx = colOf(u.tile), ty = rowOf(u.tile);
         if (anyTreeNear(tx, ty, sightOf(u))) { workAt(u, tx, ty); think(u); }
+        else if (G.up.foreman) {
+          // The foreman sends idle hands on to the nearest trees anyone has seen. Unexplored forest still needs the player.
+          // The search can cover the whole map, and the world changes with every tree felled: after a miss, wait a bit.
+          if (G.time < (u.searchT || 0)) continue;
+          const r = nearestAdj(u, n => isTree(n) && G.fog[n] === 1);
+          if (r.path) { workAt(u, colOf(r.found), rowOf(r.found), r.found); think(u); }
+          else { u.idleVer = G.worldVer; u.searchT = G.time + 5; }
+        }
       } else if (u.kind === 'dozer') {
         const tx = colOf(u.tile), ty = rowOf(u.tile), targets = dozeTargetsNear(tx, ty, sightOf(u));
         if (targets.length) { setTask(u, { type: 'doze', job: { tiles: new Set(targets) }, ax: tx, ay: ty }); think(u); }

@@ -1,24 +1,40 @@
 // A scripted player for the whole campaign, from the tent to the last tree. It buys, builds, explores, bulldozes,
 // tears down angry huts and answers market orders with legal commands only, and records how the game went: pacing
-// per level, losses and who caused them, raids, debt, idle time and stalls. It is a measuring tool for finding
-// dead ends and balance problems, not a claim about how a person plays or whether the game is fun.
-//   node tests/campaign.cjs [seed ...]        (--hours N caps the game time, default 5; --log adds the event log)
-// Options for weaker play styles: { every: 6 } acts every six seconds, { huts: false } never attacks huts,
-// { skip: ['tower'] } never buys those items, { orders: false } declines market orders, { mine: false } never mines,
-// { walls: true } rings the camp with palisade.
+// per level, losses and who caused them, raids, debt, idle time and stalls, the orders it had to give (acts, also
+// per level) and what the guard towers did. It is a measuring tool for finding dead ends and balance problems, not
+// a claim about how a person plays or whether the game is fun.
+//   node tests/campaign.cjs [seed ...]        (--hours N caps the game time, default 5; --log adds the event log;
+//                                              --opts '{"every":6}' picks a play style; --brief prints one line a game)
+// Options for other play styles: { every: 6 } acts every six seconds, { huts: false } never attacks huts,
+// { skip: ['tower', 'twin'] } never buys those items, { towers: 6 } builds that many guard towers instead of three,
+// { orders: false } declines market orders, { mine: false } never mines, { quarry: false } never breaks up rock,
+// { hands: false } gives each unit only its first order (does the game play itself?), { walls: true } rings the
+// camp with palisade. onSecond(lj) and onStall(lj) are called with the live game.
 const { game } = require('./harness.cjs');
 
-const BUY = ['jack', 'sharpaxe', 'sling', 'base', 'boots', 'rifles', 'bunk', 'sawmill', 'truck', 'barrow', 'chainsaw', 'pick', 'tower',
-  'steel', 'dispatch', 'dozer', 'feller', 'foreman', 'harv', 'scope', 'steam', 'turbo', 'mega', 'shuttle'];
+const BUY = ['jack', 'sharpaxe', 'sling', 'base', 'boots', 'rifles', 'bunk', 'sawmill', 'truck', 'barrow', 'chainsaw', 'pick', 'foreman', 'tower',
+  'steel', 'dispatch', 'dozer', 'feller', 'harv', 'scope', 'twin', 'steam', 'turbo', 'mega', 'shuttle'];
 const LIMIT = { tower: 3, sawmill: 2, shuttle: 0 };
 const ALIVE = { dozer: 1 }; // replace it when it is lost, but never run two
 
 function campaign(seed, hours = 5, opts = {}) {
   const lj = game(seed), g = lj.G, w = g.world, W = w.W;
   const log = [], toasts = {}, levels = [{ level: 1, at: 0 }];
-  const m = { deaths: 0, vehiclesLost: 0, waves: 0, raids: 0, orders: { taken: 0, done: 0, missed: 0 }, debtS: 0, idleS: 0, jackS: 0, stalls: [], packs: 0, fightS: 0, killers: {}, wipes: 0, mineOrders: 0, wallSections: 0 };
-  const perLevel = k => { const l = levels[levels.length - 1]; l[k] = (l[k] || 0) + 1; };
+  const m = { deaths: 0, vehiclesLost: 0, waves: 0, raids: 0, orders: { taken: 0, done: 0, missed: 0 }, debtS: 0, idleS: 0, jackS: 0, stalls: [], packs: 0, fightS: 0, killers: {}, wipes: 0, mineOrders: 0, wallSections: 0,
+    acts: {}, tower: { bursts: 0, kills: 0 }, jackKills: 0, wrecked: 0 };
+  const perLevel = (k, n = 1) => { const l = levels[levels.length - 1]; l[k] = (l[k] || 0) + n; };
   const note = (event, extra) => log.push(Object.assign({ t: Math.round(g.time), event }, extra));
+  // Every order the scripted player gives, by kind and per level: how much the game asks of the player, and when.
+  const act = k => { m.acts[k] = (m.acts[k] || 0) + 1; perLevel('acts'); };
+  // Who does the shooting: guard towers or the crew.
+  const burst = lj.combat.burst, hurtAnimal = lj.hurtAnimal;
+  lj.combat.burst = (src, target, o) => { if (src.owner && src.owner.kind === 'tower') m.tower.bursts++; return burst(src, target, o); };
+  lj.hurtAnimal = (a, dmg, from) => {
+    const was = a.alive && a.kind !== 'hut';
+    hurtAnimal(a, dmg, from);
+    if (!was || a.alive) return;
+    if (from && from.kind === 'tower') { m.tower.kills++; perLevel('towerKills'); } else m.jackKills++;
+  };
   lj.ui.toast = text => {
     const key = text.replace(/[0-9€,.]+/g, '#').replace(/^(\S+) was /, 'X was ');
     toasts[key] = (toasts[key] || 0) + 1;
@@ -43,11 +59,15 @@ function campaign(seed, hours = 5, opts = {}) {
     else if (/Order missed/.test(text)) m.orders.missed++;
     else if (/prowl|bear is coming|lynx is stalking|[Ww]olverine/.test(text)) { m.packs++; perLevel('packs'); }
     else if (/hut is destroyed/.test(text)) { m.lastHutAt = g.time; perLevel('huts'); }
+    else if (/wrecked your/.test(text)) { m.wrecked++; note('wrecked', { text }); }
   };
   const dist = (a, b) => Math.hypot(a % W - b % W, ((a / W) | 0) - ((b / W) | 0));
-  const bought = {};
+  const bought = {}, limit = Object.assign({}, LIMIT, opts.towers !== undefined && { tower: opts.towers });
   let over = false;
   lj.ui.gameOver = () => { over = true; };
+
+  // A side of tile n that the flood fill reached, so someone can stand there; undefined if none.
+  const standBeside = (n, reach) => [n + 1, n - 1, n + W, n - W].find(c => c >= 0 && c < w.N && reach[c] && Math.abs(c % W - n % W) <= 1);
 
   function flood(from) {
     const seen = new Uint8Array(w.N), st = [from];
@@ -64,6 +84,17 @@ function campaign(seed, hours = 5, opts = {}) {
 
   function place(kind) {
     const b = g.base;
+    if (kind === 'tower') {
+      // Towers go round the village a few tiles out, each as far from the others as it can be, to cover every side.
+      const others = g.buildings.filter(o => o.kind === 'tower' && !o.dead), spots = [];
+      for (let dy = -8; dy <= 9; dy++) for (let dx = -8; dx <= 9; dx++) {
+        const r = Math.max(Math.abs(dx - 0.5), Math.abs(dy - 0.5));
+        if (r < 4 || r > 8 || !lj.canPlace(b.tx + dx, b.ty + dy)) continue;
+        spots.push({ x: b.tx + dx, y: b.ty + dy, far: Math.min(99, ...others.map(o => Math.hypot(o.tx - b.tx - dx, o.ty - b.ty - dy))) - r / 4 });
+      }
+      spots.sort((p, q) => q.far - p.far);
+      for (const p of spots.slice(0, 30)) if (lj.tryPlace(p.x, p.y)) return true;
+    }
     for (let r = 3; r < 16; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
       if (lj.canPlace(b.tx + dx, b.ty + dy) && lj.tryPlace(b.tx + dx, b.ty + dy)) return true;
@@ -79,14 +110,14 @@ function campaign(seed, hours = 5, opts = {}) {
     for (const id of list) {
       const it = lj.SHOP.find(s => s.id === id);
       if (lj.shopState(it).st !== 'ok') continue;
-      if (LIMIT[id] !== undefined && (bought[id] || 0) >= LIMIT[id]) continue;
+      if (limit[id] !== undefined && (bought[id] || 0) >= limit[id]) continue;
       if (opts.skip && opts.skip.includes(id)) continue;
       if (ALIVE[id] !== undefined && lj.countKind(id) >= ALIVE[id]) continue;
       if (g.money - it.cost().m < bill && id !== 'jack') continue; // keep the next payday covered
       if (id === 'jack' && lj.jackCount() && g.money - it.cost().m < bill + 20) continue;
       const r = lj.buy(id);
       if (r === 'place' && !place(id)) continue;
-      if (r) { bought[id] = (bought[id] || 0) + 1; note('buy ' + id); return; }
+      if (r) { bought[id] = (bought[id] || 0) + 1; note('buy ' + id); act('buy'); return; }
     }
   }
 
@@ -102,8 +133,7 @@ function campaign(seed, hours = 5, opts = {}) {
     let best = -1, bd = Infinity;
     for (let n = 0; n < w.N; n++) {
       if (!g.veins[n] || !g.fog[n]) continue;
-      const x = n % W;
-      if (![n + 1, n - 1, n + W, n - W].some(c => c >= 0 && c < w.N && reach[c] && Math.abs(c % W - x) <= 1)) continue;
+      if (standBeside(n, reach) === undefined) continue;
       const d = dist(n, u.tile);
       if (d < bd) { bd = d; best = n; }
     }
@@ -115,8 +145,7 @@ function campaign(seed, hours = 5, opts = {}) {
     let seen = -1, sd = Infinity, any = -1, ad = Infinity, spot = -1;
     for (let n = 0; n < w.N; n++) {
       if (!lj.isTree(n)) continue;
-      const x = n % W;
-      const adj = [n + 1, n - 1, n + W, n - W].find(c => c >= 0 && c < w.N && reach[c] && Math.abs(c % W - x) <= 1);
+      const adj = standBeside(n, reach);
       if (adj === undefined) continue;
       const d = dist(n, u.tile);
       if (g.fog[n] && d < sd) { sd = d; seen = n; }
@@ -127,24 +156,51 @@ function campaign(seed, hours = 5, opts = {}) {
     return false;
   }
 
+  // With pickaxes, idle jacks break up the rock that walls trees in: the rock nearest each tree that someone can
+  // stand beside, a few jacks to a spot.
+  function quarry(u, trees) {
+    const idle = lj.jacks().filter(j => !j.task && !j.path.length && !j.fighting && j.wait <= 0);
+    if (!idle.length) return;
+    quarry.at = g.time;
+    const reach = flood(u.tile), T = lj.T;
+    for (const t of trees.slice(0, 12)) {
+      let best = -1, bd = Infinity;
+      for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+        const x = t % W + dx, y = ((t / W) | 0) + dy, n = y * W + x;
+        if (x < 0 || y < 0 || x >= W || y >= w.H || w.type[n] !== T.ROCK || g.veins[n] || !g.fog[n]) continue;
+        if (standBeside(n, reach) === undefined) continue;
+        const d = dx * dx + dy * dy;
+        if (d < bd) { bd = d; best = n; }
+      }
+      if (best < 0) continue;
+      const crew = idle.splice(0, 3);
+      if (lj.cmd.mine(crew, best)) act('quarry');
+      if (!idle.length) return;
+    }
+  }
+
   // Nothing left that anyone can walk to: point a bulldozer at the nearest tree behind rock or water.
   function breach(u) {
-    // The dozer is usually busy uprooting stumps by itself; opening a way through comes first.
-    if (g.time - (breach.at || -99) < 45) return; // give the last order time to work
-    const dozers = g.units.filter(d => d.kind === 'dozer');
-    if (!dozers.length) return;
+    const quarryDue = g.up.pick && opts.quarry !== false && g.time - (quarry.at || -99) >= 10, breachDue = g.time - (breach.at || -99) >= 45;
+    if (!quarryDue && !breachDue) return;
     // Like a player tapping the rock or river beside the nearest trees: try the closest few until one can be reached.
     const trees = [];
     for (let n = 0; n < w.N; n++) if (lj.isTree(n)) trees.push(n);
     trees.sort((a, b) => dist(a, u.tile) - dist(b, u.tile));
+    if (quarryDue) quarry(u, trees);
+    // The dozer is usually busy uprooting stumps by itself; opening a way through comes first.
+    if (!breachDue) return; // give the last order time to work
+    const dozers = g.units.filter(d => d.kind === 'dozer');
+    if (!dozers.length) return;
     for (const t of trees.slice(0, 40)) {
       const sides = [t + 1, t - 1, t + W, t - W].filter(c => c >= 0 && c < w.N && !lj.isTree(c) && !w.bld[c]).sort((a, b) => lj.canDoze(b) - lj.canDoze(a));
-      for (const side of sides) if (lj.cmd.dozeTo(dozers, side)) { breach.at = g.time; return; }
+      for (const side of sides) if (lj.cmd.dozeTo(dozers, side)) { breach.at = g.time; act('doze'); return; }
     }
   }
 
   // Once the camp can afford it, ring it with palisade a few tiles out, as a player fortifying against raids would.
   // Palisades block the crew too, so this is where a sealed camp or a stuck truck would show up.
+  const ordered = new Set(), idleSince = new Map();
   let walled = false;
   function fortify() {
     if (walled || !opts.walls || g.tier < 1 || g.level < 3 || g.money < 900 || g.wood < 250) return;
@@ -162,7 +218,7 @@ function campaign(seed, hours = 5, opts = {}) {
     if (o && o.state === 'offer') {
       const take = opts.orders !== false;
       lj.acceptOrder(take);
-      if (take) m.orders.taken++;
+      if (take) { m.orders.taken++; act('order'); }
     }
   }
 
@@ -176,21 +232,27 @@ function campaign(seed, hours = 5, opts = {}) {
     // With no truck, someone has to walk the goods to market.
     if (!lj.countKind('truck') && stock >= 60 && !js.some(u => u.task && u.task.type === 'haul')) {
       const hauler = js.find(u => !u.fighting && (!u.task || u.task.type !== 'hunt'));
-      if (hauler) lj.cmd.sell([hauler]);
+      if (hauler) { lj.cmd.sell([hauler]); act('sell'); }
     }
     // An angry hut keeps sending defenders until it is gone: gather whoever is near and tear it down.
     if (opts.huts !== false) for (const h of g.huts) {
       if (!h.alive || !h.angry) continue;
       const squad = js.filter(u => Math.hypot(u.x - h.x, u.y - h.y) < 20 * 16 && (!u.task || (u.task.type !== 'hunt' && u.task.type !== 'haul')));
-      if (squad.length >= 3 || (squad.length && js.length <= 3)) lj.cmd.hunt(squad, h);
+      if (squad.length >= 3 || (squad.length && js.length <= 3)) { lj.cmd.hunt(squad, h); act('hunt'); }
     }
     for (const u of g.units) {
-      if (u.kind === 'truck' && !g.up.dispatch && !u.task && u.state === 'idle' && g.wood + g.lumber + g.stone >= 40) lj.cmd.sell([u]);
+      if (u.kind === 'truck' && !g.up.dispatch && !u.task && u.state === 'idle' && g.wood + g.lumber + g.stone >= 40) { lj.cmd.sell([u]); act('sell'); }
       if (u.kind !== 'jack' && !lj.VEH[u.kind].chop) continue;
-      if (u.task || u.path.length || u.fighting || u.wait > 0) continue;
-      if (u.kind === 'jack' && sawyers < wantSaw) { lj.cmd.saw([u]); sawyers++; continue; }
-      if (u.kind === 'jack' && wantMiners > miners && sendToMine(u)) { miners++; m.mineOrders++; continue; }
-      if (!sendToWork(u)) blocked = u;
+      if (u.task || u.path.length || u.fighting || u.wait > 0) { idleSince.delete(u.id); continue; }
+      // With a foreman the crew finds its own trees: only step in for a unit he has left standing for a few seconds.
+      if (!idleSince.has(u.id)) idleSince.set(u.id, g.time);
+      if (g.up.foreman && g.time - idleSince.get(u.id) < 4) continue;
+      if (u.kind === 'jack' && sawyers < wantSaw) { lj.cmd.saw([u]); sawyers++; act('saw'); continue; }
+      if (u.kind === 'jack' && wantMiners > miners && sendToMine(u)) { miners++; m.mineOrders++; act('mine'); continue; }
+      // { hands: false }: a player who shops but gives each unit only its first order, to see how far the game runs by itself.
+      if (opts.hands === false && ordered.has(u.id)) continue;
+      ordered.add(u.id);
+      if (sendToWork(u)) act('work'); else blocked = u;
     }
     if (blocked && g.cleared < g.total) breach(blocked);
   }
@@ -201,9 +263,11 @@ function campaign(seed, hours = 5, opts = {}) {
     if (g.paused && !g.cine && !over) g.paused = false; // "Back to work" on the level-up dialog
     if (i % 20 === 0) {
       if (i % (20 * (opts.every || 1)) === 0) manage();
+      if (opts.onSecond) opts.onSecond(lj);
       const js = lj.jacks();
       m.jackS += js.length;
-      m.idleS += js.filter(u => !u.task && !u.path.length && !u.fighting).length;
+      const idle = js.filter(u => !u.task && !u.path.length && !u.fighting).length;
+      m.idleS += idle; perLevel('idleS', idle); perLevel('jackS', js.length);
       m.fightS += js.filter(u => u.fighting).length;
       if (g.money < 0) m.debtS++;
       if (g.cleared !== lastCleared) { lastCleared = g.cleared; lastProgressT = g.time; }
@@ -223,6 +287,7 @@ function campaign(seed, hours = 5, opts = {}) {
     ore: g.ore, oreLeft: lj.ore.left(), mineOrders: m.mineOrders, wallSections: m.wallSections, jacks: lj.jacks().length, kills: g.kills, folkKilled: g.folkKilled, hutsLeft: g.huts.filter(h => h.alive).length, finds: g.finds.filter(f => f.found).length + '/' + g.finds.length,
     idleShare: +(m.idleS / Math.max(1, m.jackS)).toFixed(3), fightShare: +(m.fightS / Math.max(1, m.jackS)).toFixed(3), debtMinutes: Math.round(m.debtS / 60),
     deaths: m.deaths, wipes: m.wipes, gameOver: over, killers: m.killers, lastWaveMin: m.lastWaveAt && Math.round(m.lastWaveAt / 60), lastHutMin: m.lastHutAt && Math.round(m.lastHutAt / 60), vehiclesLost: m.vehiclesLost, packs: m.packs, waves: m.waves, raids: m.raids, orders: m.orders, stalls: m.stalls,
+    acts: m.acts, tower: m.tower, jackKills: m.jackKills, wrecked: m.wrecked,
     levels: levels.map((l, k) => Object.assign({ minutes: +(((levels[k + 1] ? levels[k + 1].at : g.time) - l.at) / 60).toFixed(1) }, l)),
     bought, toasts, log
   };
@@ -230,11 +295,17 @@ function campaign(seed, hours = 5, opts = {}) {
 
 if (require.main === module) {
   const args = process.argv.slice(2), hi = args.indexOf('--hours');
-  const hours = hi >= 0 ? +args.splice(hi, 2)[1] : 5, full = args.includes('--log');
+  const hours = hi >= 0 ? +args.splice(hi, 2)[1] : 5, full = args.includes('--log'), oi = args.indexOf('--opts');
+  const opts = oi >= 0 ? JSON.parse(args.splice(oi, 2)[1]) : {};
   for (const seed of args.filter(a => /^\d+$/.test(a)).map(Number)) {
-    const r = campaign(seed, hours);
+    const r = campaign(seed, hours, opts);
     if (!full) delete r.log;
-    console.log(JSON.stringify(r, null, 1));
+    if (!args.includes('--brief')) { console.log(JSON.stringify(r, null, 1)); continue; }
+    console.log(JSON.stringify({
+      seed, finished: r.finished, level: r.level, minutes: r.minutes, deaths: r.deaths, atHome: r.killers['at home'] || 0, vehiclesLost: r.vehiclesLost,
+      waves: r.waves, raids: r.raids, wrecked: r.wrecked, towerKills: r.tower.kills, crewKills: r.jackKills, idleShare: r.idleShare,
+      orders: Object.values(r.acts).reduce((a, b) => a + b, 0), stalls: r.stalls.length, money: Math.round(r.money)
+    }));
   }
 }
 module.exports = { campaign };

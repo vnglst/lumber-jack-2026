@@ -61,7 +61,7 @@ How to read it:
 | 48 | 14 Nov | An interface of its own: painted boards, not Stardew wood | Active |
 | 49 | 14 Nov | Predictable navigation and controls | Active |
 | 50 | 14 Nov | Music for the opening, play and other scenes | Active |
-| 51 | 15 Nov | Full-campaign playtest: dead ends removed, losses made recoverable | Active |
+| 51 | 15 Nov | Full-campaign playtest: dead ends removed, losses made recoverable | Refined by 86 |
 | 52 | 15 Nov | Codebase review and refactor | Active |
 | 53 | 15 Nov | Sourced animal sound effects | Active |
 | 54 | 15 Nov | More efficient agent instructions | Active |
@@ -81,7 +81,7 @@ How to read it:
 | 68 | 15 Nov | Play testing and voice recording credits | Active |
 | 69 | 15 Nov | A clearer mobile game interface | Active |
 | 70 | 15 Nov | Dedicated sound settings menu | Active |
-| 71 | 15 Nov | Ore: mining, and ore in the shop and the market | Active |
+| 71 | 15 Nov | Ore: mining, and ore in the shop and the market | Refined by 86 |
 | 72 | 15 Nov | Northern lights mirrored in the lake; playtest with ore | Active |
 | 73 | 15 Nov | Review before merging: a palisade may not seal the camp | Active |
 | 74 | 15 Nov | Menus as one stack of screens; pixel-art icon buttons | Active |
@@ -96,6 +96,7 @@ How to read it:
 | 83 | 15 Nov | Playground source stays current | Active |
 | 84 | 15 Nov | Every playground scene in the test suite | Active |
 | 85 | 16 Nov | Playable developed towns in the playground | Active |
+| 86 | 16 Nov | Playtest to the end: towers that matter, automation that is earned, a livelier finish | Active |
 
 ---
 
@@ -678,6 +679,8 @@ How to read it:
 
 ## 51. Full-campaign playtest: dead ends removed, losses made recoverable (15 Nov 2026)
 
+**Status:** §86 acts on the observations left open here: guard towers, unspent money and the quiet last minutes. The fixes in this entry remain active.
+
 > Test & review game mechanics. Make sure the game is engaging, fun and unpredictable up until the end.
 >
 > Use the playtesting results to identify and correct gameplay issues.
@@ -887,6 +890,8 @@ How to read it:
 
 ## 71. Ore: mining, and ore in the shop and the market (15 Nov 2026)
 
+**Status:** §86 lets pickaxes also break up plain rock, and adds a second ore-priced upgrade. The rest remains active.
+
 > Allow extracting ore from rocks and using it as a resource. Integrate this in the gameplay, shop and general economy.
 
 - Some rocks hold ore. It can be extracted, is a resource alongside wood, lumber and stone, and matters in play, in the shop and in the economy.
@@ -1077,3 +1082,36 @@ How to read it:
 - Presets own their level and equipment, disabling those selectors; seeds remain adjustable. Replay resets the scenario without touching campaign saves.
 - Development-only changes: production rules, saves and offline shell are unchanged; no cache bump or production package rebuild is needed.
 - Checks cover all presets across three seeds and equipment selections, physical tree counts, completed services, reachable units, continued logging and sales. Isolated browser checks cover desktop, narrow portrait and landscape with no page errors and a preserved campaign save. Nobody has judged game feel or listened to audio.
+
+## 86. Playtest to the end: towers that matter, automation that is earned, a livelier finish (16 Nov 2026)
+
+> Playtest game until the end. Make sure guard towers play an important role. Automation should be important, the game shouldn’t play itself. It should be engaging and fun until the end. Not too hard, but challenging from time to time.
+
+- Play whole campaigns again and change what the playtest shows about four things: guard towers, automation, the last stretch, and difficulty.
+- *Decision: the scripted player (§51) now also reports every order it gives, per level, the idle share per level, and what the towers did. New styles: a hands-off player who gives each unit one order and then only shops, a very slow one who acts every 20 seconds, one without a Foreman. `--opts` and `--brief` run them from the command line.*
+- **Measured before the changes** (careful play, 8 maps):
+  - Towers scored 3 of about 146 kills a game. No war party came within 11 tiles of the village: twenty jacks with laser pistols shot it to pieces in the forest. Playing without towers cost nothing (12 deaths against 11).
+  - The hands-off player reached level 8 or 9 in 25 to 35 minutes, the same pace as careful play. Levels 1 to 4 asked for 9 to 17 orders each. The orders came at the wrong end instead: 200 to 390 of a game's 430 were jacks sent on to new trees, mostly in levels 9 and 10.
+  - On some maps the last 20 to 100 trees stood inside rock outcrops. One bulldozer opened them one at a time for up to ten minutes, with 18 of 22 jacks idle, no enemies left and money piling up (€22,000 unspent on average).
+  - The very slow player finished 3 of 4 maps with 53 deaths.
+- **Guard towers:**
+  - *Decision: a war party is after the village. It marches on the village and on guard towers, whichever is nearest, a quarter faster than before, and no longer hunts crews in the forest. It and a jack fight each other only on defended ground (within 12 tiles of the village or a tower) or when the jack is ordered to attack it. A hut's own defenders are unchanged (§40). Refines §9, §23 and §27; wave timing, sizes and retreat rules are unchanged.*
+  - *Decision: a war party's fighters have two and a half times the health of a hut's defenders. It attacks only towers and the village, not bunkhouses or sawmills; a raid on the village still carries off stock (§27).*
+  - *Decision: a tower's gunner aims ahead of a moving target. Before, every bolt landed where a marching enemy had been, which is most of why towers killed nothing. Pistols still do not lead. Towers reach 10 tiles (was 8, twice a bow's reach) and fire four bolts of 18 every second (was three of 13 every 1.3 seconds).*
+  - *Decision: jacks within 12 tiles of a building that is hit come to its defence and then go back to work. Jacks told to stop stay put, now also when a crewmate nearby is attacked. A beaten war party is let go, not chased into the forest. A damaged building is patched up at 4 points a second once it has been left alone for 12 seconds; before, damage was permanent.*
+  - *Decision: new upgrade, Twin Tower Lasers (level 7, €900 + 15 ore, needs a tower): six bolts a burst, and every tower takes 160 more damage. It gives late money and ore something to do. Ore-priced upgrades now need 107 of a map's 240 to 400 ore.*
+- **Automation:**
+  - *Decision: a jack clears what he can see from the spot he was sent to, then waits for the next order, as §7 asked ("If they don't see any tree nearby, they just stand there"). Before, his work spot moved with every tree he felled, so one tap kept him busy for the whole game. Felling tractors and harvesters still follow the forest edge by themselves: that is what they are bought for.*
+  - *Decision: the Foreman (was Keen-eyed Foreman: sight only) is the crew's automation, moved from level 5 to level 4 at the same €500. With him, jacks follow the forest edge again, and idle jacks and machines walk on to the nearest trees anyone has explored. Unexplored forest, rock, water, huts, ore and the village's defence stay the player's business.*
+  - *Decision: the opening truck still sells by itself (§19); purchased trucks still wait for the Dispatcher.*
+- **The last stretch:**
+  - *Decision: a bulldozer sent to a tile now plans the route that opens soonest: round rock and water where that is quicker, through them only where it is not. Before, it took the shortest line, straight through whole rock fields.*
+  - *Decision: with Pickaxes, jacks can break up plain rock: select jacks and tap a rock. Eight seconds a rock (a bulldozer takes 2.5), one stone, one rock per jack: the one pointed at, then its neighbours. So an idle crew can open the last pockets itself. Water still needs the bulldozer. Extends §71; a jack on this errand is saved as idle.*
+- **Measured after** (12 maps careful, 8 for each other style):
+  - Careful play finishes 12 of 12 in about 30 minutes with 7 to 8 deaths, idle 5% of the time (was 11%), €13,000 unspent. Slow play 8 of 8 with 7 deaths; the very slow player 8 of 8 in 33 minutes with 9 deaths.
+  - Towers: no towers 15 deaths a game (13 of them in the village), one tower 13, three towers 7.5 (3 in the village), six towers no better than three. Towers make about 18 kills a game; jacks in the village make the rest.
+  - Automation: without the Foreman a game takes 37.5 minutes and about 1,050 orders; with him 31 minutes and 350. The hands-off player now gets to level 5 on average, 58% of his crew idle and in debt; 2 of 8 finish, in over an hour.
+  - Orders per level with the Foreman: 20 to 80 in levels 2 to 6, 10 to 20 in levels 7 and 8 once the crew runs itself, 20 to 140 in the last two, where the remaining pockets are opened. The ten-minute idle tail on the worst map is now 17 seconds. War parties still cost the most lives in levels 9 and 10.
+- Checked in a browser: a level-8 town in the playground under a raid (ten warriors marched on the village, the towers took four of the nine killed, no jack died, the village took damage and no errors were logged), breaking a rock with a real pointer event, and the shop at phone width with the longer descriptions.
+- Not judged by a person: whether any of this is fun. A scripted player measures pace, losses and how many orders a game asks for; it cannot tell whether giving them is enjoyable, whether a raid on the village feels fair, or whether crews that ignore a passing war party look right. Nobody played with palisades and towers together.
+- Added 14 tests (`tests/raids-automation.test.cjs`); 11 fail on the previous code, 3 guard behaviour that is kept. Saves are compatible without a new format. The offline shell cache is bumped to v20; the production package (`dist/`) is not rebuilt.
