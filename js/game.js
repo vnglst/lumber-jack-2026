@@ -159,6 +159,62 @@
     }
     return -1;
   });
+  // Local flock separation: shared routes provide cohesion, while neighbours yield
+  // gently instead of occupying the same footprint. Sample everyone before moving
+  // anyone, so the last member of a pack does not get all the room.
+  const SPACE = { squirrel: 5, native: 10, wolf: 11, lynx: 11, wolverine: 12, bear: 15, deer: 13, swan: 12 };
+  LJ.separateFlock = function (list, dt, combat = false) {
+    if (dt <= 0) return;
+    const crossesWall = (c, x, y) => LJ.wallInWay(LJ.tileOfPx(c.x, c.y), LJ.tileOfPx(x, y)) >= 0;
+    const members = list.filter(c => !c.gone && c.alive !== false);
+    const shifts = members.map(() => ({ x: 0, y: 0 }));
+    for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) {
+      const a = members[i], b = members[j];
+      if ((a.kind === 'swan') !== (b.kind === 'swan')) continue;
+      let dx = a.x - b.x, dy = a.y - b.y, d = Math.hypot(dx, dy);
+      const space = (SPACE[a.kind] || 10) + (SPACE[b.kind] || 10);
+      if (d >= space || crossesWall(a, b.x, b.y)) continue;
+      if (d < 0.001) {
+        // Break exact spawn ties without consuming the game's random stream.
+        const angle = (i * 2.39996 + j * 0.932) % (Math.PI * 2);
+        dx = Math.cos(angle); dy = Math.sin(angle); d = 1;
+      }
+      const push = (space - d) * 3;
+      const fx = dx / d * push, fy = dy / d * push;
+      shifts[i].x += fx; shifts[i].y += fy;
+      shifts[j].x -= fx; shifts[j].y -= fy;
+    }
+    members.forEach((c, i) => {
+      c.shuffling = false;
+      const f = shifts[i], length = Math.hypot(f.x, f.y);
+      if (length < 0.02) return;
+      const speed = c.kind === 'swan' ? 7 : combat ? 40 : c.kind === 'squirrel' ? 24 : 16;
+      const scale = Math.min(1, speed / length) * dt;
+      const dx = f.x * scale, dy = f.y * scale;
+      const valid = (x, y) => {
+        const w = G.world;
+        if (x < 8 || y < 8 || x >= w.W * TS - 8 || y >= w.H * TS - 8 || crossesWall(c, x, y)) return false;
+        const tile = LJ.tileOfPx(x, y);
+        return c.kind === 'swan' ? [[-9, 0], [9, 0], [0, -7], [0, 7]].every(([ox, oy]) =>
+          w.type[LJ.tileOfPx(x + ox, y + oy)] === T.WATER) : LJ.wildPass(tile);
+      };
+      const x0 = c.x, y0 = c.y;
+      if (valid(c.x + dx, c.y + dy)) { c.x += dx; c.y += dy; }
+      else if (valid(c.x + dx, c.y)) c.x += dx;
+      else if (valid(c.x, c.y + dy)) c.y += dy;
+      if (c.x === x0 && c.y === y0) return;
+      c.shuffling = Math.hypot(c.x - x0, c.y - y0) > dt;
+      if (combat) {
+        c.tile = LJ.tileOfPx(c.x, c.y);
+        c.vx = (c.movedT === G.time ? c.vx || 0 : 0) + (c.x - x0) / dt;
+        c.vy = (c.movedT === G.time ? c.vy || 0 : 0) + (c.y - y0) / dt;
+        c.movedT = G.time;
+      }
+      // Small shuffles animate without repeatedly flipping a resting sprite.
+      c.walkT += dt * Math.min(1, length / 12);
+    });
+  };
+
   // Everything that attacks the operation. wild: roams as wildlife (the forest folk come in waves instead).
   // For wildlife: chance(level) that an encounter is this animal (wolves are whatever is left over), group(pack, crew)
   // how many come, hp/dmg/speed relative to a wolf of that level, appear the cue when they turn up, warn the message.

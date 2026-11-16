@@ -159,7 +159,7 @@
         case 13: {
           const c = d.c;
           ctx.globalAlpha = Math.max(0, c.alpha);
-          drawCreature(ctx, S[c.kind], c.moving ? Math.floor(c.walkT * 8) % 2 : 0, c.dir, c.x, c.y, 2, cx, cy);
+          drawCreature(ctx, S[c.kind], c.moving || c.shuffling ? Math.floor(c.walkT * 8) % 2 : 0, c.dir, c.x, c.y, 2, cx, cy);
           ctx.globalAlpha = 1;
           break;
         }

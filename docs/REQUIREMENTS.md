@@ -98,6 +98,7 @@ How to read it:
 | 85 | 16 Nov | Playable developed towns in the playground | Active |
 | 86 | 16 Nov | Playtest to the end: towers that matter, automation that is earned, a livelier finish | Active |
 | 87 | 16 Nov | The data center leaves the village standing | Active |
+| Pending | 16 Nov | Natural spacing for wildlife and locals | Ready in flocking worktree; number at integration |
 
 ---
 
@@ -1133,3 +1134,18 @@ How to read it:
 - *Decision: a last shot: after the whole map is covered, the camera drifts back down to Jack and the little red village alone in a sea of servers, then "Game over." appears. The ending runs about five seconds longer.*
 - Checked in a browser (playground ending, seed 42): the full-map view with the river open and the village island, the closing shot with Jack, the truck and the village drawn above the modules, the end screen, and no console errors. Not judged by a person: whether the closing shot lands emotionally or the pacing feels right.
 - Added 2 tests (`tests/ending.test.cjs`), which fail on the previous code. The second gives the harness's stub town hall its real 74 by 96 size, since the harness draws no sprites. The offline shell cache is bumped to v21.
+
+## Pending. Natural spacing for wildlife and locals (16 Nov 2026)
+
+> Groups of wildlife or locals should not walk on top of each other. Add some kind of flocking behavior. Make it look natural.
+
+- Give peaceful wildlife, hut residents, predators and war parties personal space while moving and resting.
+- *Decision: use local flock separation with species-sized footprints. Nearby neighbours gently yield in opposite directions; existing paths and destinations keep groups together. Exact spawn overlaps separate deterministically, without consuming extra random numbers. Swans drift slowly, small animals shuffle faster, and larger animals need more room.*
+- *Decision: enemies may pass through a path tile without touching its exact centre, so separation does not make a pack jam at shared waypoints. Movement stays bounded by terrain, buildings, map edges and palisades; swans keep their clearance from banks. Resting critters animate their small shuffles.*
+- Added ten focused checks for separation, bounded movement, route progress and obstacle boundaries. The five initial separation/progress checks failed before the implementation; the route-displacement regression failed before its review fix.
+- Review: shared separation belongs to the simulation (`game.js`), with an explicit combat setting. A neighbour could nudge an enemy beside its route and make the next step cut through rock. Marching now validates the actual next step and its corner clearance, then requests replanning if blocked. The regression verifies both safe movement and replacement-route progress.
+- Final checks: all 248 JavaScript tests and seven Python checks pass. An isolated browser boots from the new cache offline and restores the saved seed and money without page errors.
+- *Decision: fill in the harness's missing bunkhouse and sawmill sprite dimensions, which the existing ending now reads. This fixes a campaign-check crash without changing game code.*
+- Browser checks cover packs, wolverines, hut defenders and a war party, with no page errors. Screenshots and measured spacing do not establish whether the motion feels natural to a person.
+- Combat comparison after review over seeds 1–4: all eight campaigns finish without stalls. With towers there are 41 crew deaths total and 118 tower kills; without towers there are 69 deaths. Spacing changes encounters, but towers still reduce losses across these maps.
+- Save shape and shell loading are unchanged. The worktree uses a distinct `v21-flocking` cache; assign the next entry number and release cache version at integration. Production `dist/` is not rebuilt.

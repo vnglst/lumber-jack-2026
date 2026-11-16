@@ -106,6 +106,7 @@
       c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1; c.walkT += dt;
     }
     if (G.critters.some(c => c.alpha <= 0)) G.critters = G.critters.filter(c => c.alpha > 0);
+    LJ.separateFlock(G.critters, dt);
   }
 
   function spawnButterflies(seed) {
