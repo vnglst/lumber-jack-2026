@@ -178,6 +178,16 @@
     return c;
   }
   S.dcBlocks = [dcModule(3), dcModule(17), dcModule(29)];
+  // The south wall of a module, shown where it faces open ground. The renderer blinks lights along the dark band.
+  S.dcFacade = (function () {
+    const c = mk(DCB, 14), x = cx2(c);
+    R(x, 0, 0, DCB, 12, '#9a9ea8'); R(x, 0, 0, DCB, 1, '#6f737c');
+    for (let i = 0; i < DCB; i += 8) R(x, i, 1, 1, 11, '#878b95');
+    R(x, 1, 4, DCB - 2, 4, '#1a2a4a'); R(x, 1, 4, DCB - 2, 1, '#2a3e62');
+    R(x, 0, 10, DCB, 2, '#5f636c');
+    R(x, 0, 12, DCB, 2, 'rgba(20,24,30,0.35)'); // shadow on the ground in front
+    return c;
+  })();
   // Under construction: a concrete slab with a steel frame going up.
   S.dcFrame = (function () {
     const c = mk(DCB, DCB), x = cx2(c);

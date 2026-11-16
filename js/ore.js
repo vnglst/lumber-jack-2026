@@ -50,7 +50,7 @@
     const y0 = Math.max(0, Math.floor(cy / TS) - 1), y1 = Math.min(w.H - 1, Math.ceil((cy + vh) / TS) + 1);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       const i = ty * W + tx, v = G.veins[i];
-      if (!v || !G.fog[i]) continue;
+      if (!v || !G.fog[i] || (G.dc && LJ.ending.covers(i))) continue;
       const x = tx * TS - cx, y = ty * TS - cy, rich = v > 4;
       ctx.fillStyle = '#3b2416'; ctx.fillRect(x + 3, y + 5, 4, 3); ctx.fillRect(x + 9, y + 9, 4, 3); if (rich) ctx.fillRect(x + 6, y + 1, 3, 3);
       ctx.fillStyle = '#c8732e'; ctx.fillRect(x + 4, y + 5, 2, 2); ctx.fillRect(x + 10, y + 9, 2, 2); if (rich) ctx.fillRect(x + 7, y + 1, 1, 2);

@@ -97,6 +97,7 @@ How to read it:
 | 84 | 15 Nov | Every playground scene in the test suite | Active |
 | 85 | 16 Nov | Playable developed towns in the playground | Active |
 | 86 | 16 Nov | Playtest to the end: towers that matter, automation that is earned, a livelier finish | Active |
+| 87 | 16 Nov | The data center leaves the village standing | Active |
 
 ---
 
@@ -1115,3 +1116,20 @@ How to read it:
 - Checked in a browser: a level-8 town in the playground under a raid (ten warriors marched on the village, the towers took four of the nine killed, no jack died, the village took damage and no errors were logged), breaking a rock with a real pointer event, and the shop at phone width with the longer descriptions.
 - Not judged by a person: whether any of this is fun. A scripted player measures pace, losses and how many orders a game asks for; it cannot tell whether giving them is enjoyable, whether a raid on the village feels fair, or whether crews that ignore a passing war party look right. Nobody played with palisades and towers together.
 - Added 14 tests (`tests/raids-automation.test.cjs`); 11 fail on the previous code, 3 guard behaviour that is kept. Saves are compatible without a new format. The offline shell cache is bumped to v20; the production package (`dist/`) is not rebuilt.
+
+## 87. The data center leaves the village standing (16 Nov 2026)
+
+> Can you make the end sequence better. I like how the factory covers all the land in the end, but it draws it on top of the character and village. That shouldn't happen. Look for other ways to improve it.
+
+- Keep the data center covering the land, but never draw it over the main character or the village.
+- Look for other improvements to the end sequence.
+- *Decision: the data-center modules lie flat on the ground, drawn before everything that stands upright, so units, the village and the visitor always draw over them. Whatever a module covers (rocks, stumps, decorations, palisades, other buildings, graves, critters, butterflies, ore glints and find markers) is no longer drawn: the data center swallows it.*
+- *Decision: the spread leaves an island: the first building, the village with a one-tile margin, and the tile around every unit and Mr. Grant. The crew is stopped as the spread starts, so the island is where they stand. `LJ.ending.covers(tile)` answers whether a tile is built over.*
+- *Decision: a building partly on open ground (the island or the water) is left whole, so a module never cuts one in two; the others are swallowed whole. The market sign is swallowed with its block.*
+- *Decision: blocks that are mostly water stay open, so the river and lakes remain as Mr. Grant's "excellent cooling water".*
+- *Decision: a module facing open ground (the island, the water, land not yet built on) shows a south wall with blinking lights, so the data center reads as a building with height rather than a grey floor.*
+- Follow-up: "Director and jack are not visible behind village".
+  - *Decision: the grown village is six tiles tall on a three-tile footprint, so the ground just north of it is hidden. The first building's site is chosen so that its front is not behind any building, Mr. Grant stops on a tile no building hides, and the crew gathers only on such tiles When a crowded town has no such site, any clear site near the village will do.*
+- *Decision: a last shot: after the whole map is covered, the camera drifts back down to Jack and the little red village alone in a sea of servers, then "Game over." appears. The ending runs about five seconds longer.*
+- Checked in a browser (playground ending, seed 42): the full-map view with the river open and the village island, the closing shot with Jack, the truck and the village drawn above the modules, the end screen, and no console errors. Not judged by a person: whether the closing shot lands emotionally or the pacing feels right.
+- Added 2 tests (`tests/ending.test.cjs`), which fail on the previous code. The second gives the harness's stub town hall its real 74 by 96 size, since the harness draws no sprites. The offline shell cache is bumped to v21.
