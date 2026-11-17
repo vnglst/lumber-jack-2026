@@ -217,7 +217,7 @@
   }
 
   // ---------- Waves ----------
-  const folkStats = lv => ({ hp: 22 + lv * 4, dmg: 5 + lv * 0.8, speed: 38 + lv, cd: Math.max(1.2, 1.9 - lv * 0.05) });
+  const folkStats = lv => ({ hp: 30 + lv * 5, dmg: 5 + lv * 0.9, speed: 38 + lv, cd: Math.max(1.2, 1.9 - lv * 0.05) });
   function addFolk(tile, home, extra) {
     const st = folkStats(G.level);
     G.animals.push(Object.assign({

@@ -111,6 +111,9 @@ How to read it:
 | 98 | 17 Nov | Locals settle at home without flickering | Active |
 | 99 | 17 Nov | Silence background music while jacks sing | Active |
 | 100 | 17 Nov | Louder singing samples | Active |
+| 101 | 17 Nov | Tougher forest locals | Active |
+| 102 | 17 Nov | Keep the difficulty manageable | Active |
+| 103 | 17 Nov | Review and package the audio release | Done |
 
 ---
 
@@ -1323,3 +1326,32 @@ How to read it:
 - Raise both singing samples slightly.
 - *Decision: raise sample gain from 0.45 to 0.6, about 2.5 dB. Retain the effects-volume setting and the temporary background-music interruption through the solo and chorus. No sample editing or re-encoding.*
 - Refresh the offline shell to v32.
+
+## 101. Tougher forest locals (17 Nov 2026)
+
+> The locals are too easily defeated.
+
+- Make hut defenders and raiding parties harder to defeat while keeping campaigns recoverable.
+- *Decision: locals have `30 + 5 × level` HP instead of `22 + 4 × level`, about 29–35% more health. Keep raiders at 2.5 times defender health. A level-5 defender now survives one complete four-shot upgraded pistol burst (55 HP versus 52 damage); a level-10 raider has 200 HP instead of 155.*
+- *Decision: arrow damage becomes `5 + 0.9 × level`, up from `5 + 0.8 × level` (up to 8% more). Keep movement, range, firing cadence, nearest-target behaviour, two hut defenders, the 12-raider cap, crew scaling, retreat and recovery rules.*
+- Save shape and map generation are unchanged. The worktree uses provisional cache `v29-tougher-locals`; assign the next free log entry and release cache when integrating. Production `dist/` is not rebuilt.
+- *Campaign comparison against pinned base `bd6939c`, seeds 1–4: normal play finishes in 29–34 minutes, with 15 total crew deaths and 24 vehicles lost, versus 9 deaths and 17 vehicles before. Without towers, the tuned game has 19 deaths and 28 vehicles lost; towers score 25 kills. Four slow-response campaigns also finish in 33–36 minutes with 14 deaths and 25 vehicles lost. All twelve final campaigns finish without stalls; raids remain at 12 or fewer.*
+- Browser verification: the level-8 battle runs for three simulated minutes with all 14 jacks alive and no page errors. Scripted completion and losses do not establish whether a person finds the fights enjoyable; nobody listened to audio. An earlier, larger increase was rejected after one map took 61 minutes and lost 49 jacks.
+
+## 102. Keep the difficulty manageable (17 Nov 2026)
+
+> It should not become too hard.
+
+- Keep the locals' increased resilience moderate and preserve recovery after combat.
+- *Decision: retain the smaller, measured increase above. All twelve campaigns finish, including four with 20-second player responses. Do not increase party sizes, frequency or pressure on wounded crews. Human playtesting remains necessary to judge difficulty.*
+- Worktree validation: syntax checks, all 304 JavaScript tests and seven Python checks pass.
+- Integration: independent standards and gameplay-spec reviews found no actionable issues. Preserve the concurrent audio release package and local-worktree cleanup in a separate commit. Assign entries 101–102 and offline shell v33, retaining the newer local-settling, flag and music changes; rebuild the combined production package.
+
+## 103. Review and package the audio release (17 Nov 2026)
+
+> review & push
+
+- Review the music interruption and louder singing, then push the reviewed release.
+- Standards review found a stale production package: source used cache v32 and the new singing behavior, but dist/ still held v29 and omitted the new recordings. Rebuild the 124-file package from current source and the voice manifest. The specification review found no audio-behavior issues.
+- Remove an accidentally committed .worktrees/ordered-jack-pokes gitlink from the index and ignore .worktrees/. Preserve the actual worktree directory and its pending edits.
+- Validation: the previous full combined run passed all 310 JavaScript tests and seven Python checks. Both focused music-interruption tests pass during review; package/server checks pass again after packaging. An isolated browser boots the packaged v32 shell offline, decodes both cached song samples and restores the campaign flag. Nobody listened to judge the mix.
