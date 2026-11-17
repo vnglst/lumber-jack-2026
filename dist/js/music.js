@@ -116,20 +116,22 @@
   // ---------- Player ----------
   let on = true;
   try { on = localStorage.getItem(KEY) !== 'off'; } catch (e) { /* storage blocked: music stays on */ }
-  let bus = null;  // { ctx, out }: the music's own volume and echo, feeding the game's master gain
+  let interrupted = false;
+  let bus = null;  // { ctx, out, gate }: volume and echo share a gate for temporary silence
   let cur = null;  // { name, gain, spb, tracks: [{ play, vol, events, len, i, start }], seen }
   const scores = {}; // parsed songs, by name
 
   function busFor(live) {
     if (bus && bus.ctx === live.ctx) return bus;
-    const ctx = live.ctx, out = ctx.createGain(), delay = ctx.createDelay(1), back = ctx.createGain(), wet = ctx.createGain();
-    out.gain.value = VOLUME; out.connect(live.dest);
+    const ctx = live.ctx, out = ctx.createGain(), delay = ctx.createDelay(1), back = ctx.createGain(), wet = ctx.createGain(), gate = ctx.createGain();
+    gate.gain.value = interrupted ? 0 : 1; gate.connect(live.dest);
+    out.gain.value = VOLUME; out.connect(gate);
     // A soft echo gives the dry synth voices some room.
     delay.delayTime.value = 0.31; back.gain.value = 0.32; wet.gain.value = 0.28;
     const damp = lowpass(ctx, back, 1800);
-    delay.connect(damp); back.connect(delay); delay.connect(wet); wet.connect(live.dest);
+    delay.connect(damp); back.connect(delay); delay.connect(wet); wet.connect(gate);
     out.connect(delay);
-    return (bus = { ctx, out });
+    return (bus = { ctx, out, gate });
   }
 
   function score(name) {
@@ -157,6 +159,15 @@
 
   LJ.music = {
     parse,
+    // Silence the dry notes AND the echo without changing the player's music preference.
+    interrupt(value) {
+      if (interrupted === value) return;
+      interrupted = value;
+      if (!bus) return;
+      const gain = bus.gate.gain, now = bus.ctx.currentTime;
+      gain.cancelScheduledValues(now); gain.setValueAtTime(gain.value, now);
+      gain.linearRampToValueAtTime(value ? 0 : 1, now + 0.02);
+    },
     // scene: the name of a song in LJ.SONGS, or null for silence.
     tick(scene) {
       const live = LJ.synth.bus();
@@ -164,7 +175,7 @@
       busFor(live);
       if (!on) scene = null;
       if ((cur ? cur.name : null) !== scene) { stop(); if (scene) start(scene); }
-      if (!cur) return;
+      if (!cur || interrupted) return;
       const now = bus.ctx.currentTime;
       // After a pause (a hidden tab), carry on from where the song was instead of rushing to catch up.
       if (now - cur.seen > AHEAD) for (const tr of cur.tracks) tr.start += now - cur.seen;

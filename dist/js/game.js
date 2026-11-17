@@ -175,7 +175,7 @@
   LJ.separateFlock = function (list, dt, combat = false) {
     if (dt <= 0) return;
     const crossesWall = (c, x, y) => LJ.wallInWay(LJ.tileOfPx(c.x, c.y), LJ.tileOfPx(x, y)) >= 0;
-    const members = list.filter(c => !c.gone && c.alive !== false);
+    const members = list.filter(c => !c.gone && c.alive !== false && !LJ.combat.insideHut(c));
     const shifts = members.map(() => ({ x: 0, y: 0 }));
     for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) {
       const a = members[i], b = members[j];

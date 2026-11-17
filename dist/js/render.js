@@ -119,12 +119,12 @@
       const dc = w.deco[i];
       if (dc && decoShown(w, i, dc)) list.push({ k: 12, i, tx, ty, dc, y: ty * TS + LJ.DECO[dc].y + ((hash(i, 5, s) * 5) | 0) - 2 });
     }
-    for (const c of G.critters) if (!underPx(c.x, c.y)) list.push({ k: 13, c, y: c.y });
+    for (const c of G.critters) if (!underPx(c.x, c.y) && !LJ.combat.insideHut(c)) list.push({ k: 13, c, y: c.y });
     for (const b of G.buildings) if (!b.dead && !b.pending && !under((b.ty + (b.h >> 1)) * W + b.tx + (b.w >> 1))) list.push({ k: 2, b, y: (b.ty + b.h) * TS });
     if (!under(w.roadY * W)) list.push({ k: 5, y: w.roadY * TS + 1 });
     for (const u of G.units) list.push({ k: 3, u, y: u.y });
     for (const f of G.falls) list.push({ k: 4, f, y: f.y });
-    for (const a of G.animals) list.push({ k: 6, a, y: a.y });
+    for (const a of G.animals) if (!LJ.combat.insideHut(a)) list.push({ k: 6, a, y: a.y });
     for (const g of G.graves) if (!underPx(g.x, g.y)) list.push({ k: 7, g, y: g.y });
     for (const p of G.props) list.push({ k: 9, p, y: p.y });
     if (G.suit) list.push({ k: 10, y: G.suit.y });
@@ -237,7 +237,7 @@
     ctx.globalAlpha = 0.3;
     for (const u of G.units) drawAny(ctx, u, cx, cy, G, true);
     ctx.globalAlpha = 0.45;
-    for (const a of G.animals) drawAnimal(ctx, a, cx, cy);
+    for (const a of G.animals) if (!LJ.combat.insideHut(a)) drawAnimal(ctx, a, cx, cy);
     ctx.globalAlpha = 1;
 
     drawProjectiles(ctx, G, cx, cy);
