@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const { game, step, until } = require('./harness.cjs');
 
 function folkNear(lj, u) {
+  // Isolate unit targeting: the camp building can otherwise be nearer than u.
+  lj.G.buildings = [];
   const a = {
     kind: 'native', alive: true, x: u.x - 40, y: u.y, tile: u.tile,
     hp: 100, max: 100, dmg: 10, cd: 1, speed: 40, dir: 1, walkT: 0,
@@ -44,6 +46,7 @@ test('locals retarget after a vehicle is destroyed', () => {
 function wolfFight(rifles = false) {
   const lj = game(), g = lj.G, jack = lj.jacks()[0], w = g.world;
   lj.cmd.stop(g.units);
+  g.units = [jack]; g.buildings = []; // no nearer vehicle/building can interrupt this fight
   for (let i = 0; i <= 10; i++) {
     const n = jack.tile + i;
     w.obj[n] = w.bld[n] = 0; w.type[n] = lj.T.GRASS;

@@ -105,6 +105,8 @@ How to read it:
 | 92 | 16 Nov | Bounded encounters and recovery between attacks | Active |
 | 93 | 17 Nov | Developed-village battle playground scenarios | Active |
 | 94 | 17 Nov | Full-campaign playtest, swan rendering and install warnings | Active |
+| 96 | 17 Nov | Hostiles fight the first part of the operation they encounter | Active |
+| 97 | 17 Nov | Bulldozer upgrades and rapid late-game clearing | Active |
 
 ---
 
@@ -1093,6 +1095,8 @@ How to read it:
 
 ## 86. Playtest to the end: towers that matter, automation that is earned, a livelier finish (16 Nov 2026)
 
+**Status:** village-only raid targeting and restricted forest self-defence superseded by §96; other decisions remain active.
+
 > Playtest game until the end. Make sure guard towers play an important role. Automation should be important, the game shouldn’t play itself. It should be engaging and fun until the end. Not too hard, but challenging from time to time.
 
 - Play whole campaigns again and change what the playtest shows about four things: guard towers, automation, the last stretch, and difficulty.
@@ -1243,3 +1247,31 @@ How to read it:
 - Scripted play verifies progress and rendering, but cannot judge whether the game is fun. Nobody listened to the audio mix. Save shape and terrain are unchanged; bump the offline shell to v26. Production dist/ is not rebuilt.
 - Final validation on the main checkout: all 272 JavaScript tests, syntax checks and seven Python checks pass. An isolated browser boots offline from v26, restores seed 42 and the saved money, and renders the restored game without page errors. Changes remain uncommitted.
 - Review and release: the primary agent's standards and specification reviews found no actionable issues. Both independent review agents were unavailable due to a usage limit. Rebuilt the 85-file production package; its v26 shell boots offline and restores seed and money without page errors. Include the package with the source fix for publishing.
+
+## 96. Hostiles fight the first part of the operation they encounter (17 Nov 2026)
+
+> Correction a earlier regression: wild life and locals should attack the first unit (jack, truck, building, etc) they meet. Not run ahead to the village.
+>
+> Check if game play is still balanced and engaging after this.
+
+- Wildlife and hostile locals attack nearby jacks, vehicles and buildings instead of passing them to reach the village or a distant jack.
+- Check whole-campaign balance, recovery, tower usefulness and pacing after restoring encounter targeting.
+- *Decision: compare all living units and buildings by distance, measured to a building's footprint. Locals reconsider once a second; predators reconsider as they move. They stop in attack range. Hut defenders retain their home boundary, and raid caps, health scaling, retreat timers and recovery windows stay in place.*
+- *Decision: forest crews defend themselves and rally against war parties as they do against other enemies. Stop and move orders still control pursuit. Supersedes §86's village/tower-only target filters and restriction on fighting raids outside defended ground.*
+- *Decision: predators bite vehicles and buildings too. For building approaches they finish the last waypoint precisely enough to reach melee range; flock separation otherwise keeps its existing movement. Save shape and map generation are unchanged. Offline shell cache: v28.*
+- Regression checks: eleven encounter/self-defence cases failed before the targeting fix; four diagonal building-approach cases exposed a flock-waypoint stop outside bite range and failed before the arrival fix. Existing unit-only combat fixtures now exclude nearer buildings/vehicles explicitly.
+- Balance comparison before the fix (seeds 1–4): normal play finished in 29–35 minutes with 14 crew deaths and one vehicle lost; without towers there were 17 deaths and four vehicles lost.
+- Final balance checks: all 24 campaigns finish without stalls: eight normal, eight without towers, four with 20-second responses and four leaving huts standing. Normal games take 26–34 minutes, with 24 total crew deaths and 21 vehicles lost across eight maps; without towers, 22 crew deaths and 39 vehicles lost. Towers score 28 kills, protecting machinery more clearly than crew under these targeting rules. On seeds 1–4 normal play has eight crew deaths and 15 vehicle losses: more fights occur at the work front instead of camp.
+- Slow play finishes in 33–39 minutes with 22 crew deaths and 25 vehicle losses across four maps. Leaving huts standing finishes in 28–37 minutes with 16 crew deaths and 47 vehicle losses; repeated home defence makes exposed machinery costly. Peak active attackers stay at 14 or fewer across all styles, with raids capped at 12. Keep combat strength and recovery unchanged: these runs do not show an overwhelming or unwinnable campaign, but equipment needs protection outside camp.
+- Browser check: the level-8 fortified-town playground runs through its opening raid and continued logging with all 14 jacks, and no browser errors. Scripted completion, idle shares and losses assess pacing and recoverability; nobody has judged whether the revised fights are fun. The new offline cache has shell coverage from the test suite; offline boot was not repeated in this session. Production `dist/` is not rebuilt. Changes remain uncommitted.
+- Update the battle-playground recovery check to observe the end of the first raid directly. Waiting for a tower shot first can now advance beyond that raid when it stops at the work front. Check tower engagement across the scenarios instead of requiring every opening raid to reach a tower; all twelve battle scenarios retain the normal recovery window and remain playable.
+- The 24-run targeting comparison above uses pinned base `e33b270` plus this fix. After concurrent §97 bulldozer upgrades reached the working copy, four additional campaigns (seeds 1–4) also finish without stalls in 29–34 minutes, with 3/0/4/2 crew deaths and 2/3/8/4 vehicle losses. Preserve both changes; the combined release cache is v29.
+
+## 97. Bulldozer upgrades and rapid late-game clearing (17 Nov 2026)
+
+> There should be more upgrades for bulldozers, when fully upgraded they should go through the land really quickly.
+
+- Add dedicated bulldozer upgrades through the middle and late game, with very fast clearing at full strength.
+- *Decision: three successive fleet-wide tiers, improving existing and future bulldozers. Power Hydraulics at level 5 costs €450 and 8 ore: twice the clearing rate, 1.5 times the driving speed and 24 root wood capacity. Heavy-duty Dozer Engines at level 7 costs €950, 20 lumber and 16 ore: four times clearing, twice driving and 32 capacity. Bulldozer Overdrive at level 9 costs €1,800, 40 lumber and 24 ore: eight times clearing, three times driving and 48 capacity. Each replaces the previous tier's bonuses and requires it.*
+- *Decision: apply clearing bonuses to roots, rock and water. At full strength a rock takes 0.3125 seconds, roots 0.375 seconds and water 0.5 seconds, with driving at 108 pixels per second. Route planning weighs the current clearing and driving rates. Preserve root/stone/ore yields, tree-cutting roles, explicit river orders and Stop behaviour.*
+- Save format remains v10: upgrades use the existing upgrade map; older saves retain stock bulldozers, terrain and progress. Bump the offline shell to v29. Production `dist/` is not rebuilt.

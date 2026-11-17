@@ -13,7 +13,7 @@
 const { game } = require('./harness.cjs');
 
 const BUY = ['jack', 'sharpaxe', 'sling', 'base', 'boots', 'rifles', 'bunk', 'sawmill', 'truck', 'barrow', 'chainsaw', 'pick', 'foreman', 'tower',
-  'steel', 'dispatch', 'dozer', 'feller', 'harv', 'scope', 'twin', 'steam', 'turbo', 'mega', 'shuttle'];
+  'steel', 'dispatch', 'dozer', 'hydraulics', 'feller', 'harv', 'scope', 'twin', 'steam', 'dozerEngine', 'turbo', 'mega', 'dozerOverdrive', 'shuttle'];
 const LIMIT = { tower: 3, sawmill: 2, shuttle: 0 };
 const ALIVE = { dozer: 1 }; // replace it when it is lost, but never run two
 

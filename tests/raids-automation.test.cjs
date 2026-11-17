@@ -50,17 +50,16 @@ function towerField() {
   return { ...f, tower, muzzle: { x: tower.tx * 16 + 16, y: (tower.ty + 2) * 16 + 1 - 64 + 12 } };
 }
 
-test('a war party marches on the village and leaves a crew in the forest alone', () => {
+test('a war party stops for a crew in the forest and the jack defends himself', () => {
   const f = field(), { lj, g, w, jack } = f;
   g.up.rifles = true;
   put(jack, f.at(22, 0), w); jack.hold = true; // well outside the village, within bowshot of the party's route
   const a = warrior(f, f.at(19, 0)), x = a.x;
   step(lj, 3);
-  assert.equal(a.tg.b.kind, 'base');
-  assert.ok(a.x < x, 'the warrior walks on towards the village');
-  assert.equal(jack.hp, 100);
-  assert.equal(a.hp, 100, 'and the jack leaves him be');
-  assert.equal(jack.fighting, false);
+  assert.equal(a.tg.u, jack);
+  assert.equal(a.x, x, 'the warrior stops in bow range');
+  assert.ok(jack.hp < 100);
+  assert.ok(a.hp < 100, 'the jack shoots back outside defended ground');
 });
 
 test('on defended ground a war party and the crew fight', () => {
@@ -83,16 +82,64 @@ test('a jack ordered to attack a war party fights it anywhere', () => {
   assert.ok(a.hp < 100);
 });
 
-test('a war party goes for the nearest guard tower or the village, never for other buildings', () => {
+test('a war party attacks a nearer bunkhouse before the towers or village', () => {
   const f = towerField(), { lj, g, tower } = f;
   assert.equal(lj.buy('bunk'), 'place');
   assert.ok(lj.tryPlace(g.base.tx + 12, g.base.ty - 6));
   const bunk = g.buildings.at(-1), a = warrior(f, f.at(14, -5)); // right beside the bunkhouse
   a.hp = a.max = 1e6;
   lj.combat.update(0.05);
-  assert.notEqual(a.tg.b, bunk);
-  assert.ok(a.tg.b === tower || a.tg.b === g.base);
+  assert.equal(a.tg.b, bunk);
+  const hp = bunk.hp;
+  for (let i = 0; i < 20; i++) lj.combat.update(0.05);
+  assert.ok(bunk.hp < hp);
 });
+
+for (const kind of ['jack', 'truck', 'dozer', 'harv', 'shuttle']) {
+  test('a marching party switches from the village to an encountered ' + kind, () => {
+    const f = field(), { lj, g, w } = f;
+    g.units = [];
+    const a = warrior(f, f.at(20, 0));
+    lj.combat.update(0.05);
+    assert.equal(a.tg.b, g.base);
+    const u = another(f, kind);
+    put(u, f.at(18, 0), w);
+    for (let i = 0; i < 24; i++) lj.combat.update(0.05);
+    assert.equal(a.tg.u, u);
+    assert.ok(u.hp < lj.maxHpOf(u));
+  });
+}
+
+for (const kind of ['wolf', 'lynx', 'wolverine', 'bear']) {
+  test(kind + ' attacks an encountered vehicle and then a building before a distant jack', () => {
+    const f = field(), { lj, g, w, jack } = f;
+    g.units = [jack];
+    put(jack, f.at(25, 0), w);
+    const truck = another(f, 'truck');
+    put(truck, f.at(3, 0), w);
+    lj.spawnWildAt(kind, truck.tile, 1);
+    const a = g.animals.at(-1), hp = truck.hp;
+    // Even an already selected distant jack must not make the animal run past the truck.
+    a.target = jack;
+    step(lj, 0.1);
+    assert.equal(a.target, truck);
+    assert.ok(truck.hp < hp);
+    truck.dead = true;
+    put(a, f.at(1, 0), w);
+    const bhp = g.base.hp;
+    step(lj, 1);
+    assert.equal(a.target, g.base);
+    assert.ok(g.base.hp < bhp);
+  });
+  test(kind + ' reaches biting distance of a building from a diagonal approach', () => {
+    const f = field(), { lj, g, w, jack } = f;
+    g.units = [jack]; put(jack, f.at(30, 0), w);
+    lj.spawnWildAt(kind, f.at(7, 7), 1);
+    const hp = g.base.hp;
+    until(lj, () => g.base.hp < hp, 20);
+    assert.equal(g.animals[0].target, g.base);
+  });
+}
 
 test('a guard tower aims ahead of a target on the move', () => {
   const f = towerField(), { lj, g, w, muzzle } = f;
