@@ -206,7 +206,7 @@
       if (!hut) { a.retreat = true; return; }
       if (C.insideHut(a)) { a.tile = a.home; a.path = []; a.vx = a.vy = 0; return; }
       if (a.repath <= 0) { a.repath = 1.2; a.path = LJ.enemyPath(a.tile, c => c === a.home) || []; }
-      march(a, dt, a.speed);
+      march(a, dt, a.speed, true);
       return;
     }
     if (distTo(a, a.tg) <= FOLK_RANGE) {

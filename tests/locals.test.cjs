@@ -46,3 +46,13 @@ test('peaceful locals can leave home again after resting indoors', () => {
   }
   assert.ok(outside, 'indoor residents still go outside');
 });
+
+test('returning defenders cross the home tile boundary before settling indoors', () => {
+  const lj = game(), g = lj.G, h = g.huts[0];
+  g.units = []; g.buildings = []; g.critters = [];
+  lj.combat.angerHut(h); lj.combat.update(0.05);
+  const guards = g.animals.filter(a => a.home === h.tile);
+  for (const a of guards) Object.assign(a, { x: h.x - 11, y: h.y, tile: lj.tileOfPx(h.x - 11, h.y), path: [], tg: null, repath: 0 });
+  for (let i = 0; i < 100; i++) lj.combat.update(0.05);
+  assert.ok(guards.every(a => lj.combat.insideHut(a)), 'returning locals enter their hut');
+});
