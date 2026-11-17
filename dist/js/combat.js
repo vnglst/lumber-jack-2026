@@ -162,13 +162,17 @@
       if (wall >= 0) break;
       const px = colOf(n) * TS + 8, py = rowOf(n) * TS + 10, dx = px - a.x, dy = py - a.y, d = Math.hypot(dx, dy);
       // A flock follows a corridor, not a single-file chain of exact pixel centres.
-      // Passing through the waypoint's tile is enough; forcing its centre fights
-      // separation and can leave a whole pack circling the same point.
-      if (LJ.tileOfPx(a.x, a.y) === n && d < 12 && (!exactLast || a.path.length > 1)) { a.path.pop(); a.tile = n; continue; }
+      // Coming within a body's radius is enough; separation can keep larger
+      // neighbours on opposite sides of a tile boundary indefinitely.
+      if (d < 0.001 || (d < Math.max(12, LJ.flockRadius(a)) && (!exactLast || a.path.length > 1))) {
+        a.path.pop(); a.tile = LJ.tileOfPx(a.x, a.y); continue;
+      }
       // Separation may have moved us off the planned corridor. Validate the real
       // step, including corner clearance, before following an old waypoint.
       const step = Math.min(d, dist), nx = a.x + dx / d * step, ny = a.y + dy / d * step;
       const from = LJ.tileOfPx(a.x, a.y), to = LJ.tileOfPx(nx, ny);
+      wall = LJ.wallInWay(from, to);
+      if (wall >= 0) break;
       const fx = colOf(from), fy = rowOf(from), tx = colOf(to), ty = rowOf(to);
       if (!LJ.wildPass(to) || (fx !== tx && fy !== ty &&
           (!LJ.wildPass(fy * G.world.W + tx) || !LJ.wildPass(ty * G.world.W + fx)))) {

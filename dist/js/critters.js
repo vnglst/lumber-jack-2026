@@ -68,7 +68,7 @@
           const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy), dist = Math.min(d, 16 * dt);
           // Outdoors, accept personal space around a destination shared by neighbours.
           // At home, walk all the way inside before resting.
-          if (d < (LJ.tileOfPx(c.tx, c.ty) === c.home ? 1 : 10)) critterStop(c, 2 + Math.random() * 4);
+          if (d < (LJ.tileOfPx(c.tx, c.ty) === c.home ? 1 : LJ.flockRadius(c))) critterStop(c, 2 + Math.random() * 4);
           else {
             const nx = c.x + dx / d * dist, ny = c.y + dy / d * dist;
             if (crossesWall(c, nx, ny)) critterStop(c, 1);
@@ -83,8 +83,8 @@
         if (!c.moving && (c.t -= dt) <= 0) critterGo(c, c.x + (Math.random() - 0.5) * 70, c.y + (Math.random() - 0.5) * 40);
         if (!c.moving) continue;
         const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy), nx = c.x + (dx / d) * 7 * dt, ny = c.y + (dy / d) * 7 * dt;
-        if (d < 1.5 || crossesWall(c, nx, ny) || w.type[LJ.tileOfPx(nx + Math.sign(dx) * 9, ny)] !== T.WATER || w.type[LJ.tileOfPx(nx, ny + Math.sign(dy) * 7)] !== T.WATER) { critterStop(c, 2 + Math.random() * 6); continue; }
-        c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1;
+        if (d < LJ.flockRadius(c) || crossesWall(c, nx, ny) || w.type[LJ.tileOfPx(nx + Math.sign(dx) * 9, ny)] !== T.WATER || w.type[LJ.tileOfPx(nx, ny + Math.sign(dy) * 7)] !== T.WATER) { critterStop(c, 2 + Math.random() * 6); continue; }
+        c.x = nx; c.y = ny; if (Math.abs(dx) > 0.1) c.dir = dx > 0 ? 1 : -1;
         continue;
       }
       if (w.lush[tile] < 0.4) { c.gone = true; continue; } // nothing left to live on
@@ -102,10 +102,10 @@
       if (!c.moving) continue;
       const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy);
       const sp = c.flee ? (deer ? 85 : 70) : deer ? 16 : 24;
-      if (d < 1.5) { critterStop(c, 1.5 + Math.random() * 5); continue; }
+      if (d < LJ.flockRadius(c)) { critterStop(c, 1.5 + Math.random() * 5); continue; }
       const nx = c.x + (dx / d) * sp * dt, ny = c.y + (dy / d) * sp * dt;
       if (!LJ.wildPass(LJ.tileOfPx(nx, ny)) || crossesWall(c, nx, ny)) { critterStop(c, 0.4); continue; }
-      c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1; c.walkT += dt;
+      c.x = nx; c.y = ny; if (Math.abs(dx) > 0.1) c.dir = dx > 0 ? 1 : -1; c.walkT += dt;
     }
     if (G.critters.some(c => c.alpha <= 0)) G.critters = G.critters.filter(c => c.alpha > 0);
     LJ.separateFlock(G.critters, dt);

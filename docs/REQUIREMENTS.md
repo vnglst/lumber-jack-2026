@@ -114,6 +114,7 @@ How to read it:
 | 101 | 17 Nov | Tougher forest locals | Active |
 | 102 | 17 Nov | Keep the difficulty manageable | Active |
 | 103 | 17 Nov | Review and package the audio release | Done |
+| 104 | 17 Nov | Wildlife settles without flickering or crowding stalls | Active |
 
 ---
 
@@ -1355,3 +1356,15 @@ How to read it:
 - Standards review found a stale production package: source used cache v32 and the new singing behavior, but dist/ still held v29 and omitted the new recordings. Rebuild the 124-file package from current source and the voice manifest. The specification review found no audio-behavior issues.
 - Remove an accidentally committed .worktrees/ordered-jack-pokes gitlink from the index and ignore .worktrees/. Preserve the actual worktree directory and its pending edits.
 - Validation: the previous full combined run passed all 310 JavaScript tests and seven Python checks. Both focused music-interruption tests pass during review; package/server checks pass again after packaging. An isolated browser boots the packaged v32 shell offline, decodes both cached song samples and restores the campaign flag. Nobody listened to judge the mix.
+
+## 104. Wildlife settles without flickering or crowding stalls (17 Nov 2026)
+
+> Same for other wild life. Did you also fix that?
+
+- Extend the locals' movement fix to other wildlife and check all predator species.
+- *Decision: share the existing species-sized separation radii with destination arrival checks. Reindeer, squirrels and swans settle near a shared destination instead of walking against their neighbours; almost-vertical travel keeps its facing. Wildlife remains visible outdoors.*
+- *Decision: marching animals accept a waypoint within their body's radius even when separation puts them across its tile boundary. This fixes a reproduced four-bear stall. Keep exact final approaches for building bites, and validate actual movement against palisades and terrain after passing a waypoint.*
+- Three peaceful-wildlife destination checks and the bear-pack progress check fail before the fix. All seven wildlife species pass the isolated browser movement/rendering checks without page errors. The prior locals checks still pass.
+- Save shape and map generation are unchanged. Refresh the offline shell to v34.
+- Combined-release review also exposed an axe hunter waiting diagonally beside an off-centre enemy, outside actual striking range. A focused regression failed before the fix. Plan non-hut hunting approaches using world-pixel weapon range, preserving hut approach and retreat behaviour. The stalled seed-1 opening now progresses normally. Include this fix in combined release cache v35.
+- Independent review found two further endpoint stalls: predators could discard a unit approach outside bite range or a retreat endpoint outside their home tile. Two focused regressions fail before the fix. Finish every predator's final waypoint precisely, retaining relaxed intermediate flock waypoints. This also preserves exact building approaches. Include the review fixes in v35 before publishing.

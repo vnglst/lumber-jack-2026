@@ -172,6 +172,7 @@
   // gently instead of occupying the same footprint. Sample everyone before moving
   // anyone, so the last member of a pack does not get all the room.
   const SPACE = { squirrel: 5, native: 10, wolf: 11, lynx: 11, wolverine: 12, bear: 15, deer: 13, swan: 12 };
+  const flockRadius = (LJ.flockRadius = c => SPACE[c.kind] || 10);
   LJ.separateFlock = function (list, dt, combat = false) {
     if (dt <= 0) return;
     const crossesWall = (c, x, y) => LJ.wallInWay(LJ.tileOfPx(c.x, c.y), LJ.tileOfPx(x, y)) >= 0;
@@ -181,7 +182,7 @@
       const a = members[i], b = members[j];
       if ((a.kind === 'swan') !== (b.kind === 'swan')) continue;
       let dx = a.x - b.x, dy = a.y - b.y, d = Math.hypot(dx, dy);
-      const space = (SPACE[a.kind] || 10) + (SPACE[b.kind] || 10);
+      const space = flockRadius(a) + flockRadius(b);
       if (d >= space || crossesWall(a, b.x, b.y)) continue;
       if (d < 0.001) {
         // Break exact spawn ties without consuming the game's random stream.
@@ -681,7 +682,9 @@
       // A hut stands still among the trees: anywhere within reach of the weapon will do. If there is no such spot,
       // say so and go back to work instead of waiting for ever. Animals move, so for them it is worth waiting.
       const reach = a.kind === 'hut' ? Math.max(1, Math.floor((weaponRange() - 12) / TS)) : 1;
-      if (walkTo(u, c => Math.hypot(colOf(c) - ax, rowOf(c) - ay) <= reach + 0.5, 'hunt')) return;
+      const inReach = a.kind === 'hut' ? c => Math.hypot(colOf(c) - ax, rowOf(c) - ay) <= reach + 0.5 :
+        c => Math.hypot(midX(c) - a.x, feetY(c) - a.y) <= weaponRange();
+      if (walkTo(u, inReach, 'hunt')) return;
       if (a.kind !== 'hut') { u.wait = 0.4; u.state = 'think'; return; }
       say(u, M.cantReach);
       if (t.resume) { setTask(u, t.resume); think(u); } else endTask(u);
@@ -1026,8 +1029,8 @@
       a.stalk = d > 100; // creeps closer first, then charges
     }
     if (a.repath <= 0) { a.repath = 0.6; a.path = LJ.enemyPath(a.tile, a.flee ? c => c === goal : goal) || []; } // on the timer only, even after a failed search
-    // A bite needs the final tile's centre: flock waypoints alone can stop just outside melee reach.
-    const wall = LJ.march(a, dt, a.speed * (a.flee ? 1.2 : a.stalk ? 0.55 : 1), !a.flee && a.target.tx !== undefined);
+    // Finish the final approach for bites and for returning home; intermediate flock waypoints stay loose.
+    const wall = LJ.march(a, dt, a.speed * (a.flee ? 1.2 : a.stalk ? 0.55 : 1), true);
     if (wall >= 0 && a.atkCd <= 0) { a.atkCd = 0.8; LJ.damageWall(wall, FOE[a.kind].wallDmg); } // gnawing at the palisade
   }
 

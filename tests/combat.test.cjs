@@ -63,6 +63,22 @@ function wolfFight(rifles = false) {
   return { lj, g, jack, wolf, destination: jack.tile + 10 };
 }
 
+test('an axe hunter closes the actual distance to an off-centre adjacent enemy', () => {
+  const lj = game(), g = lj.G, w = g.world, jack = lj.jacks()[0];
+  lj.cmd.stop(g.units);
+  g.units = [jack]; g.animalCd = 1e9;
+  for (const h of g.huts) h.alive = false;
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+    const n = jack.tile + dy * w.W + dx;
+    w.obj[n] = w.bld[n] = w.wall[n] = 0; w.type[n] = lj.T.GRASS;
+  }
+  const a = folkNear(lj, jack);
+  a.x = jack.x + 18; a.y = jack.y + 20;
+  a.tile = lj.tileOfPx(a.x, a.y); a.speed = 0; a.dmg = 0;
+  lj.cmd.hunt([jack], a);
+  until(lj, () => a.hp < a.max, 3);
+});
+
 test('moving out of a wolf fight stays a retreat order even after another bite', () => {
   const { lj, jack, wolf, destination } = wolfFight();
   assert.ok(jack.fighting);
