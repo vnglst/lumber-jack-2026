@@ -6,6 +6,8 @@
   const BOLT_SPEED = 520, ARROW_SPEED = 210, TOWER_RANGE = 10 * TS, FOLK_RANGE = 80;
   // A war party's fighters are hardier than the villagers who defend a hut, and they march fast.
   const WARRIOR = { hp: 2.5, march: 1.25 };
+  // Pressure follows the crew's current strength, not how long the campaign lasts.
+  const RAIDS = { max: 12, recovery: 90, retry: 15, busyGuards: 4 };
   // A guard tower's burst: more bolts than a pistol's, each hitting harder, aimed ahead of a moving target.
   const TOWER = { cd: 1, bolts: 4, twin: 6, dmg: 18 };
   const HOSTILE_LEVEL = (C.HOSTILE_LEVEL = 5);
@@ -242,7 +244,7 @@
       h.spawnCd = 20;
     }
   }
-  const gap = () => Math.max(60, Math.round((170 - G.level * 9) * (0.8 + Math.random() * 0.4)));
+  const gap = () => Math.max(RAIDS.recovery, Math.round((190 - G.level * 8) * (0.8 + Math.random() * 0.4)));
   const treesLeft = () => G.total - G.cleared;
 
   function compass(x, y) {
@@ -276,11 +278,20 @@
   }
 
   function spawnWave() {
-    const wv = G.wave, w = G.world, Wd = w.W, at = findSpawn();
+    const wv = G.wave, w = G.world, Wd = w.W;
+    const crew = LJ.jacks(), fit = crew.filter(u => u.hp >= LJ.maxHpOf(u) * 0.5).length;
+    const guards = G.animals.filter(a => a.alive && a.defender && !a.retreat && a.tg).length;
+    // Finish one encounter before starting another; losses and wounds leave room to recover.
+    if (!fit || fit < Math.ceil(crew.length / 2) || guards >= RAIDS.busyGuards ||
+        G.animals.some(a => a.alive && LJ.FOE[a.kind].wild)) {
+      wv.next = G.time + RAIDS.retry; return;
+    }
+    const at = findSpawn();
     if (at < 0) { wv.next = G.time + 30; return; }
     wv.n++;
     const late = treesLeft() < G.total * 0.02;
-    const size = Math.max(3, Math.min(late ? 6 : 28, Math.round((2 + G.level * 1.2 + wv.n * 0.6) * (0.75 + Math.random() * 0.5))));
+    const capacity = Math.min(late ? 6 : RAIDS.max, 2 + Math.floor(fit * 0.75), RAIDS.max - guards);
+    const size = Math.max(3, Math.min(capacity, Math.round((2 + G.level) * (0.85 + Math.random() * 0.3))));
     const x0 = colOf(at), y0 = rowOf(at), st = folkStats(G.level);
     for (let k = 0; k < size; k++) {
       let i = at;

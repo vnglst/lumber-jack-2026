@@ -63,17 +63,20 @@ test('repeat waves vary between maps but keep a recovery window', () => {
   const patterns = [];
   for (const seed of [1, 42, 12345]) {
     const lj = game(seed), g = lj.G, sizes = [], gaps = [];
+    // A developed crew leaves room for variation; a lone survivor now gets the minimum raid.
+    const jack = lj.jacks()[0];
+    for (let i = 1; i < 12; i++) g.units.push({ ...jack, id: g.nextId++, path: [], task: null });
     g.level = 6; lj.combat.update(0);
     assert.equal(lj.combat.nextWaveIn(), 50);
     for (let k = 0; k < 4; k++) {
       g.time = g.wave.next; lj.combat.update(0);
       assert.ok(g.wave.active);
       sizes.push(g.wave.active.size);
-      assert.ok(g.wave.active.size >= 3 && g.wave.active.size <= 28);
+      assert.ok(g.wave.active.size >= 3 && g.wave.active.size <= 12);
       g.animals = []; lj.combat.update(0);
       gaps.push(g.wave.next - g.time);
     }
-    assert.ok(gaps.every(gap => gap >= 60 && gap <= 140));
+    assert.ok(gaps.every(gap => gap >= 90 && gap <= 180));
     assert.ok(new Set(gaps).size > 1);
     patterns.push(sizes.join(','));
   }
