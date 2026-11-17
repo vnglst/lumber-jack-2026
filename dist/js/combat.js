@@ -125,26 +125,24 @@
   }
 
   // ---------- The forest folk ----------
-  function distTo(a, tg) {
+  const distTo = (C.distTo = function (a, tg) {
     if (tg.u) return Math.hypot(tg.u.x - a.x, tg.u.y - a.y);
     const b = tg.b, x0 = b.tx * TS, y0 = b.ty * TS, x1 = (b.tx + b.w) * TS, y1 = (b.ty + b.h) * TS;
     return Math.hypot(a.x - LJ.clamp(a.x, x0, x1), a.y - LJ.clamp(a.y, y0, y1));
-  }
-  // A hut's defenders go for any unit near their home, otherwise the nearest building there. A war party is after
-  // the village: it marches on the storehouse and on the towers that defend it (BLD.target), whichever is nearest,
-  // and leaves crews in the forest to updFolk, which lets it shoot them in passing.
-  function pickTarget(a, hut) {
+  });
+  // Hostiles stop for the nearest part of the operation, without preferring a kind.
+  // Hut defenders still protect only the area around their home.
+  const pickTarget = (C.pickTarget = function (a, hut) {
     const nearby = tg => !hut || distTo(hut, tg) <= 8 * TS;
-    const u = a.wave ? null : LJ.nearest(G.units, a.x, a.y, 150, u => !u.dead && nearby({ u }));
-    if (u) return { u };
-    let best = null, bd = 1e9;
+    const u = LJ.nearest(G.units, a.x, a.y, Infinity, u => !u.dead && nearby({ u }));
+    let best = u ? { u } : null, bd = best ? distTo(a, best) : Infinity;
     for (const b of G.buildings) {
-      if (b.dead || !nearby({ b }) || (a.wave && !LJ.BLD[b.kind].target)) continue;
+      if (b.dead || !nearby({ b })) continue;
       const d = distTo(a, { b });
       if (d < bd) { bd = d; best = { b }; }
     }
     return best;
-  }
+  });
   function goalFor(tg) {
     if (tg.u) { const tx = colOf(tg.u.tile), ty = rowOf(tg.u.tile); return c => Math.abs(colOf(c) - tx) <= 1 && Math.abs(rowOf(c) - ty) <= 1; }
     const b = tg.b;
@@ -152,7 +150,7 @@
   }
 
   // Walks an enemy along its path; returns the palisade tile in the way, or -1. Used by wolves and bears too.
-  const march = (LJ.march = function (a, dt, speed) {
+  const march = (LJ.march = function (a, dt, speed, exactLast = false) {
     let dist = speed * dt, wall = -1;
     const x0 = a.x, y0 = a.y;
     while (dist > 0 && a.path.length) {
@@ -163,7 +161,7 @@
       // A flock follows a corridor, not a single-file chain of exact pixel centres.
       // Passing through the waypoint's tile is enough; forcing its centre fights
       // separation and can leave a whole pack circling the same point.
-      if (LJ.tileOfPx(a.x, a.y) === n && d < 12) { a.path.pop(); a.tile = n; continue; }
+      if (LJ.tileOfPx(a.x, a.y) === n && d < 12 && (!exactLast || a.path.length > 1)) { a.path.pop(); a.tile = n; continue; }
       // Separation may have moved us off the planned corridor. Validate the real
       // step, including corner clearance, before following an old waypoint.
       const step = Math.min(d, dist), nx = a.x + dx / d * step, ny = a.y + dy / d * step;
@@ -203,12 +201,7 @@
       march(a, dt, a.speed);
       return;
     }
-    // A war party does not stop for the crews it passes: it looses arrows at whoever is within bowshot and keeps going.
-    // It has no quarrel with crews out in the forest (see LJ.atWar), and a tower that is shooting at it comes first.
-    const inShot = distTo(a, a.tg) <= FOLK_RANGE, atTower = inShot && a.tg.b && a.tg.b.kind === 'tower';
-    const prey = a.wave && !atTower && a.shootCd <= 0 ? LJ.nearest(G.units, a.x, a.y, FOLK_RANGE, u => !u.dead && LJ.atWar(u, a)) : null;
-    if (prey) { a.dir = prey.x > a.x ? 1 : -1; loose(a, { u: prey }); }
-    if (inShot) {
+    if (distTo(a, a.tg) <= FOLK_RANGE) {
       const [px] = aimPoint(a.tg);
       if (a.aim <= 0) a.dir = px > a.x ? 1 : -1;
       if (a.shootCd <= 0) loose(a, a.tg);

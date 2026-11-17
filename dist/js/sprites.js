@@ -6,6 +6,7 @@
   const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
   const cx2 = c => c.getContext('2d');
   const OUT = '#1b1422';
+  const flagMotion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
 
   function art(rows, pal, ox, w, h) {
     const c = mk(w || rows[0].length + (ox || 0), h || rows.length), x = cx2(c);
@@ -257,7 +258,7 @@
     // Barrel and crate
     R(x, 1, 47, 6, 9, '#8a5a30'); R(x, 2, 47, 1, 9, '#b07a44'); R(x, 1, 49, 6, 1, '#4a4a52'); R(x, 1, 53, 6, 1, '#4a4a52'); R(x, 1, 47, 6, 1, '#5e3820');
     box(x, 0, 56, 7, 6, '#b9854a', '#d8a868', '#7a5230'); pts(x, [[1, 57], [2, 58], [3, 59], [4, 60], [5, 57], [4, 58], [2, 60]], '#7a5230');
-    const o = outlined(c, { x: 49, y: 1 });
+    const o = flagged(c, { x: 49, y: 1 }, 57, 26);
     o.windows = [[11, 39], [44, 39]]; // where windowLit put the windows; the title screen lights them
     return o;
   })();
@@ -314,12 +315,28 @@
   }
   function banner(x, px, top) {
     R(x, px, top, 1, 30, '#5a3a20'); R(x, px, top - 1, 1, 1, '#e8c25a');
-    flag(x, px - 9, top + 1);
   }
-  // Finland's flag, 9 x 7: a blue cross on white, flying from a pole on its right.
-  function flag(x, a, b) {
-    R(x, a, b, 9, 7, '#f6f8fc'); R(x, a, b + 6, 9, 1, '#cfd6e2');
-    R(x, a, b + 3, 9, 1, '#1f4ea8'); R(x, a + 5, b, 2, 7, '#1f4ea8');
+  // Finland's flag, 9 x 7. Ripples grow towards the free left edge; the right edge stays on the pole.
+  function drawFlag(x, spr, bx, by, time, night) {
+    const a = Math.round(bx + spr.flag.x), b = Math.round(by + spr.flag.y);
+    const phase = flagMotion && flagMotion.matches ? 0 : time * Math.PI * 2 / 4.8;
+    const offsets = Array.from({ length: 9 }, (_, i) => Math.round(Math.sin(phase - (8 - i) * 0.55) * (8 - i) / 8));
+    for (let i = 0; i < 9; i++) R(x, a + i, b + offsets[i] - 1, 1, 9, OUT);
+    for (let i = 0; i < 9; i++) {
+      const y = b + offsets[i];
+      R(x, a + i, y, 1, 7, night ? '#e8f1ff' : '#ffffff');
+      R(x, a + i, y + 6, 1, 1, night ? '#cadcf5' : '#e3edfc');
+      R(x, a + i, y + (i === 5 || i === 6 ? 0 : 3), 1, i === 5 || i === 6 ? 7 : 1, night ? '#538fea' : '#387deb');
+    }
+  }
+  LJ.spr.drawFlag = drawFlag;
+  function flagged(c, smoke, px, top) {
+    const o = outlined(c, smoke);
+    o.flag = { x: px - 8, y: top + 2 }; // outline adds one pixel on each side
+    o.bare = mk(o.width, o.height);
+    cx2(o.bare).drawImage(o, 0, 0);
+    drawFlag(cx2(o), o, 0, 0, 0, false); // static artwork for shop icons and placement previews
+    return o;
   }
 
   // Tier 2: a two-storey lodge with a stone ground floor.
@@ -338,7 +355,7 @@
     box(x, 47, 0, 8, 14, '#8d8a86', '#b4b1aa', '#5f5c59'); R(x, 46, 0, 10, 2, '#5f5c59'); R(x, 46, 0, 10, 1, '#8d8a86');
     banner(x, 63, 40);
     R(x, 0, 64, 6, 9, '#8a5a30'); R(x, 1, 64, 1, 9, '#b07a44'); R(x, 0, 66, 6, 1, '#4a4a52'); R(x, 0, 70, 6, 1, '#4a4a52');
-    return outlined(c, { x: 52, y: 1 });
+    return flagged(c, { x: 52, y: 1 }, 63, 40);
   })();
 
   // Tier 3: a stone town hall with a clock tower.
@@ -363,7 +380,7 @@
     R(x, 35, 0, 2, 2, '#e8c25a');
     // Flags and a chimney
     banner(x, 70, 52); box(x, 8, 22, 7, 14, '#8d8a86', '#b4b1aa', '#5f5c59'); R(x, 7, 22, 9, 2, '#5f5c59');
-    return outlined(c, { x: 12, y: 23 });
+    return flagged(c, { x: 12, y: 23 }, 70, 52);
   })();
 
   S.bunk = (function () {

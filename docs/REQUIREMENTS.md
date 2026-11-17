@@ -105,6 +105,7 @@ How to read it:
 | 92 | 16 Nov | Bounded encounters and recovery between attacks | Active |
 | 93 | 17 Nov | Developed-village battle playground scenarios | Active |
 | 94 | 17 Nov | Full-campaign playtest, swan rendering and install warnings | Active |
+| 95 | 17 Nov | Brighter Finnish flags waving in the wind | Active |
 | 96 | 17 Nov | Hostiles fight the first part of the operation they encounter | Active |
 | 97 | 17 Nov | Bulldozer upgrades and rapid late-game clearing | Active |
 
@@ -1247,6 +1248,19 @@ How to read it:
 - Scripted play verifies progress and rendering, but cannot judge whether the game is fun. Nobody listened to the audio mix. Save shape and terrain are unchanged; bump the offline shell to v26. Production dist/ is not rebuilt.
 - Final validation on the main checkout: all 272 JavaScript tests, syntax checks and seven Python checks pass. An isolated browser boots offline from v26, restores seed 42 and the saved money, and renders the restored game without page errors. Changes remain uncommitted.
 - Review and release: the primary agent's standards and specification reviews found no actionable issues. Both independent review agents were unavailable due to a usage limit. Rebuilt the 85-file production package; its v26 shell boots offline and restores seed and money without page errors. Include the package with the source fix for publishing.
+
+## 95. Brighter Finnish flags waving in the wind (17 Nov 2026)
+
+> The Finnish flag on the house should be brighter (in intro and game) and also wave slowly in the wind.
+
+- Brighten the Finnish flag on the opening cottage and in-game houses.
+- Animate a slow wind ripple while keeping the pole and attached edge still.
+- *Decision: use crisp white cloth and brighter blue, with a separate moonlit palette drawn above the opening scene's night wash. Share the same pixel-column ripple across the cottage, lodge and town hall, with a 4.8-second cycle and at most one pixel of movement at the free edge. Respect reduced-motion preferences.*
+- *Decision: retain static flags in shop icons and placement previews; animate construction within its existing reveal mask. Gameplay, random draws and save data are unchanged. Offline shell cache: v27.*
+- Validation: opening screen inspected at desktop and phone widths, developed town rendered without page errors, and all three house flags checked across a complete cycle with fixed pole edges and reduced motion. Syntax checks, all 272 JavaScript tests and seven Python checks pass. The v27 shell boots offline and restores saved seed and money. Changes remain uncommitted; `dist/` is not rebuilt.
+- Review and release: independent standards and specification reviews found no actionable issues. Preserve the concurrent encounter-targeting and bulldozer work in a separate commit and rebuild the combined production package with cache v29. Its offline boot and saved seed/money restoration pass without browser errors.
+
+- Final release checks: all 304 JavaScript tests and seven Python checks pass on the combined v29 code. The production package boots offline and restores saved seed and money without browser errors.
 
 ## 96. Hostiles fight the first part of the operation they encounter (17 Nov 2026)
 

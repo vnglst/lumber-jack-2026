@@ -174,8 +174,13 @@
             const revealed = Math.floor(spr.height * progress);
             ctx.save();
             ctx.beginPath(); ctx.rect(bx, by + spr.height - revealed, spr.width, revealed); ctx.clip();
-            ctx.drawImage(spr, bx, by); ctx.restore();
-          } else ctx.drawImage(spr, bx, by);
+            ctx.drawImage(spr.bare || spr, bx, by);
+            if (spr.flag) LJ.spr.drawFlag(ctx, spr, bx, by, G.time, false);
+            ctx.restore();
+          } else {
+            ctx.drawImage(spr.bare || spr, bx, by);
+            if (spr.flag) LJ.spr.drawFlag(ctx, spr, bx, by, G.time, false);
+          }
           if (b.construction) {
             const foot = by + spr.height - 2;
             ctx.fillStyle = '#463624'; ctx.fillRect(bx + 2, foot - 24, 4, 26); ctx.fillRect(bx + spr.width - 6, foot - 24, 4, 26);

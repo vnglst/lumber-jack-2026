@@ -36,7 +36,7 @@
     headland = houseX;
     gy = wide ? 175 : 163; // on a narrow screen the cottage stands further up the bank, with grass in front of it
     const house = S.village, hx = houseX - 31, hy = gy - house.height;
-    props.push({ spr: night(house, 0.5), x: hx, y: hy, house: true });
+    props.push({ spr: night(house.bare, 0.5), x: hx, y: hy, house: true });
     // Things around the cottage that tie it to the ground: bushes against the walls, a boulder, a woodpile's worth of plants.
     const D = S.decor, put = (sp, x, y, k) => props.push({ spr: night(sp, k || 0.55), x, y: y - sp.height });
     put(D.bush[0], hx - 15, gy + 1); put(D.bush[2], hx + 52, gy + 2); put(D.fern[0], hx + 19, gy + 4, 0.45);
@@ -173,6 +173,7 @@
     for (const p of props) {
       ctx.drawImage(p.spr, p.x, p.y);
       if (!p.house) continue;
+      LJ.spr.drawFlag(ctx, S.village, p.x, p.y, t, true);
       // Lit windows, their glow on the ground, and chimney smoke
       for (const [ax, ay] of S.village.windows) {
         const wx = ax + 1, wy = ay + 1; // the glass sits one pixel inside the frame

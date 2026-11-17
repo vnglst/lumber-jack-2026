@@ -42,7 +42,13 @@
   const VEH = (LJ.VEH = {
     truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => (G.up.mega ? 120 : 60), max: 3 },
     shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => 40, max: 4, sprite: 'shuttle', voice: 'truck' },
-    dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, cap: () => 16, max: 2 },
+    dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, cap: () => dozerTier().cap, max: 2,
+      tiers: [
+        { work: 1, speed: 1, cap: 16 },
+        { id: 'hydraulics', work: 2, speed: 1.5, cap: 24 },
+        { id: 'dozerEngine', work: 4, speed: 2, cap: 32 },
+        { id: 'dozerOverdrive', work: 8, speed: 3, cap: 48 }
+      ] },
     feller: { name: 'Felling Tractor', wage: 18, hp: 220, wear: 8, cap: () => 24, max: 3, chop: 2.4, sight: 7, voice: 'harv', speed: { road: 54, trail: 40, ground: 30 } },
     harv: { chop: 1.6, sight: 8, name: 'Harvester', wage: 30, hp: 240, wear: 8, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
@@ -119,6 +125,9 @@
     bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Stops war parties and wild animals: its laser bursts out-range a bow and are aimed ahead of whatever runs at it. Sees far, and jacks nearby heal quickly.', 'tower'),
     { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Takes ' + WALL_BUILD_TIME + ' seconds per section. Blocks every unit: leave openings for your crew and trucks. Enemies can break through. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
     vehItem('dozer', 4, 600, 'Uproots stumps for extra wood, clears rocks for stone (and any ore in them) and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
+    { id: 'hydraulics', name: 'Power Hydraulics', desc: 'All bulldozers clear roots, rocks and water twice as fast, drive 50% faster and carry 24 root wood.', icon: 'dozer', level: 5, need: 'dozer', cost: () => ({ m: 450, o: 8 }) },
+    { id: 'dozerEngine', name: 'Heavy-duty Dozer Engines', desc: 'All bulldozers clear 4 times as fast, drive twice as fast and carry 32 root wood. Replaces the previous tier.', icon: 'dozer', level: 7, need: 'hydraulics', cost: () => ({ m: 950, l: 20, o: 16 }) },
+    { id: 'dozerOverdrive', name: 'Bulldozer Overdrive', desc: 'All bulldozers clear 8 times as fast, drive 3 times as fast and carry 48 root wood. Replaces the previous tier.', icon: 'dozer', level: 9, need: 'dozerEngine', cost: () => ({ m: 1800, l: 40, o: 24 }) },
     { id: 'steel', name: 'Steel Axe Heads', desc: 'Forged from your own ore. Jacks chop 20% faster.', icon: 'axe', level: 4, need: 'pick', cost: () => ({ m: 200, o: 12 }) },
     { id: 'foreman', name: 'Foreman', desc: 'Jacks follow the forest edge as they clear it, and idle hands walk on to the nearest trees you have explored. They also spot trees from 50% further away.', icon: 'hat', level: 4, cost: () => ({ m: 500 }) },
     { id: 'dispatch', name: 'Dispatcher', desc: 'Trucks keep hauling on their own whenever there are goods.', icon: 'clip', level: 5, need: 'truck', cost: () => ({ m: 450 }) },
@@ -461,11 +470,17 @@
   LJ.bfs = bfs;
 
   // A bulldozer's way to a tile: over open ground where it can, through rock and water only where that is quicker
-  // than driving round. Each tile costs about the time it takes (driving one, clearing rock six, filling water nine),
+  // than driving round. Each tile costs about the time it takes (stock: driving one, rock six, water nine),
   // so the cheapest route is the one that opens the way soonest. Returns the path reversed, like bfs, or null.
   const DOZE_COST = { open: 1, rock: 6, water: 9 };
+  function dozerTier() {
+    let tier = VEH.dozer.tiers[0];
+    for (const next of VEH.dozer.tiers) if (next.id && G.up[next.id]) tier = next;
+    return tier;
+  }
   function dozeRoute(start, target) {
-    const cost = new Int32Array(w.N).fill(1e9), heap = [[0, start]];
+    const tier = dozerTier(), clearingCost = tier.speed / tier.work;
+    const cost = new Float64Array(w.N).fill(1e9), heap = [[0, start]];
     cost[start] = 0; par[start] = -1;
     while (heap.length) {
       // A small binary heap, cheapest first.
@@ -494,7 +509,8 @@
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const n = ny * W + nx;
         if (!dozePass(n)) continue;
-        const nd = d + (w.type[n] === T.WATER ? DOZE_COST.water : w.type[n] === T.ROCK ? DOZE_COST.rock : DOZE_COST.open);
+        const baseCost = w.type[n] === T.WATER ? DOZE_COST.water : w.type[n] === T.ROCK ? DOZE_COST.rock : DOZE_COST.open;
+        const nd = d + DOZE_COST.open + (baseCost - DOZE_COST.open) * clearingCost;
         if (nd >= cost[n]) continue;
         cost[n] = nd; par[n] = c;
         let i = heap.push([nd, n]) - 1;
@@ -517,7 +533,7 @@
     const t = w.type[u.tile], road = LJ.isRoad(t), trail = t === T.DIRT || t === T.GRAVEL;
     const speeds = VEH[u.kind] && VEH[u.kind].speed;
     if (speeds) return (road ? speeds.road : trail ? speeds.trail : speeds.ground) * effort(u);
-    if (u.kind === 'dozer') return 36 * effort(u);
+    if (u.kind === 'dozer') return 36 * dozerTier().speed * effort(u);
     if (u.kind === 'harv') return (G.up.turbo ? 54 : 38) * (road ? 1.5 : trail ? 1.2 : 1) * effort(u);
     let s = 50 * effort(u);
     if (G.up.boots) s *= 1.25;
@@ -852,13 +868,12 @@
     if (jack) blood(u.x, u.y);
     else for (let i = 0; i < 5; i++) chip(u.x, u.y - 6, '#c9ad70');
     LJ.sfx('hurt');
-    // Jacks nearby drop what they're doing and come to help, then go back to work. A war party on the march is only
-    // fought on defended ground (atWar): crews it passes in the forest shoot back from where they stand.
+    // Jacks nearby drop what they're doing and come to help, then go back to work.
     rally(u.x, u.y, 140, a, u);
     const task = u.task && u.task.type;
     if (jack && u.hp > 0 && u.hp < FLEE_HP && !u.fled && !u.hold && task !== 'move' && !nearHome(u)) fallBack(u);
     // Shot from out of reach: go after the attacker, unless retreating.
-    else if (u.hp > 0 && a.alive && atWar(u, a) && jack && !u.fighting && task !== 'hunt' && task !== 'move' && task !== 'retreat') setTask(u, { type: 'hunt', a, resume: u.task });
+    else if (u.hp > 0 && a.alive && jack && !u.hold && !u.fighting && task !== 'hunt' && task !== 'move' && task !== 'retreat') setTask(u, { type: 'hunt', a, resume: u.task });
     if (u.hp > 0) return;
     u.dead = true; release(u);
     G.sel.delete(u);
@@ -870,23 +885,14 @@
 
   // ---------- Buildings and walls under attack ----------
   const GUARD_REACH = 12 * TS, REPAIR_AFTER = 12, REPAIR_RATE = 4; // pixels, seconds without a hit, hit points a second
-  // A war party is after the village, not the crews. It and a jack fight each other only on defended ground (near the
-  // village or a guard tower), or when the jack has been ordered to attack it.
-  const defended = u => G.buildings.some(b => {
-    if (b.dead || !BLD[b.kind].target) return false;
-    const [bx, by] = bldCenter(b);
-    return Math.hypot(u.x - bx, u.y - by) <= GUARD_REACH;
-  });
-  const huntingRaid = u => !!(u.task && u.task.type === 'hunt' && u.task.a.wave);
-  const atWar = (LJ.atWar = (u, a) => !a.wave || defended(u) || huntingRaid(u));
   // Jacks within reach of (x, y) take on attacker a, then go back to work. Not those already fighting, on the move
-  // or told to stop, and against a war party only those who are at war with it.
+  // or told to stop.
   function rally(x, y, reach, a, except) {
     if (!a.alive) return;
     for (const v of G.units) {
       if (v === except || v.kind !== 'jack' || v.dead || v.fighting || v.hold || Math.hypot(v.x - x, v.y - y) > reach) continue;
       const vt = v.task && v.task.type;
-      if (vt !== 'hunt' && vt !== 'move' && vt !== 'retreat' && atWar(v, a)) setTask(v, { type: 'hunt', a, resume: v.task });
+      if (vt !== 'hunt' && vt !== 'move' && vt !== 'retreat') setTask(v, { type: 'hunt', a, resume: v.task });
     }
   }
   LJ.damageBuilding = function (b, dmg, from) {
@@ -955,8 +961,7 @@
     const tt = u.task && u.task.type;
     if (tt === 'move' || (tt === 'retreat' && u.path.length)) { u.fighting = false; return false; } // a move order, or falling back hurt, means: run!
     const range = weaponRange();
-    const raidable = defended(u) || huntingRaid(u); // atWar(u, a) for every enemy, worked out once
-    let best = LJ.nearest(G.animals, u.x, u.y, range, a => a.alive && (!a.wave || raidable));
+    let best = LJ.nearest(G.animals, u.x, u.y, range, a => a.alive);
     const target = u.task && u.task.type === 'hunt' && u.task.a;
     if (!best && target && target.kind === 'hut' && target.alive && Math.hypot(target.x - u.x, target.y - u.y) <= range) best = target;
     u.fighting = !!best;
@@ -996,27 +1001,33 @@
   function updAnimal(a, dt) {
     a.atkCd -= dt; a.repath -= dt;
     if (!a.flee) {
-      if (!a.target || a.target.dead) {
-        a.target = LJ.nearest(G.units, a.x, a.y, Infinity, u => u.kind === 'jack' && !u.dead);
-        if (!a.target) a.flee = true;
-      }
+      const tg = LJ.combat.pickTarget(a), target = tg && (tg.u || tg.b);
+      if (a.target !== target) { a.target = target; a.repath = 0; }
+      if (!a.target) a.flee = true;
     }
     let goal;
     if (a.flee) {
       if (a.tile === a.home && !a.path.length) { a.alive = false; return; } // melts back into the forest
       goal = a.home;
     } else {
-      const t = a.target, d = Math.hypot(t.x - a.x, t.y - a.y);
+      const t = a.target, building = t.tx !== undefined, tg = building ? { b: t } : { u: t };
+      const d = LJ.combat.distTo(a, tg);
       if (d < 16) {
-        a.dir = t.x > a.x ? 1 : -1;
-        if (a.atkCd <= 0) { a.atkCd = 0.8; hurtUnit(t, a.dmg * (a.bitten ? 1 : FOE[a.kind].pounce || 1), a); a.bitten = true; } // the first bite of an ambush
+        a.dir = (building ? bldCenter(t)[0] : t.x) > a.x ? 1 : -1;
+        if (a.atkCd <= 0) {
+          a.atkCd = 0.8;
+          const dmg = a.dmg * (a.bitten ? 1 : FOE[a.kind].pounce || 1);
+          if (building) LJ.damageBuilding(t, dmg, a); else hurtUnit(t, dmg, a);
+          a.bitten = true;
+        } // the first bite of an ambush
         return;
       }
-      goal = t.tile;
+      goal = building ? c => LJ.combat.distTo({ x: midX(c), y: feetY(c) }, tg) < 16 : c => c === t.tile;
       a.stalk = d > 100; // creeps closer first, then charges
     }
-    if (a.repath <= 0) { a.repath = 0.6; a.path = LJ.enemyPath(a.tile, c => c === goal) || []; } // on the timer only, even after a failed search
-    const wall = LJ.march(a, dt, a.speed * (a.flee ? 1.2 : a.stalk ? 0.55 : 1));
+    if (a.repath <= 0) { a.repath = 0.6; a.path = LJ.enemyPath(a.tile, a.flee ? c => c === goal : goal) || []; } // on the timer only, even after a failed search
+    // A bite needs the final tile's centre: flock waypoints alone can stop just outside melee reach.
+    const wall = LJ.march(a, dt, a.speed * (a.flee ? 1.2 : a.stalk ? 0.55 : 1), !a.flee && a.target.tx !== undefined);
     if (wall >= 0 && a.atkCd <= 0) { a.atkCd = 0.8; LJ.damageWall(wall, FOE[a.kind].wallDmg); } // gnawing at the palisade
   }
 
@@ -1181,7 +1192,7 @@
         const t = u.target;
         if (!canDoze(t)) { release(u); think(u); break; }
         const rule = isRoot(t) ? DOZE.roots : w.type[t] === T.ROCK ? DOZE.rock : DOZE.water;
-        u.sawT += dt * effort(u); u.swing += dt;
+        u.sawT += dt * effort(u) * dozerTier().work; u.swing += dt;
         if (u.swing > 0.15) { u.swing = 0; dust(u.x + u.dir * 12, u.y - 2); }
         if (u.sawT >= rule.time) {
           w.type[t] = rule.ground; w.obj[t] = 0;
