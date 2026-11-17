@@ -9,6 +9,7 @@ const html = fs.readFileSync(path.join(__dirname, '../playground.html'), 'utf8')
 // Read the menu itself so a newly offered scene cannot silently miss suite coverage.
 const scenes = [...html.match(/<select id="review-scene">([\s\S]*?)<\/select>/)[1].matchAll(/value="([^"]+)"/g)].map(m => m[1]);
 const encounters = { wolf: ['wolf', 1], pack: ['wolf', 3], lynx: ['lynx', 1], wolverine: ['wolverine', 2], bear: ['bear', 1] };
+const battles = { battle7: [12, 2], battle8: [14, 3], battle9: [16, 3], battle10: [20, 4] };
 
 function playground(seed = 42) {
   const lj = game(seed);
@@ -100,9 +101,9 @@ for (const scene of scenes) {
         assert.equal(store.getItem('lumberjack-save'), 'campaign sentinel', label);
         if (scene === 'arrival') { assert.ok(g.arrival, label); continue; }
         assert.ok(!g.arrival && !g.paused, label);
-        if (scene.startsWith('town')) {
-          assert.equal(g.level, Number(scene.slice(4)), label);
-          assert.equal(lj.jacks().length, { town5: 8, town8: 12, town10: 16 }[scene], label);
+        if (scene.startsWith('town') || battles[scene]) {
+          assert.equal(g.level, Number(scene.match(/\d+$/)[0]), label);
+          assert.equal(lj.jacks().length, battles[scene]?.[0] || { town5: 8, town8: 12, town10: 16 }[scene], label);
           assert.ok(g.up.chainsaw && g.up.rifles && g.up.dispatch, label);
           assert.equal(!!g.up.steam, g.level >= 7, label);
           assert.equal(!!g.up.mega, g.level >= 9, label);
@@ -113,6 +114,16 @@ for (const scene of scenes) {
           assert.ok(g.units.every(u => lj.pass(u.tile) && lj.bfs(g.exitIdx, i => i === u.tile)), label);
           assert.ok(!g.cine && !g.levelDone && g.ore > 0, label);
           assert.ok(g.animalCd < 100 && g.wave.next <= 90, label);
+          if (battles[scene]) {
+            assert.equal(g.count.tower, battles[scene][1], label);
+            assert.equal(!!g.up.twin, g.level >= 8, label);
+            assert.ok(lj.jacks().every(u => u.xp >= 40 && u.hp === lj.maxHpOf(u)), label);
+            assert.equal(g.sel.size, battles[scene][0] - 4, label);
+            assert.equal(new Set([...g.sel].map(u => u.tile)).size, g.sel.size, 'distinct reserve posts');
+            assert.ok([...g.sel].every(u => u.hold && !u.task), label);
+            assert.ok(g.money >= 1800 && g.money <= 5000, label);
+            assert.ok(g.wave.next - g.time <= 12.01 && g.wave.hostile, label);
+          }
           step(lj, 0.1);
           continue;
         }
@@ -140,6 +151,30 @@ for (const scene of scenes) {
     }
   });
 }
+
+test('battle towns face real raids, tower fire and recovery without replacing campaign saves', () => {
+  const lj = playground(), store = storage(lj);
+  store.setItem('lumberjack-save', 'battle sentinel');
+  let towerBursts = 0;
+  const burst = lj.combat.burst;
+  lj.combat.burst = (src, target, options) => {
+    if (src.owner?.kind === 'tower') towerBursts++;
+    return burst(src, target, options);
+  };
+  for (const scene of Object.keys(battles)) for (const seed of [1, 42, 999]) {
+    const label = scene + '/' + seed;
+    lj.playground.load({ scene, seed });
+    const g = lj.G, before = towerBursts;
+    until(lj, () => !!g.wave.active, 45);
+    assert.ok(g.wave.active.size >= 6 && g.wave.active.size <= 12, label + ' substantial legal raid');
+    assert.ok(g.animals.filter(a => a.wave).every(a => lj.combat.hutAt(a.home)), label + ' raids originate at huts');
+    until(lj, () => towerBursts > before, 120);
+    until(lj, () => !g.wave.active, 180);
+    assert.ok(g.wave.next - g.time >= 89.9, label + ' normal recovery interval');
+    assert.ok(lj.jacks().length > 0 && !g.cine, label + ' still playable');
+    assert.equal(store.getItem('lumberjack-save'), 'battle sentinel');
+  }
+});
 
 test('town presets keep logging, processing and selling in the live simulation', () => {
   const lj = playground();

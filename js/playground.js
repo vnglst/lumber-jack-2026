@@ -5,9 +5,9 @@
   const status = text => { $('review-status').textContent = text; };
   let ready = false;
   $('review-scene').addEventListener('change', () => {
-    const preset = $('review-scene').value.startsWith('town');
+    const preset = /^(town|battle)\d+$/.test($('review-scene').value);
     $('review-level').disabled = $('review-gear').disabled = preset;
-    if (preset) $('review-level').value = $('review-scene').value.slice(4);
+    if (preset) $('review-level').value = $('review-scene').value.match(/\d+$/)[0];
   });
   function load() {
     if (!ready || !$('review-form').reportValidity()) return;

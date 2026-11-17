@@ -39,6 +39,17 @@ Before each release, bump `CACHE` in `sw.js` whenever the HTML, CSS or game scri
 
 Choose **Level 5 — thriving logging village**, **Level 8 — automated timber town**, or **Level 10 — final forest frontier** for a ready-to-play settlement: 8/12/16 jacks, completed housing, sawmills and towers, an equipped fleet, and 16%/48%/85% of the forest already cut. These presets choose their own level and equipment; the map seed is still adjustable. Logging and market hauling start immediately, with spare crew and a bulldozer awaiting orders. Wildlife, raids and normal progression continue. Use **Load / replay** to reset or **Hide controls** for more playing room.
 
+For a developed village under attack, choose one of the four defence presets:
+
+| Scene | Jacks | Guard towers | Forest cleared |
+| --- | --- | --- | --- |
+| Level 7 — village defence | 12 | 2 standard | 32% |
+| Level 8 — fortified town | 14 | 3 upgraded | 45% |
+| Level 9 — busy frontier | 16 | 3 upgraded | 60% |
+| Level 10 — large settlement | 20 | 4 upgraded | 80% |
+
+Each starts with a town hall, housing, mills, working trucks and logging machines, and a mix of experienced jacks. Four jacks work outside; the selected reserve holds separate positions near the towers. A raid is due in 12 seconds, then marches from a surviving hut. Reposition the reserve, recall workers or buy more defences with the staged €1,800–€5,000. Raid sizes (up to 12), recovery windows, wildlife, wages and repairs use the normal rules. Level and equipment are preset; change the map seed for different terrain and approaches. **Load / replay** resets the scenario without touching campaign saves.
+
 Choose **Song — repeated taps on Jack** to test the solo: tap Jack ten times at a steady pace (about half a second apart). Choose **Song — crew call and response** and press **Load / replay** to hear three resting jacks sing after a three-second lead-in. Each Easter egg plays once per campaign; replay resets both without touching your campaign save. Both samples follow the effects volume and mute.
 
 `voices.html` is the recording booth: every line the characters say (the jacks, the vehicles, Mr. Grant, the war cries of the forest folk) is listed, and you record it with a microphone of your choice. Use [**Wildlife sounds**](voices.html#wildlife) to find the animal cues, preview the downloaded originals and record replacements. **Use original** restores a downloaded take. Press **Use this** on the best take and the game plays it from then on; lines without a recording stay silent text bubbles. Recordings are saved as `audio/voice/*.wav` (needs `make` running).

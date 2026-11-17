@@ -5,7 +5,11 @@
   const TOWNS = {
     town5: { level: 5, crew: 8, mills: 1, towers: 2, trucks: 2, harvesters: 0, cleared: 0.16 },
     town8: { level: 8, crew: 12, mills: 2, towers: 3, trucks: 2, harvesters: 2, cleared: 0.48 },
-    town10: { level: 10, crew: 16, mills: 3, towers: 4, trucks: 3, harvesters: 3, cleared: 0.85 }
+    town10: { level: 10, crew: 16, mills: 3, towers: 4, trucks: 3, harvesters: 3, cleared: 0.85 },
+    battle7: { level: 7, crew: 12, mills: 2, towers: 2, trucks: 2, harvesters: 1, cleared: 0.32, battle: true, skip: ['twin'], funds: 1800 },
+    battle8: { level: 8, crew: 14, mills: 2, towers: 3, trucks: 2, harvesters: 2, cleared: 0.45, battle: true, funds: 2500 },
+    battle9: { level: 9, crew: 16, mills: 3, towers: 3, trucks: 3, harvesters: 2, cleared: 0.60, battle: true, funds: 3500 },
+    battle10: { level: 10, crew: 20, mills: 3, towers: 4, trucks: 3, harvesters: 3, cleared: 0.80, battle: true, funds: 5000 }
   };
   const SCENES = ['arrival', 'level', 'song-poke', 'song-crew', ...Object.keys(TOWNS), 'wolf', 'pack', 'lynx', 'wolverine', 'bear', 'hut', 'raid', 'ending'];
   function town(config) {
@@ -26,7 +30,12 @@
     for (const [kind, count] of [['bunk', Math.ceil((config.crew - LJ.popCap()) / 3)], ['sawmill', config.mills], ['tower', config.towers]]) {
       for (let n = 0; n < count; n++) {
         buy(kind);
-        const placed = sites.some(i => {
+        // Battle towns spread their towers around camp instead of packing them among the workshops.
+        const [dx, dy] = [[6, 6], [-6, -6], [6, -6], [-6, 6]][n % 4];
+        const candidates = config.battle && kind === 'tower' ? sites.slice().sort((a, b) =>
+          Math.hypot(LJ.colOf(a) - w.start.x - dx, LJ.rowOf(a) - w.start.y - dy) -
+          Math.hypot(LJ.colOf(b) - w.start.x - dx, LJ.rowOf(b) - w.start.y - dy)) : sites;
+        const placed = candidates.some(i => {
           const x = LJ.colOf(i), y = LJ.rowOf(i), p = G.place;
           if (G.buildings.some(b => x < b.tx + b.w + 2 && x + p.w + 2 > b.tx && y < b.ty + b.h + 2 && y + p.h + 2 > b.ty)) return false;
           return LJ.canPlace(x, y) && LJ.tryPlace(x, y);
@@ -39,7 +48,7 @@
     for (const [kind, count] of [['truck', config.trucks], ['shuttle', 1], ['dozer', 1], ['feller', 1], ['harv', config.harvesters]]) {
       while (LJ.countKind(kind) < count) buy(kind);
     }
-    for (const it of LJ.SHOP) if (!it.repeat && it.level <= G.level && LJ.shopState(it).st === 'ok') buy(it.id);
+    for (const it of LJ.SHOP) if (!it.repeat && it.level <= G.level && !config.skip?.includes(it.id) && LJ.shopState(it).st === 'ok') buy(it.id);
     LJ.cmd.stop(G.units);
     const parking = [];
     for (const i of sites) {
@@ -63,6 +72,26 @@
     }
     if (!G.up.steam) LJ.cmd.saw(LJ.jacks().slice(4, 6));
     G.sel = new Set([LJ.jacks()[config.crew - 1]]);
+    if (config.battle) {
+      const towers = G.buildings.filter(b => b.kind === 'tower'), reserve = LJ.jacks().slice(4);
+      const used = new Set(G.units.map(u => u.tile));
+      reserve.forEach((u, n) => {
+        const b = towers[n % towers.length], x = b.tx + b.w / 2, y = b.ty + b.h + 1;
+        const post = sites.slice().sort((a, b) => Math.hypot(LJ.colOf(a) - x, LJ.rowOf(a) - y) -
+          Math.hypot(LJ.colOf(b) - x, LJ.rowOf(b) - y)).find(i => !used.has(i) && LJ.pass(i) && LJ.bfs(G.exitIdx, t => t === i));
+        if (post === undefined) throw new Error('No reachable guard post; try another seed');
+        put(u, post); used.add(post);
+      });
+      LJ.jacks().forEach((u, n) => { u.xp = [40, 160, 160, 480][n % 4]; });
+      G.money = config.funds; G.wood = 250; G.lumber = 100; G.ore = 25;
+      G.wave.hostile = true; G.wave.next = G.time + 12; G.animalCd = 45;
+      G.sel = new Set(reserve);
+      return 'Level ' + G.level + ' village defence: ' + config.crew + ' experienced jacks, ' + config.towers +
+        (G.up.twin ? ' upgraded towers' : ' standard towers') + ', ' + Math.round(config.cleared * 100) +
+        '% cleared. Raid due in 12 seconds; it marches from a surviving hut (up to 12 fighters under normal rules). ' +
+        'Four jacks and logging machines work outside; the selected reserve holds positions near the towers. ' +
+        'Reposition them or recall workers to defend. Regular raids, wildlife, wages and repairs continue. Replay resets the battle; change the seed for another approach.';
+    }
     return 'Level ' + G.level + ' town: ' + config.crew + ' jacks, completed buildings and an equipped fleet; ' + Math.round(config.cleared * 100) + '% of the forest cut. Level and equipment are preset. Logging and market trucks are working; spare crew and bulldozer await orders. Wildlife and raids remain active. Load / replay resets the town.';
   }
   function put(u, tile) {

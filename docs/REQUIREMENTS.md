@@ -103,6 +103,7 @@ How to read it:
 | 90 | 16 Nov | Natural spacing for wildlife and locals | Active |
 | 91 | 16 Nov | Preserve concurrent work and continue integration | Active |
 | 92 | 16 Nov | Bounded encounters and recovery between attacks | Active |
+| 93 | 17 Nov | Developed-village battle playground scenarios | Active |
 
 ---
 
@@ -1205,3 +1206,16 @@ How to read it:
 - Save shape and map generation are unchanged. Use the provisional `v24-balance` cache in the worktree; assign the release cache and entry number at integration. Production `dist/` is not rebuilt.
 - Integration (17 Nov): standards review and the primary agent's gameplay review found no implementation issues. The separate gameplay reviewer was unavailable due to a usage limit. Assign entry 92 and release cache v25, and rebuild `dist/` for publishing.
 - Release checks: the merged code passes all 263 JavaScript tests and seven Python checks; the 85-file package boots offline and restores saved seed and money with cache v25, without page errors.
+
+## 93. Developed-village battle playground scenarios (17 Nov 2026)
+
+> Can you add some scenarios to the playground so I can test the large scale attacks with large village, guard towers and a lot of jacks? Make it realistic, leven 7 to 10
+
+- Add realistic developed-village combat scenarios for levels 7, 8, 9 and 10.
+- *Decision: 12/14/16/20 jacks, 2/3/3/4 towers, and 32/45/60/80% clearing respectively. All have a town hall, enough housing, sawmills, trucks, logging machines and affordable level-appropriate upgrades. Level 7 leaves Twin Tower Lasers unbought; the later scenarios include it. Staged spending money ranges from €1,800 to €5,000, with ordinary wages, stock, health and building durability.*
+- *Decision: put towers on different sides of camp through ordinary placement, preserving road access. Four jacks and the logging machines work at the forest edge; the selected reserve holds distinct reachable posts near the towers. Jacks have a mix of Woodsman, Veteran and Expert experience. The player can move the reserve, recall workers, build or upgrade normally.*
+- *Decision: schedule a real raid in 12 seconds, from a surviving hut. Keep the accepted 12-raider cap, crew scaling, targeting, retreat and recovery rules. Regular wildlife and later raids continue; do not inject an artificial 30–40-enemy wave. Level and equipment selectors are locked to each preset; map seeds and replay remain available.*
+- Extend the menu-derived tests to cover every new scene across seeds and equipment, including crew, tower upgrades, stocks, progress, reachable posts and save isolation. Exercise real raids, tower fire and recovery for all four scenes across three seeds.
+- Development-only files change; production rules, saves and offline shell are unchanged. No release cache bump or `dist/` rebuild is needed.
+- Validation: all 268 JavaScript tests and seven Python checks pass. Browser checks load, fight and replay all four presets at desktop, portrait and landscape sizes without page errors or changes to a campaign-save sentinel. Screenshots confirm the playable layouts with controls hidden. Scripted battles verify mechanics; their subjective difficulty and feel still need human playtesting.
+- Integration review: independent standards and gameplay-spec reviews found no issues. Assign entry 93; the production cache remains v25 because the playground is development-only.
