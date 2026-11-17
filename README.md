@@ -4,7 +4,7 @@ A 2D pixel-art browser game about a laid-off software engineer who takes a job c
 
 The design is in [docs/GAME-PLAN.md](docs/GAME-PLAN.md), the original brief, and [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), a decision log of every request made since.
 
-![Concept art](docs/concept-art.png)
+![Lumberjack gameplay](docs/screenshot.png)
 
 ## Play
 
