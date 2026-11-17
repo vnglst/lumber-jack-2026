@@ -107,6 +107,8 @@ How to read it:
 | 94 | 17 Nov | Full-campaign playtest, swan rendering and install warnings | Active |
 | 96 | 17 Nov | Hostiles fight the first part of the operation they encounter | Active |
 | 97 | 17 Nov | Bulldozer upgrades and rapid late-game clearing | Active |
+| Pending | 17 Nov | Tougher forest locals | Active |
+| Pending follow-up | 17 Nov | Keep the difficulty manageable | Active |
 
 ---
 
@@ -1275,3 +1277,22 @@ How to read it:
 - *Decision: three successive fleet-wide tiers, improving existing and future bulldozers. Power Hydraulics at level 5 costs €450 and 8 ore: twice the clearing rate, 1.5 times the driving speed and 24 root wood capacity. Heavy-duty Dozer Engines at level 7 costs €950, 20 lumber and 16 ore: four times clearing, twice driving and 32 capacity. Bulldozer Overdrive at level 9 costs €1,800, 40 lumber and 24 ore: eight times clearing, three times driving and 48 capacity. Each replaces the previous tier's bonuses and requires it.*
 - *Decision: apply clearing bonuses to roots, rock and water. At full strength a rock takes 0.3125 seconds, roots 0.375 seconds and water 0.5 seconds, with driving at 108 pixels per second. Route planning weighs the current clearing and driving rates. Preserve root/stone/ore yields, tree-cutting roles, explicit river orders and Stop behaviour.*
 - Save format remains v10: upgrades use the existing upgrade map; older saves retain stock bulldozers, terrain and progress. Bump the offline shell to v29. Production `dist/` is not rebuilt.
+
+## Pending. Tougher forest locals (17 Nov 2026)
+
+> The locals are too easily defeated.
+
+- Make hut defenders and raiding parties harder to defeat while keeping campaigns recoverable.
+- *Decision: locals have `30 + 5 × level` HP instead of `22 + 4 × level`, about 29–35% more health. Keep raiders at 2.5 times defender health. A level-5 defender now survives one complete four-shot upgraded pistol burst (55 HP versus 52 damage); a level-10 raider has 200 HP instead of 155.*
+- *Decision: arrow damage becomes `5 + 0.9 × level`, up from `5 + 0.8 × level` (up to 8% more). Keep movement, range, firing cadence, nearest-target behaviour, two hut defenders, the 12-raider cap, crew scaling, retreat and recovery rules.*
+- Save shape and map generation are unchanged. The worktree uses provisional cache `v29-tougher-locals`; assign the next free log entry and release cache when integrating. Production `dist/` is not rebuilt.
+- *Campaign comparison against pinned base `bd6939c`, seeds 1–4: normal play finishes in 29–34 minutes, with 15 total crew deaths and 24 vehicles lost, versus 9 deaths and 17 vehicles before. Without towers, the tuned game has 19 deaths and 28 vehicles lost; towers score 25 kills. Four slow-response campaigns also finish in 33–36 minutes with 14 deaths and 25 vehicles lost. All twelve final campaigns finish without stalls; raids remain at 12 or fewer.*
+- Browser verification: the level-8 battle runs for three simulated minutes with all 14 jacks alive and no page errors. Scripted completion and losses do not establish whether a person finds the fights enjoyable; nobody listened to audio. An earlier, larger increase was rejected after one map took 61 minutes and lost 49 jacks.
+
+## Pending follow-up. Keep the difficulty manageable (17 Nov 2026)
+
+> It should not become too hard.
+
+- Keep the locals' increased resilience moderate and preserve recovery after combat.
+- *Decision: retain the smaller, measured increase above. All twelve campaigns finish, including four with 20-second player responses. Do not increase party sizes, frequency or pressure on wounded crews. Human playtesting remains necessary to judge difficulty.*
+- Final validation: syntax checks, all 304 JavaScript tests and seven Python checks pass. Changes remain uncommitted in the isolated `codex/tougher-locals` worktree.
