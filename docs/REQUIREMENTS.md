@@ -104,6 +104,7 @@ How to read it:
 | 91 | 16 Nov | Preserve concurrent work and continue integration | Active |
 | 92 | 16 Nov | Bounded encounters and recovery between attacks | Active |
 | 93 | 17 Nov | Developed-village battle playground scenarios | Active |
+| 94 | 17 Nov | Full-campaign playtest, swan rendering and install warnings | Active |
 
 ---
 
@@ -1219,3 +1220,26 @@ How to read it:
 - Development-only files change; production rules, saves and offline shell are unchanged. No release cache bump or `dist/` rebuild is needed.
 - Validation: all 268 JavaScript tests and seven Python checks pass. Browser checks load, fight and replay all four presets at desktop, portrait and landscape sizes without page errors or changes to a campaign-save sentinel. Screenshots confirm the playable layouts with controls hidden. Scripted battles verify mechanics; their subjective difficulty and feel still need human playtesting.
 - Integration review: independent standards and gameplay-spec reviews found no issues. Assign entry 93; the production cache remains v25 because the playground is development-only.
+
+## 94. Full-campaign playtest, swan rendering and install warnings (17 Nov 2026)
+
+> Playtest the game until the end.
+>
+> Fix this:
+>
+> \<meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include \<meta name="mobile-web-app-capable" content="yes">
+> (index):1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+> render.js:56 Uncaught TypeError: Cannot read properties of undefined (reading 'l')
+> at drawCreature (render.js:56:57)
+> at LJ.render (render.js:162:11)
+> at frame (main.js:31:34)
+
+- Play through all ten levels and the complete ending; reproduce and fix the reported rendering crash and install warnings.
+- *Decision: select creature animation frames modulo the sprite's frame count. Swans have one frame, but movement and flock shuffling selected the nonexistent second frame. Keep two-frame creatures animating as before; no simulation rules or random draws change.*
+- *Decision: add the standard mobile-web-app-capable metadata alongside Apple's compatibility metadata. Stop suppressing the browser's install banner, retaining the explicit Install game button and its one-use prompt event. Retire an event when the native prompt consumes it, without hiding a newer install offer.*
+- Four regression checks fail before their fixes: moving swans, shuffling swans, native-banner suppression and retiring a native-consumed prompt event. They pass with the fixes.
+- Four deterministic simulation campaigns (seeds 1–4) finish without stalls in 29–35 simulated minutes, with 3/3/7/1 crew deaths. A separate browser campaign using the scripted player's legal commands and the real rendering/UI clears all 3,524 trees through levels 1–10 in 30 simulated minutes, with four deaths and no stalls or page errors. All peaceful species are rendered. Browser timing and UI/audio consume different random draws from the simulation harness, so its report is not a deterministic balance comparison.
+- The browser campaign continues through the visitor, conversation, building, all 753 data-center blocks, closing shot and Game over screen, then restarts successfully. It reports neither of the supplied metadata/banner warnings. Native install-banner presentation remains browser-controlled; the prompt lifecycle is checked with a simulated install event.
+- Scripted play verifies progress and rendering, but cannot judge whether the game is fun. Nobody listened to the audio mix. Save shape and terrain are unchanged; bump the offline shell to v26. Production dist/ is not rebuilt.
+- Final validation on the main checkout: all 272 JavaScript tests, syntax checks and seven Python checks pass. An isolated browser boots offline from v26, restores seed 42 and the saved money, and renders the restored game without page errors. Changes remain uncommitted.
+- Review and release: the primary agent's standards and specification reviews found no actionable issues. Both independent review agents were unavailable due to a usage limit. Rebuilt the 85-file production package; its v26 shell boots offline and restores seed and money without page errors. Include the package with the source fix for publishing.

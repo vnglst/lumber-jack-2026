@@ -25,7 +25,12 @@
   let installPrompt = null;
   const install = document.getElementById('installGame');
   window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault(); installPrompt = e; install.hidden = false;
+    // Leave the browser's install banner available alongside our explicit button.
+    installPrompt = e; install.hidden = false;
+    e.userChoice.then(() => {
+      // The native banner may consume the event before our button is used.
+      if (installPrompt === e) { installPrompt = null; install.hidden = true; }
+    });
   });
   install.onclick = async () => {
     if (!installPrompt) return;

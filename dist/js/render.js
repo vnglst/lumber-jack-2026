@@ -51,9 +51,9 @@
   }
   const drawAny = (ctx, u, cx, cy, G, ghost) => (u.kind === 'jack' ? drawUnit : drawVehicle)(ctx, u, cx, cy, G, ghost);
 
-  // Draws a two-frame, left/right creature centred on (x, y = its feet); returns the top-left corner.
+  // Draws a left/right creature centred on (x, y = its feet); returns the top-left corner.
   function drawCreature(ctx, frames, frame, dir, x, y, foot, cx, cy) {
-    const fr = frames[frame], img = dir > 0 ? fr.r : fr.l;
+    const fr = frames[frame % frames.length], img = dir > 0 ? fr.r : fr.l;
     const X = Math.round(x) - (img.width >> 1) - cx, Y = Math.round(y) + foot - img.height - cy;
     ctx.drawImage(img, X, Y);
     return [X + (img.width >> 1), Y];

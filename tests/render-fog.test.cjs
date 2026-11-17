@@ -42,6 +42,22 @@ function scene(tx, ty) {
   return { lj: LJ, g: G, w, tree, draws, masks };
 }
 
+for (const motion of ['moving', 'shuffling']) {
+  test('a ' + motion + ' swan renders throughout its animation cycle', () => {
+    const { lj, g, draws } = scene(4, 4);
+    const bird = { width: 12, height: 9 };
+    lj.sprites.swan = [{ l: bird, r: bird }];
+    const c = { kind: 'swan', x: 64, y: 64, dir: -1, alpha: 1, walkT: 0, [motion]: true };
+    g.critters.push(c);
+    for (const dir of [-1, 1]) for (const walkT of [0, 0.15, 0.3, 0.45]) {
+      c.dir = dir; c.walkT = walkT;
+      draws.length = 0;
+      lj.render();
+      assert.ok(draws.some(d => d.image === bird), 'swan sprite is drawn');
+    }
+  });
+}
+
 for (const [edge, x, y] of [['left', 0, 4], ['top', 4, 0], ['right', 7, 4], ['bottom', 4, 7]]) {
   test('fog covers hidden tree overhang at the ' + edge + ' map edge', () => {
     const { lj, tree, draws } = scene(x, y);
