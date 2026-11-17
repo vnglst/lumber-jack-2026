@@ -102,6 +102,7 @@ How to read it:
 | 89 | 16 Nov | Review song playback under slow loading | Done |
 | 90 | 16 Nov | Natural spacing for wildlife and locals | Active |
 | 91 | 16 Nov | Preserve concurrent work and continue integration | Active |
+| 92 | 16 Nov | Bounded encounters and recovery between attacks | Active |
 
 ---
 
@@ -1185,3 +1186,22 @@ How to read it:
 - *Decision: inspect and preserve pending project changes in a separate commit, then continue integration. Inspect and finish an existing merge, retaining both changesets; resolve overlaps and check the combined result. Recheck repository state before Git mutations and never discard another chat's work.*
 - Integrate the reviewed song changes and flocking, retaining both requirement entries and all shared script/test changes. The combined offline cache is v24; rebuild the production package from the integrated source.
 - Combined verification: 256 JavaScript tests and seven Python checks pass; the 85-file production package is rebuilt. An isolated browser boots the v24 shell offline and restores the saved campaign without page errors.
+
+## 92. Bounded encounters and recovery between attacks (16 Nov 2026)
+
+> The attacks of wildlife/natives can become quite intense (many, many units 30-40?) who scatter and don’t walk on top of each other. Make sure game mechanics are still balanced and players aren’t overrun.
+
+- Measure crowding and losses with the new spacing. Keep attacks challenging, while avoiding excessive numbers and overlapping encounters that overwhelm the crew.
+- *Measured before: across seeds 1–4, careful play peaked at 22 active attackers and 41 total crew deaths; a player acting every 20 seconds had 38 deaths. Leaving huts standing produced up to 39 living enemies, including idle home guards, and 25 active attackers. War parties grew with their sequence number, up to 28 fighters, penalising longer campaigns.*
+- *Decision: cap war parties at 12. Choose size from level and current healthy crew, with a minimum of three; three fit jacks face at most four raiders. Remove growth with the wave counter. The final 2% of forest still caps raids at six. Individual strength, spacing, targeting and retreat rules stay unchanged.*
+- Follow-up: "Ok fine for now. Review and then push." Keep 12 as the accepted starting point; the measurements changed size, overlap and recovery together, so they do not establish that 12 alone is the ideal cap.
+- *Decision: postpone a raid in 15-second steps while predators remain, four or more hut defenders have targets, or fewer than half the living jacks have at least half health. Engaged hut defenders also reduce the new party's headcount budget. Huts still maintain their own two defenders, and approaching more huts during a raid remains a player risk; 12 is a raid cap, not a global enemy cap.*
+- *Decision: leave at least 90 seconds after a party has fully departed before the next raid (was 60). Predator spawn timers wait during raids and retreats, then leave at least 30 seconds before a new pack. The initial level-5 warning remains 50 seconds. These refine §27 and §86's encounter timing and sizes.*
+- Add campaign reports for peak living enemies, active attackers, attackers within 12 tiles of camp, and largest raid; dormant home guards and retreating enemies are excluded from active-attack counts.
+- *Final measurements: all 24 campaigns finish without stalls: eight careful, eight without towers, four slow-response, four leaving huts standing. On seeds 1–4, careful deaths drop from 41 to 14 and slow-response deaths from 38 to 15. Careful games take 29–35 minutes, similar to 30–35 before. With huts left standing, peak living enemies drop from 39 to 30, active attackers from 25 to 16, and deaths from 43 to 10; remote home guards still exist.*
+- *Towers: on eight maps, total deaths are 38 with towers and 44 without; deaths at camp are 12 versus 32. Towers account for 138 kills. Thus their benefit is concentrated where intended, defending camp; wildlife outside camp remains dangerous.*
+- Seven focused regression checks fail before the changes. A level-8 browser town keeps all 12 jacks through three minutes of raids and recovery, with no overlapping predator pack or page errors. Scripted runs and snapshots cannot determine whether a person finds this balance enjoyable.
+- Final checks: 263 JavaScript tests and seven Python checks pass. The repeat-wave fixture now uses a developed crew and the new recovery bounds; a lone survivor intentionally receives the minimum raid. Offline boot and saved seed/money restoration pass with the new worktree cache.
+- Save shape and map generation are unchanged. Use the provisional `v24-balance` cache in the worktree; assign the release cache and entry number at integration. Production `dist/` is not rebuilt.
+- Integration (17 Nov): standards review and the primary agent's gameplay review found no implementation issues. The separate gameplay reviewer was unavailable due to a usage limit. Assign entry 92 and release cache v25, and rebuild `dist/` for publishing.
+- Release checks: the merged code passes all 263 JavaScript tests and seven Python checks; the 85-file package boots offline and restores saved seed and money with cache v25, without page errors.

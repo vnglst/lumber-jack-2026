@@ -1023,7 +1023,9 @@
   function updWild(dt) {
     for (const a of G.animals) if (a.alive && FOE[a.kind].wild) updAnimal(a, dt); // the forest folk are run by LJ.combat
     if (G.animals.some(a => !a.alive)) G.animals = G.animals.filter(a => a.alive);
-    if (!G.animals.some(a => FOE[a.kind].wild) && (G.animalCd -= dt) <= 0) {
+    // Packs do not join a raid, or arrive on the heels of its retreat.
+    if (G.wave.active) G.animalCd = Math.max(G.animalCd, 30);
+    else if (!G.animals.some(a => FOE[a.kind].wild) && (G.animalCd -= dt) <= 0) {
       const e = wild(G.level).every;
       G.animalCd = e[0] + Math.random() * (e[1] - e[0]);
       spawnPack();

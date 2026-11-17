@@ -21,7 +21,8 @@ function campaign(seed, hours = 5, opts = {}) {
   const lj = game(seed), g = lj.G, w = g.world, W = w.W;
   const log = [], toasts = {}, levels = [{ level: 1, at: 0 }];
   const m = { deaths: 0, vehiclesLost: 0, waves: 0, raids: 0, orders: { taken: 0, done: 0, missed: 0 }, debtS: 0, idleS: 0, jackS: 0, stalls: [], packs: 0, fightS: 0, killers: {}, wipes: 0, mineOrders: 0, wallSections: 0,
-    acts: {}, tower: { bursts: 0, kills: 0 }, jackKills: 0, wrecked: 0 };
+    acts: {}, tower: { bursts: 0, kills: 0 }, jackKills: 0, wrecked: 0,
+    pressure: { peakAlive: 0, peakAttackers: 0, peakAtCamp: 0, largestWave: 0 } };
   const perLevel = (k, n = 1) => { const l = levels[levels.length - 1]; l[k] = (l[k] || 0) + n; };
   const note = (event, extra) => log.push(Object.assign({ t: Math.round(g.time), event }, extra));
   // Every order the scripted player gives, by kind and per level: how much the game asks of the player, and when.
@@ -264,6 +265,12 @@ function campaign(seed, hours = 5, opts = {}) {
     if (i % 20 === 0) {
       if (i % (20 * (opts.every || 1)) === 0) manage();
       if (opts.onSecond) opts.onSecond(lj);
+      const alive = g.animals.filter(a => a.alive), attackers = alive.filter(a => !a.retreat && !a.flee && (!a.defender || a.tg));
+      m.pressure.peakAlive = Math.max(m.pressure.peakAlive, alive.length);
+      m.pressure.peakAttackers = Math.max(m.pressure.peakAttackers, attackers.length);
+      m.pressure.peakAtCamp = Math.max(m.pressure.peakAtCamp, attackers.filter(a =>
+        Math.hypot(a.x - (g.base.tx + g.base.w / 2) * 16, a.y - (g.base.ty + g.base.h / 2) * 16) < 12 * 16).length);
+      m.pressure.largestWave = Math.max(m.pressure.largestWave, g.wave.active ? g.wave.active.size : 0);
       const js = lj.jacks();
       m.jackS += js.length;
       const idle = js.filter(u => !u.task && !u.path.length && !u.fighting).length;
@@ -287,7 +294,7 @@ function campaign(seed, hours = 5, opts = {}) {
     ore: g.ore, oreLeft: lj.ore.left(), mineOrders: m.mineOrders, wallSections: m.wallSections, jacks: lj.jacks().length, kills: g.kills, folkKilled: g.folkKilled, hutsLeft: g.huts.filter(h => h.alive).length, finds: g.finds.filter(f => f.found).length + '/' + g.finds.length,
     idleShare: +(m.idleS / Math.max(1, m.jackS)).toFixed(3), fightShare: +(m.fightS / Math.max(1, m.jackS)).toFixed(3), debtMinutes: Math.round(m.debtS / 60),
     deaths: m.deaths, wipes: m.wipes, gameOver: over, killers: m.killers, lastWaveMin: m.lastWaveAt && Math.round(m.lastWaveAt / 60), lastHutMin: m.lastHutAt && Math.round(m.lastHutAt / 60), vehiclesLost: m.vehiclesLost, packs: m.packs, waves: m.waves, raids: m.raids, orders: m.orders, stalls: m.stalls,
-    acts: m.acts, tower: m.tower, jackKills: m.jackKills, wrecked: m.wrecked,
+    acts: m.acts, tower: m.tower, jackKills: m.jackKills, wrecked: m.wrecked, pressure: m.pressure,
     levels: levels.map((l, k) => Object.assign({ minutes: +(((levels[k + 1] ? levels[k + 1].at : g.time) - l.at) / 60).toFixed(1) }, l)),
     bought, toasts, log
   };
@@ -304,7 +311,7 @@ if (require.main === module) {
     console.log(JSON.stringify({
       seed, finished: r.finished, level: r.level, minutes: r.minutes, deaths: r.deaths, atHome: r.killers['at home'] || 0, vehiclesLost: r.vehiclesLost,
       waves: r.waves, raids: r.raids, wrecked: r.wrecked, towerKills: r.tower.kills, crewKills: r.jackKills, idleShare: r.idleShare,
-      orders: Object.values(r.acts).reduce((a, b) => a + b, 0), stalls: r.stalls.length, money: Math.round(r.money)
+      orders: Object.values(r.acts).reduce((a, b) => a + b, 0), stalls: r.stalls.length, money: Math.round(r.money), pressure: r.pressure
     }));
   }
 }
