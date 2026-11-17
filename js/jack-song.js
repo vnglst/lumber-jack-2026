@@ -8,6 +8,7 @@
     serial++;
     if (source) { source.stop(); source = null; }
     active = null;
+    LJ.music?.interrupt(false);
   }
   function audio(id) {
     const out = LJ.synth?.live();
@@ -23,7 +24,7 @@
       if (!buffer || G.paused || !LJ.synth.live()) return;
       if (source) source.stop();
       const node = out.ctx.createBufferSource(), gain = out.ctx.createGain();
-      node.buffer = buffer; gain.gain.value = 0.45;
+      node.buffer = buffer; gain.gain.value = 0.6;
       node.connect(gain); gain.connect(out.dest); source = node;
       active.playing = true;
       const singers = active.answered ? active.crew.slice(1) : active.crew.slice(0, 1);
@@ -33,7 +34,8 @@
         if (source === node) source = null;
         if (ticket === serial && active) { active.playing = false; active.t = active.duration; }
       };
-      node.start();
+      LJ.music?.interrupt(true);
+      node.start(out.ctx.currentTime + 0.02); // let the music gate close before the first syllable
     });
   }
   const peaceful = () => !G.arrival && !G.cine && !G.levelDone && !G.wave.active &&

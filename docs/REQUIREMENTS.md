@@ -108,6 +108,9 @@ How to read it:
 | 95 | 17 Nov | Brighter Finnish flags waving in the wind | Active |
 | 96 | 17 Nov | Hostiles fight the first part of the operation they encounter | Active |
 | 97 | 17 Nov | Bulldozer upgrades and rapid late-game clearing | Active |
+| 98 | 17 Nov | Locals settle at home without flickering | Active |
+| 99 | 17 Nov | Silence background music while jacks sing | Active |
+| 100 | 17 Nov | Louder singing samples | Active |
 
 ---
 
@@ -1280,6 +1283,7 @@ How to read it:
 - Browser check: the level-8 fortified-town playground runs through its opening raid and continued logging with all 14 jacks, and no browser errors. Scripted completion, idle shares and losses assess pacing and recoverability; nobody has judged whether the revised fights are fun. The new offline cache has shell coverage from the test suite; offline boot was not repeated in this session. Production `dist/` is not rebuilt. Changes remain uncommitted.
 - Update the battle-playground recovery check to observe the end of the first raid directly. Waiting for a tower shot first can now advance beyond that raid when it stops at the work front. Check tower engagement across the scenarios instead of requiring every opening raid to reach a tower; all twelve battle scenarios retain the normal recovery window and remain playable.
 - The 24-run targeting comparison above uses pinned base `e33b270` plus this fix. After concurrent §97 bulldozer upgrades reached the working copy, four additional campaigns (seeds 1–4) also finish without stalls in 29–34 minutes, with 3/0/4/2 crew deaths and 2/3/8/4 vehicle losses. Preserve both changes; the combined release cache is v29.
+- Final combined validation: syntax checks, all 304 JavaScript tests and seven Python checks pass. The complete suite includes the concurrent flag and bulldozer changes; no further combat tuning was needed.
 
 ## 97. Bulldozer upgrades and rapid late-game clearing (17 Nov 2026)
 
@@ -1289,3 +1293,33 @@ How to read it:
 - *Decision: three successive fleet-wide tiers, improving existing and future bulldozers. Power Hydraulics at level 5 costs €450 and 8 ore: twice the clearing rate, 1.5 times the driving speed and 24 root wood capacity. Heavy-duty Dozer Engines at level 7 costs €950, 20 lumber and 16 ore: four times clearing, twice driving and 32 capacity. Bulldozer Overdrive at level 9 costs €1,800, 40 lumber and 24 ore: eight times clearing, three times driving and 48 capacity. Each replaces the previous tier's bonuses and requires it.*
 - *Decision: apply clearing bonuses to roots, rock and water. At full strength a rock takes 0.3125 seconds, roots 0.375 seconds and water 0.5 seconds, with driving at 108 pixels per second. Route planning weighs the current clearing and driving rates. Preserve root/stone/ore yields, tree-cutting roles, explicit river orders and Stop behaviour.*
 - Save format remains v10: upgrades use the existing upgrade map; older saves retain stock bulldozers, terrain and progress. Bump the offline shell to v29. Production `dist/` is not rebuilt.
+- Validation: 19 focused upgrade checks pass (15 fail on the pinned base), covering tier purchases, movement, roots/rock/water timing, yields, batch delivery, Stop and saves on cleared land. Combined-code campaigns on seeds 1–3 reach the ending without stalls in 29–34 minutes. Browser checks purchase all tiers, inspect the opening and full late-game HUD/market/shop at desktop, 320 px portrait and 844 px landscape, and restore the upgraded save offline from v29 without page errors. Screenshots and scripted checks cannot judge how satisfying the speed feels to play.
+- Final combined validation: syntax checks, all 304 JavaScript tests and seven Python checks pass.
+
+## 98. Locals settle at home without flickering (17 Nov 2026)
+
+> Locals seem to be "stuck" in their village. Flickering. If they're in there village, they're not visible.
+
+- Fix locals repeatedly walking or flipping in place around their huts.
+- Hide locals resting inside their hut, including the faint creature rendering pass.
+- *Decision: peaceful locals accept personal space around outdoor destinations instead of continually walking against separation. They still walk fully indoors and can leave again. Returned defenders stop walking once home; indoor residents do not push one another out. Active defenders remain visible and respond to intruders normally.*
+- Save shape and map generation are unchanged. Refresh the offline shell to v30.
+
+## 99. Silence background music while jacks sing (17 Nov 2026)
+
+> When the jacks start singing the music playing should stop. Currently you can't hear them.
+
+- Stop background music during both singing Easter eggs and resume it afterward.
+- *Decision: gate the music's dry notes and echo together, leaving the effects/voice bus audible. Close the gate with a 20 ms ramp immediately before the sample starts, keep it closed between the solo and crew chorus, and release it when singing ends, is interrupted by danger/pause, or resets. Preserve music on/off and volume preferences.*
+- *Decision: stop scheduling new background notes while interrupted and resume the current scene afterward. Do not alter song triggers, campaign flags, saves or game rules.*
+- Two focused regression tests reproduce the overlap before the fix. They cover solo, crew chorus, retained music preference, resumed background music, pause, danger and replay.
+- Isolated browser measurements: music output is zero during solo, chorus and the repeated-tap solo, while the singing signal remains nonzero; music is audible before, after and following replay. No page errors. Nobody listened to judge the mix.
+- Offline shell cache: v31. Changes remain uncommitted.
+
+## 100. Louder singing samples (17 Nov 2026)
+
+> Song should be a little louder.
+
+- Raise both singing samples slightly.
+- *Decision: raise sample gain from 0.45 to 0.6, about 2.5 dB. Retain the effects-volume setting and the temporary background-music interruption through the solo and chorus. No sample editing or re-encoding.*
+- Refresh the offline shell to v32.

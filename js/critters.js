@@ -66,11 +66,13 @@
         if (!c.moving && (c.t -= dt) <= 0) critterGo(c, h.x + (Math.random() - 0.5) * 32, h.y + (Math.random() - 0.5) * 32);
         if (c.moving) {
           const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy), dist = Math.min(d, 16 * dt);
-          if (d < 1) critterStop(c, 2 + Math.random() * 4);
+          // Outdoors, accept personal space around a destination shared by neighbours.
+          // At home, walk all the way inside before resting.
+          if (d < (LJ.tileOfPx(c.tx, c.ty) === c.home ? 1 : 10)) critterStop(c, 2 + Math.random() * 4);
           else {
             const nx = c.x + dx / d * dist, ny = c.y + dy / d * dist;
             if (crossesWall(c, nx, ny)) critterStop(c, 1);
-            else { c.x = nx; c.y = ny; c.dir = dx > 0 ? 1 : -1; c.walkT += dt; }
+            else { c.x = nx; c.y = ny; if (Math.abs(dx) > 0.1) c.dir = dx > 0 ? 1 : -1; c.walkT += dt; }
           }
         }
         continue;

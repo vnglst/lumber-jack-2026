@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { game } = require('./harness.cjs');
 
 // Exercise the real renderer; record canvas bounds and mask pixels without a browser dependency.
 function scene(tx, ty) {
@@ -20,7 +21,7 @@ function scene(tx, ty) {
     fog: new Uint8Array(N), fogLeft: N, fogDirty: true, up: {}, sel: new Set()
   };
   for (const key of ['units', 'buildings', 'critters', 'falls', 'animals', 'graves', 'props', 'bolts', 'arrows', 'parts', 'bflies']) G[key] = [];
-  const LJ = { ui: { pings: [], PING: 0.45 },
+  const LJ = { ui: { pings: [], PING: 0.45 }, combat: { insideHut: () => false },
     TS: 16, T: { WATER: 2, ROCK: 3 }, TREE_ROWS: 4, STUMP: 9, G, ctx,
     cv: { width: (W + 8) * 16, height: (H + 8) * 16 },
     sprites: { trees: [[tree]], sign: { width: 12, height: 24 } },
@@ -41,6 +42,28 @@ function scene(tx, ty) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/render.js'), 'utf8'), { LJ, document });
   return { lj: LJ, g: G, w, tree, draws, masks };
 }
+
+test('locals inside their hut stay hidden and reappear outdoors or when defending', () => {
+  const real = game(), home = real.G.huts[0];
+  // Keep the real hut predicate, with a hut inside this renderer's small viewport.
+  home.x = home.y = 64; home.tile = real.tileOfPx(64, 64);
+  const { lj, g, draws } = scene(4, 4), sprite = { width: 12, height: 16 };
+  lj.combat = real.combat;
+  lj.sprites.native = [{ l: sprite, r: sprite }, { l: sprite, r: sprite }];
+  for (const list of [g.critters, g.animals]) {
+    const c = { kind: 'native', home: home.tile, x: 64, y: 64, dir: 1, alpha: 1, walkT: 0, hp: 30, max: 30 };
+    list.push(c);
+    draws.length = 0; lj.render();
+    assert.ok(!draws.some(d => d.image === sprite), 'indoor local is hidden');
+    c.x += 16;
+    draws.length = 0; lj.render();
+    assert.ok(draws.some(d => d.image === sprite), 'outdoor local is visible');
+    c.x -= 16; c.tg = { u: {} };
+    draws.length = 0; lj.render();
+    assert.ok(draws.some(d => d.image === sprite), 'active defender remains visible');
+    list.pop();
+  }
+});
 
 for (const motion of ['moving', 'shuffling']) {
   test('a ' + motion + ' swan renders throughout its animation cycle', () => {

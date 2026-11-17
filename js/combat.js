@@ -23,6 +23,9 @@
     }));
   };
   C.hutAt = tile => G.huts.find(h => h.tile === tile && h.alive) || null;
+  // Resting residents are indoors, not a crowd to separate or draw through the roof.
+  C.insideHut = c => c.kind === 'native' && !c.tg && !c.retreat &&
+    LJ.tileOfPx(c.x, c.y) === c.home && !!C.hutAt(c.home);
   C.angerHut = function (h) {
     if (!h.alive || h.angry) return;
     h.angry = true;
@@ -197,6 +200,7 @@
     }
     if (!a.tg) {
       if (!hut) { a.retreat = true; return; }
+      if (C.insideHut(a)) { a.tile = a.home; a.path = []; a.vx = a.vy = 0; return; }
       if (a.repath <= 0) { a.repath = 1.2; a.path = LJ.enemyPath(a.tile, c => c === a.home) || []; }
       march(a, dt, a.speed);
       return;
