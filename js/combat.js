@@ -152,6 +152,13 @@
     return c => { const x = colOf(c), y = rowOf(c); return x >= b.tx - 1 && x <= b.tx + b.w && y >= b.ty - 1 && y <= b.ty + b.h; };
   }
 
+  function clearShortcut(from, next) {
+    if (next === undefined) return false;
+    const w = G.world, dx = Math.sign(colOf(next) - colOf(from)), dy = Math.sign(rowOf(next) - rowOf(from));
+    const clear = i => LJ.wildPass(i) && !w.wall[i];
+    return clear(from + dx + dy * w.W) && (!dx || !dy || (clear(from + dx) && clear(from + dy * w.W)));
+  }
+
   // Walks an enemy along its path; returns the palisade tile in the way, or -1. Used by wolves and bears too.
   const march = (LJ.march = function (a, dt, speed, exactLast = false) {
     let dist = speed * dt, wall = -1;
@@ -161,19 +168,22 @@
       wall = LJ.wallInWay(a.tile, n);
       if (wall >= 0) break;
       const px = colOf(n) * TS + 8, py = rowOf(n) * TS + 10, dx = px - a.x, dy = py - a.y, d = Math.hypot(dx, dy);
+      const from = LJ.tileOfPx(a.x, a.y), fx = colOf(from), fy = rowOf(from);
       // A flock follows a corridor, not a single-file chain of exact pixel centres.
       // Coming within a body's radius is enough; separation can keep larger
       // neighbours on opposite sides of a tile boundary indefinitely.
-      if (d < 0.001 || (d < Math.max(12, LJ.flockRadius(a)) && (!exactLast || a.path.length > 1))) {
-        a.path.pop(); a.tile = LJ.tileOfPx(a.x, a.y); continue;
+      // A waypoint at a corner may be the only way around the obstruction.
+      if (d < 0.001 || (d < Math.max(12, LJ.flockRadius(a)) && (!exactLast || a.path.length > 1) &&
+          (from === n || clearShortcut(from, a.path[a.path.length - 2])))) {
+        a.path.pop(); a.tile = from; continue;
       }
       // Separation may have moved us off the planned corridor. Validate the real
       // step, including corner clearance, before following an old waypoint.
       const step = Math.min(d, dist), nx = a.x + dx / d * step, ny = a.y + dy / d * step;
-      const from = LJ.tileOfPx(a.x, a.y), to = LJ.tileOfPx(nx, ny);
+      const to = LJ.tileOfPx(nx, ny);
       wall = LJ.wallInWay(from, to);
       if (wall >= 0) break;
-      const fx = colOf(from), fy = rowOf(from), tx = colOf(to), ty = rowOf(to);
+      const tx = colOf(to), ty = rowOf(to);
       if (!LJ.wildPass(to) || (fx !== tx && fy !== ty &&
           (!LJ.wildPass(fy * G.world.W + tx) || !LJ.wildPass(ty * G.world.W + fx)))) {
         a.tile = from; a.repath = 0; break;
