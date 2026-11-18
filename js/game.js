@@ -142,7 +142,7 @@
 
   // What everyone says lives in lines.js, so the recording booth can list it.
   const LN = LJ.LINES, M = LN.misc;
-  const Q_NORMAL = LN.normal, Q_ANNOYED = LN.annoyed, Q_FUNNY = LN.funny, Q_ACK = LN.ack, Q_BROKE = LN.broke, Q_NONE = LN.none, Q_VEH = LN.veh;
+  const Q_POKE = LN.poke, Q_ACK = LN.ack, Q_BROKE = LN.broke, Q_NONE = LN.none, Q_VEH = LN.veh;
 
   const isTree = i => w.obj[i] >= 1 && w.obj[i] <= 3;
   const pass = i => { const t = w.type[i]; return t !== T.WATER && t !== T.ROCK && !isTree(i) && w.bld[i] === 0 && !w.wall[i]; };
@@ -1332,11 +1332,16 @@
   };
 
   LJ.poke = function (u) {
-    u.clicks = G.time - u.lastClick < 4 ? u.clicks + 1 : 0;
-    u.lastClick = G.time;
     if (u.kind !== 'jack') { say(u, LJ.pick(Q_VEH[VEH[u.kind].voice || u.kind])); return; }
-    if (LJ.jackSong.poke(u)) return;
-    say(u, LJ.pick(G.money < 0 && u.hired ? Q_BROKE : u.clicks < 3 ? Q_NORMAL : u.clicks < 6 ? Q_ANNOYED : Q_FUNNY));
+    if (G.time - u.lastClick >= 4) { u.clicks = -1; u.pokeSang = false; }
+    u.lastClick = G.time;
+    if (LJ.jackSong.isSinging(u)) return;
+    u.clicks = Math.min(u.clicks + 1, Q_POKE.length);
+    if (u.clicks === Q_POKE.length && !u.pokeSang && LJ.jackSong.startSolo(u)) {
+      u.pokeSang = true;
+      return;
+    }
+    say(u, Q_POKE[Math.min(u.clicks, Q_POKE.length - 1)]);
   };
 
   // ---------- Shop & building ----------

@@ -64,6 +64,8 @@ LJ.LINES = {
     { who: 'jack', text: '…The kids will never have to know what the shares are in.' }
   ]
 };
+// Every tap advances one line; a quiet spell starts the same sequence again.
+LJ.LINES.poke = [...LJ.LINES.normal, ...LJ.LINES.annoyed, ...LJ.LINES.funny];
 
 // Sounds without words. `who` is the voice channel: a new sound from the same one cuts off the last.
 LJ.CUES = [
@@ -116,9 +118,9 @@ LJ.voiceGroups = function () {
   };
   add('intro', 'jack', 'Jack: arriving at the forest', 'The opening truck ride: how he ended up here. Dry, tired, a little hopeful.', L.intro);
   add('camp', 'jack', 'Jack: at camp', 'Right after arriving, parked next to the tent: how to play. Practical, getting to work.', L.camp);
-  add('poke1', 'jack', 'Jack: tapped', 'Said when you tap a jack. The first three taps in a row.', L.normal);
-  add('poke2', 'jack', 'Jack: tapped again', 'Taps four to six in a row. He is getting annoyed.', L.annoyed);
-  add('poke3', 'jack', 'Jack: tapped too much', 'Seven or more taps in a row. He has had it.', L.funny);
+  add('poke1', 'jack', 'Jack: tapped', 'The first six taps, in this order. Four quiet seconds reset the sequence.', L.normal);
+  add('poke2', 'jack', 'Jack: tapped again', 'Taps seven to eleven, in this order. He is getting annoyed.', L.annoyed);
+  add('poke3', 'jack', 'Jack: tapped too much', 'Taps twelve to eighteen, in this order. The next tap starts the song.', L.funny);
   add('ack', 'jack', 'Jack: given an order', 'Said when you send a jack to work.', L.ack);
   add('broke', 'jack', 'Jack: not paid', 'You are in debt and the jacks grumble.', L.broke);
   add('none', 'jack', 'Jack: nothing to do', 'No trees left in reach.', L.none.concat(m.allClear));

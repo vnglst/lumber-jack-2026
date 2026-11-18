@@ -32,7 +32,7 @@ test('solo and crew chorus silence all background music until singing ends', asy
   for (const kind of ['poke', 'crew']) {
     const { lj, sources, musicIsSilent, effectsOutput } = setup();
     assert.equal(musicIsSilent(), false);
-    if (kind === 'poke') for (let n = 0; n < 10; n++) lj.poke(lj.jacks()[0]);
+    if (kind === 'poke') for (let n = 0; n <= lj.LINES.poke.length; n++) lj.poke(lj.jacks()[0]);
     else step(lj, 3.2);
     await new Promise(setImmediate);
     lj.music.tick('work');

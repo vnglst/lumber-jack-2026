@@ -115,6 +115,7 @@ How to read it:
 | 102 | 17 Nov | Keep the difficulty manageable | Active |
 | 103 | 17 Nov | Review and package the audio release | Done |
 | 104 | 17 Nov | Wildlife settles without flickering or crowding stalls | Active |
+| 105 | 17 Nov | Ordered Jack poke responses, then singing | Active |
 
 ---
 
@@ -1155,6 +1156,8 @@ How to read it:
 
 ## 88. Rare Lumberjack Song Easter eggs and playground scenes (16 Nov 2026)
 
+**Status:** §105 supersedes the ten-tap, once-per-campaign solo trigger. The crew singalong remains active.
+
 > I like 1 and 3! Implement these. Add them to the playground for testing, so I can test the feature.
 
 - Implement the repeated-click solo and rare crew call-and-response proposed after reviewing the original Lumber Jack game.
@@ -1370,3 +1373,18 @@ How to read it:
 - Independent review found two further endpoint stalls: predators could discard a unit approach outside bite range or a retreat endpoint outside their home tile. Two focused regressions fail before the fix. Finish every predator's final waypoint precisely, retaining relaxed intermediate flock waypoints. This also preserves exact building approaches. Include the review fixes in v35 before publishing.
 - Final endpoint check: returning hut defenders must also cross into their home tile before settling. A focused test fails with relaxed final arrival and passes with a precise final waypoint. All 33 focused arrival, flocking, local and combat checks pass; the three combined-code campaigns reach the ending in 30–37 minutes without stalls. Refresh the shell to v36 for this final return-home correction.
 - Follow-up validation: the level 7 battle playground on seed 999 exposed a raider repeatedly skipping a waypoint needed to turn around a blocked corner. Check the first tile and both sides of a diagonal before skipping a nearby waypoint from outside its tile. The existing battle recovery check reproduces the failure and passes with the correction. Refresh the production package and offline shell to v37.
+
+
+> The jack messages when you poke it should come in a predefined order, from friendly to annoyed (always the same order). This order resets after a little while. After last available message they start singing lumber jack song from Monty python.
+
+- Each Jack responds in a fixed sequence from friendly through annoyed to exasperated, then starts the existing Monty Python song recording on the next poke.
+- Reset the sequence after a short period without poking that Jack.
+- *Decision: play all six normal, five annoyed and seven funny responses in their existing authored order; tap 19 starts singing. Keep the existing four-second inactivity reset, measured per Jack in game time. Debt no longer substitutes random poke responses; ordinary payday complaints remain unchanged.*
+- *Decision: allow the poke song to repeat after a fresh sequence, including in campaigns where it has already played or its saved flag is set. Keep the crew singalong once per campaign. Preserve danger/pause interruptions, orders, recordings and save shape. When danger prevents singing, hold the final response until it is peaceful or the sequence resets.*
+- Update the playground instructions and recording-booth hints to match the sequence. Existing line text and voice-recording keys stay unchanged.
+- Validation: two focused checks fail before the implementation and all seven song checks pass afterwards, covering every response, the four-second boundary, independent Jacks, debt, singing again after save restoration and danger.
+- Isolated browser verification: 19 real pointer taps produce all 18 responses in order and then the song; the effects analyser detects audio, and the first friendly response returns after inactivity. The new cache boots offline, restores seed 42 and saved money, and serves the existing song recording without errors. Nobody listened to judge the mix.
+- Rechecked on 18 Nov against newer main. The full run on `7034aae` passed 319 of 321 JavaScript checks. Updated the music interruption test to drive the new trigger. The raid recovery timeout also reproduced on the unmodified base and passed after the independent retreat fix in `e99a34f`. All 14 focused song, music and offline checks and seven Python checks pass. With the retreat fix and poke patch together, all 11 selected integration checks pass.
+- Review: pokes during playback do not consume dialogue lines, and the solo plays only once per poke streak. A new streak can start after four quiet seconds. Update the README and rebuild the production package with offline shell v38.
+- Release verification: the playback regression fails before the review fix and passes after it. The integrated source passes browser checks for real pointer input, audio output and offline save restoration. Scripted campaigns on seeds 1–3 finish in 28–33 simulated minutes without stalls.
+- Final release checks: all 322 JavaScript tests and seven Python checks pass. The rebuilt 124-file package contains the verified game scripts and v38 shell.

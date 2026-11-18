@@ -1,5 +1,5 @@
 'use strict';
-// Two rare callbacks to the original Lumber Jack. No orders or random draws change.
+// A poke solo and a rare resting-crew callback to the original Lumber Jack.
 (function () {
   const G = LJ.G;
   let active = null, serial = 0, source = null;
@@ -53,9 +53,9 @@
   LJ.jackSong = {
     pause() { if (active) stop(); },
     reset() { stop(); G.jackSong = { poke: false, crew: false, quiet: 0 }; },
-    poke(u) {
-      if (active) return active.crew.includes(u);
-      if (u.clicks < 9 || G.jackSong.poke || !peaceful()) return false;
+    isSinging(u) { return !!active?.crew.includes(u); },
+    startSolo(u) {
+      if (active || !peaceful()) return false;
       start('poke', [u]); return true;
     },
     update(dt) {

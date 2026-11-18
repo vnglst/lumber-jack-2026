@@ -10,28 +10,72 @@ function scene(kind) {
   lj.playground.load({ scene: kind, seed: 42 });
   return lj;
 }
-test('ten quick taps sing only once, with no change to the order', () => {
+const pokeLines = lj => [...lj.LINES.normal, ...lj.LINES.annoyed, ...lj.LINES.funny];
+test('every poke response plays in order before singing, without changing work orders', () => {
   const lj = scene('song-poke'), u = lj.jacks()[0], task = u.task;
-  for (let i = 0; i < 9; i++) lj.poke(u);
+  for (const line of pokeLines(lj)) {
+    lj.poke(u);
+    assert.equal(lj.G.bubbles.find(b => b.u === u).text, line);
+  }
   assert.equal(lj.G.jackSong.poke, false);
   lj.poke(u);
   assert.equal(lj.G.jackSong.poke, true);
   assert.equal(lj.G.bubbles.find(b => b.u === u).text, lj.LINES.song[0]);
   assert.equal(u.task, task); assert.equal(u.hold, true);
+  lj.poke(u);
+  assert.equal(lj.G.bubbles.find(b => b.u === u).text, lj.LINES.song[0]);
   step(lj, 6);
-  for (let i = 0; i < 12; i++) lj.poke(u);
-  assert.notEqual(lj.G.bubbles.find(b => b.u === u).text, lj.LINES.song[0]);
+  lj.poke(u);
+  assert.equal(lj.G.bubbles.find(b => b.u === u).text, pokeLines(lj)[0]);
   lj.saveGame(); assert.equal(lj.loadGame(), true);
   assert.equal(lj.G.jackSong.poke, true);
   lj.newGame(43); assert.equal(lj.G.jackSong.poke, false);
+});
+test('four quiet seconds reset each jack independently, even after singing or saving', () => {
+  const lj = scene('song-crew'), [u, other] = lj.jacks();
+  lj.G.jackSong.crew = true;
+  lj.G.money = -1; u.hired = true;
+  lj.poke(u); lj.poke(u);
+  lj.G.time += 3.99; lj.poke(u);
+  assert.equal(lj.G.bubbles.find(b => b.u === u).text, pokeLines(lj)[2]);
+  lj.poke(other);
+  assert.equal(lj.G.bubbles.find(b => b.u === other).text, pokeLines(lj)[0]);
+  lj.G.time += 4;
+  for (const line of pokeLines(lj)) {
+    lj.poke(u);
+    assert.equal(lj.G.bubbles.find(b => b.u === u).text, line);
+  }
+  lj.poke(u); assert.equal(lj.G.jackSong.poke, true);
+  step(lj, 6);
+  lj.saveGame(); assert.equal(lj.loadGame(), true);
+  const restored = lj.jacks()[0];
+  for (const line of pokeLines(lj)) {
+    lj.poke(restored);
+    assert.equal(lj.G.bubbles.find(b => b.u === restored).text, line);
+  }
+  lj.poke(restored);
+  assert.equal(lj.G.bubbles.find(b => b.u === restored).text, lj.LINES.song[0]);
 });
 test('spaced taps and danger cannot trigger singing', () => {
   const lj = scene('song-poke'), u = lj.jacks()[0];
   for (let i = 0; i < 12; i++) { lj.G.time += 5; lj.poke(u); }
   assert.equal(lj.G.jackSong.poke, false);
   lj.G.wave.active = {};
-  for (let i = 0; i < 12; i++) lj.poke(u);
+  for (let i = 0; i <= pokeLines(lj).length; i++) lj.poke(u);
   assert.equal(lj.G.jackSong.poke, false);
+});
+test('pokes during singing preserve a pending reset and cannot start a second solo in one streak', () => {
+  const lj = scene('song-poke'), u = lj.jacks()[0];
+  const finishLines = () => { for (const line of pokeLines(lj)) lj.poke(u); lj.poke(u); };
+  const response = () => lj.G.bubbles.find(b => b.u === u)?.text;
+  finishLines();
+  step(lj, 3); lj.poke(u);
+  step(lj, 3); lj.poke(u);
+  assert.equal(response(), pokeLines(lj).at(-1));
+  step(lj, 4.1); finishLines();
+  step(lj, 4.1); lj.poke(u);
+  step(lj, 2); lj.poke(u);
+  assert.equal(response(), pokeLines(lj)[0]);
 });
 test('resting crew sings solo then chorus once; movement interrupts', () => {
   const lj = scene('song-crew');

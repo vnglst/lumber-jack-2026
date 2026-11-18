@@ -170,7 +170,7 @@
       jack.clicks = 0; jack.lastClick = -100;
       G.ground.renderAll();
       LJ.ui.centerOn(jack.x, jack.y); G.paused = false;
-      return scene === 'song-poke' ? 'Song Easter egg: tap the selected Jack ten times at a steady pace (about half a second apart). Once per campaign. Replay resets it.' :
+      return scene === 'song-poke' ? 'Tap Jack steadily: 18 responses in order, then the song on tap 19. Space taps about half a second apart. Four quiet seconds reset his responses; you can repeat the song.' :
         'Crew singalong: three resting jacks near camp. The solo starts in three seconds, followed by the chorus. Once per campaign. Replay resets it; click Load / replay to enable audio.';
     } else if (scene === 'hut') {
       let chosen = null, path = null;
