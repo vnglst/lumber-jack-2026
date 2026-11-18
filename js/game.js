@@ -40,17 +40,19 @@
   }
   const TRUCK_SPEED = { road: 96, trail: 60, ground: 36 };
   const VEH = (LJ.VEH = {
-    truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => (G.up.mega ? 120 : 60), max: 3 },
-    shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, speed: TRUCK_SPEED, cap: () => 40, max: 4, sprite: 'shuttle', voice: 'truck' },
-    dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, cap: () => dozerTier().cap, max: 2,
+    // room: half the body's width in pixels, the space it keeps from its neighbours (see LJ.spaceUnits).
+    truck: { name: 'Truck', wage: 10, hp: 180, wear: 6, room: 11, speed: TRUCK_SPEED, cap: () => (G.up.mega ? 120 : 60), max: 3 },
+    shuttle: { name: 'Logging Truck', wage: 8, hp: 180, wear: 6, room: 11, speed: TRUCK_SPEED, cap: () => 40, max: 4, sprite: 'shuttle', voice: 'truck' },
+    // step: how much dearer each further one is, as a share of the first (half, unless set); max: how many you may own.
+    dozer: { name: 'Bulldozer', wage: 15, hp: 260, wear: 10, room: 12, cap: () => dozerTier().cap, max: Infinity, step: 0,
       tiers: [
         { work: 1, speed: 1, cap: 16 },
         { id: 'hydraulics', work: 2, speed: 1.5, cap: 24 },
         { id: 'dozerEngine', work: 4, speed: 2, cap: 32 },
         { id: 'dozerOverdrive', work: 8, speed: 3, cap: 48 }
       ] },
-    feller: { name: 'Felling Tractor', wage: 18, hp: 220, wear: 8, cap: () => 24, max: 3, chop: 2.4, sight: 7, voice: 'harv', speed: { road: 54, trail: 40, ground: 30 } },
-    harv: { chop: 1.6, sight: 8, name: 'Harvester', wage: 30, hp: 240, wear: 8, cap: () => (G.up.mega ? 60 : 40), max: 3 }
+    feller: { name: 'Felling Tractor', wage: 18, hp: 220, wear: 8, room: 10, cap: () => 24, max: 3, chop: 2.4, sight: 7, voice: 'harv', speed: { road: 54, trail: 40, ground: 30 } },
+    harv: { chop: 1.6, sight: 8, name: 'Harvester', wage: 30, hp: 240, wear: 8, room: 12, cap: () => (G.up.mega ? 60 : 40), max: 3 }
   });
   // The starting tent grows into the village, one upgrade at a time.
   const TIERS = (LJ.TIERS = [
@@ -67,7 +69,7 @@
     bunk: { name: 'Bunkhouse', size: [2, 2], build: 12, max: 4, sight: 5 },
     sawmill: { name: 'Sawmill', size: [3, 2], build: 18, max: 3, sight: 5, mask: 'sawMask' },
     // brace: extra hit points from an upgrade, by its id
-    tower: { name: 'Guard Tower', size: [2, 2], build: 20, max: 6, sight: 13, heals: true, hp: 320, target: true, brace: { twin: 160 } }
+    tower: { name: 'Guard Tower', size: [2, 2], build: 20, max: Infinity, sight: 13, heals: true, hp: 320, target: true, brace: { twin: 160 } }
   });
   let w, W, H, vis, par, q, stamp = 0;
   // A tile is an index into the map's layers. Its column and row, and where a unit standing on it is drawn:
@@ -95,7 +97,7 @@
 
   const vehItem = (id, level, m, desc, icon) => ({
     id, name: VEH[id].name, desc: desc + ' Upkeep €' + VEH[id].wage + ' per payday.', icon, level, need: 'cabin', repeat: true,
-    cost: () => ({ m: m + Math.round(m * 0.5) * countKind(id) }), can: () => countKind(id) < VEH[id].max, full: 'Max ' + VEH[id].max
+    cost: () => ({ m: m + Math.round(m * (VEH[id].step ?? 0.5)) * countKind(id) }), can: () => countKind(id) < VEH[id].max, full: 'Max ' + VEH[id].max
   });
   const bldItem = (id, level, cost, desc, icon) => ({
     id, name: BLD[id].name, desc: desc + ' Builds in ' + BLD[id].build + ' seconds.', icon, level, need: 'cabin', repeat: true, place: BLD[id].size,
@@ -124,7 +126,7 @@
     vehItem('shuttle', 3, 150, 'Tap a forest clearing to set a route. Jacks load it there; it shuttles up to 40 wood back to the village automatically.', 'shuttle'),
     bldItem('tower', 3, () => ({ m: 250, w: 30 }), 'Stops war parties and wild animals: its laser bursts out-range a bow and are aimed ahead of whatever runs at it. Sees far, and jacks nearby heal quickly.', 'tower'),
     { id: 'wall', name: 'Palisade', desc: 'Drag to build wooden walls. Takes ' + WALL_BUILD_TIME + ' seconds per section. Blocks every unit: leave openings for your crew and trucks. Enemies can break through. Per section:', icon: 'wall', level: 3, need: 'cabin', repeat: true, wall: true, cost: () => WALL_COST },
-    vehItem('dozer', 4, 600, 'Uproots stumps for extra wood, clears rocks for stone (and any ore in them) and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
+    vehItem('dozer', 4, 200, 'Uproots stumps for extra wood, clears rocks for stone (and any ore in them) and fills rivers. Leaves uprooted land barren and muddy.', 'dozer'),
     { id: 'hydraulics', name: 'Power Hydraulics', desc: 'All bulldozers clear roots, rocks and water twice as fast, drive 50% faster and carry 24 root wood.', icon: 'dozer', level: 5, need: 'dozer', cost: () => ({ m: 450, o: 8 }) },
     { id: 'dozerEngine', name: 'Heavy-duty Dozer Engines', desc: 'All bulldozers clear 4 times as fast, drive twice as fast and carry 32 root wood. Replaces the previous tier.', icon: 'dozer', level: 7, need: 'hydraulics', cost: () => ({ m: 950, l: 20, o: 16 }) },
     { id: 'dozerOverdrive', name: 'Bulldozer Overdrive', desc: 'All bulldozers clear 8 times as fast, drive 3 times as fast and carry 48 root wood. Replaces the previous tier.', icon: 'dozer', level: 9, need: 'dozerEngine', cost: () => ({ m: 1800, l: 40, o: 24 }) },
@@ -225,6 +227,32 @@
     });
   };
 
+  // Jacks and machines keep a little room between them instead of standing on top of each other. This is a drawing
+  // offset (u.ox, u.oy) only: positions, routes and reach stay on the tile grid the rules use, so spacing can never
+  // push a unit out of range, through a wall or off its tile, and it draws nothing from the random stream.
+  const roomOf = u => (u.kind === 'jack' ? 5 : VEH[u.kind].room || 10);
+  LJ.spaceUnits = function (dt) {
+    if (dt <= 0) return;
+    const list = G.units.filter(u => !u.dead), push = list.map(() => [0, 0]);
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      const a = list[i], b = list[j], space = roomOf(a) + roomOf(b);
+      let dx = a.x + (a.ox || 0) - b.x - (b.ox || 0), dy = (a.y + (a.oy || 0) - b.y - (b.oy || 0)) * 1.5; // rows read closer than columns
+      let d = Math.hypot(dx, dy);
+      if (d >= space) continue;
+      if (d < 0.001) { const t = (a.id * 2.39996 + b.id * 0.932) % (Math.PI * 2); dx = Math.cos(t); dy = Math.sin(t); d = 1; }
+      const f = (space - d) / d;
+      push[i][0] += dx * f; push[i][1] += dy * f / 1.5;
+      push[j][0] -= dx * f; push[j][1] -= dy * f / 1.5;
+    }
+    list.forEach((u, i) => {
+      const most = u.kind === 'jack' ? 6 : 9, k = Math.min(1, dt * 6);
+      let ox = (u.ox || 0) + (push[i][0] * 0.5 - (u.ox || 0) * 0.25) * k, oy = (u.oy || 0) + (push[i][1] * 0.5 - (u.oy || 0) * 0.25) * k;
+      const len = Math.hypot(ox, oy);
+      if (len > most) { ox *= most / len; oy *= most / len; }
+      u.ox = Math.abs(ox) < 0.05 ? 0 : ox; u.oy = Math.abs(oy) < 0.05 ? 0 : oy;
+    });
+  };
+
   // Everything that attacks the operation. wild: roams as wildlife (the forest folk come in waves instead).
   // For wildlife: chance(level) that an encounter is this animal (wolves are whatever is left over), group(pack, crew)
   // how many come, hp/dmg/speed relative to a wolf of that level, appear the cue when they turn up, warn the message.
@@ -295,7 +323,7 @@
       villMask: new Uint8Array(w.N), storeMask: new Uint8Array(w.N), sawMask: new Uint8Array(w.N), smokeT: 0,
       fog: new Uint8Array(w.N), fogDirty: true, fogT: 0, fogLeft: w.N, worldVer: 0,
       animals: [], graves: [], animalCd: 70, kills: 0, earned: 0, jackN: 0, autoT: 0, steamT: 0,
-      cine: null, suit: null, props: [], critters: [], wildlifeT: 8, dc: null, folkKilled: 0, wallMode: false, wallDrag: null, wallSites: {}, arrival: null
+      cine: null, suit: null, props: [], critters: [], wildlifeT: 8, dc: null, folkKilled: 0, wallMode: false, wallErase: false, wallCut: false, wallDrag: null, wallSites: {}, arrival: null
     });
     LJ.jackSong.reset();
     LJ.discoveries.init();
@@ -948,6 +976,21 @@
     }
     if (gaps) LJ.ui.toast('Left an opening in the palisade: closing it would cut your crew and trucks off from the road.');
     if (n) { LJ.sfx('build'); G.worldVer++; }
+    return n;
+  };
+  // Takes palisade sections down again. A section still being built is refunded in full; a finished one gives
+  // back its wood. Taking walls down only ever opens ground, so there is nothing to check about the road.
+  LJ.removeWalls = function (tiles) {
+    if (G.cine) return 0;
+    let n = 0;
+    for (const i of tiles) {
+      if (!w.wall[i]) continue;
+      if (G.wallSites[i]) G.money += WALL_COST.m;
+      G.wood += WALL_COST.w;
+      w.wall[i] = 0; delete G.wallSites[i]; n++;
+      for (let k = 0; k < 4; k++) dust(midX(i), rowOf(i) * TS + 14);
+    }
+    if (n) { LJ.sfx('chop'); G.worldVer++; }
     return n;
   };
   LJ.damageWall = function (i, dmg) {
@@ -1670,6 +1713,7 @@
       if (u.dead) continue;
       updUnit(u, dt);
     }
+    LJ.spaceUnits(dt);
     LJ.critters.update(dt);
     if (G.cine) LJ.ending.update(dt);
     else {

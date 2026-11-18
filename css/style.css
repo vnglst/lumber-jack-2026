@@ -348,7 +348,7 @@ button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
   width: min(620px, calc(100vw - 32px)); display: none; gap: 14px; align-items: center; padding: 16px 18px 14px; cursor: pointer;
 }
 #cine.open { display: flex; }
-#cine .who canvas { width: 66px; height: 66px; background: var(--tar); border-radius: 2px; }
+#cine .who canvas { width: 72px; height: 72px; background: var(--tar); border-radius: 2px; }
 #cine .nm { font-size: 13px; color: var(--ochre); }
 #cine .tx { font-size: 17px; line-height: 1.4; color: #fff; margin: 4px 0; }
 #cine.by-jack { background-color: #35583c; } /* the jack answers in his own colour */

@@ -94,6 +94,7 @@
           '<table class="keys"><tr><td></td><th>Mouse</th><th>Touch</th><th>Keys</th></tr>' +
           row('Select', 'Click a unit, drag a box. Shift adds. Double-click takes every unit of that kind.', 'Tap a unit. Double-tap takes every unit of that kind.', 'Ctrl/⌘+A all jacks. Shift+1–9 saves a group, 1–9 recalls it.') +
           row('Order', 'Click or right-click a tree, animal, hut, a glinting ore rock (or any rock, to break it up), the sawmill, the market sign or open ground. Keep clicking a tree being chopped to land extra whacks.', 'Tap the same things. The buttons beside a selected unit: saw lumber, haul to market, stop, deselect.', 'X stops. Esc deselects.') +
+          row('Palisades', 'In palisade mode, drag to build. A drag that starts on a palisade takes it down, as does any drag after Remove.', 'The same, with a finger.', 'R switches between building and removing.') +
           row('Move the map', 'Two-finger scroll or wheel, screen edges, right-drag, or the minimap.', 'Drag. The map button shows the minimap and zoom.', 'WASD or arrows. F selection, H camp, Tab next idle jack.') +
           row('Zoom', 'Trackpad pinch or the − + buttons.', 'Pinch, or the map button.', '− and +') +
           row('Menus', 'Shop is in the toolbar. The log stack pauses and holds help, finds, sound and credits; the note opens sound directly.', 'Camp shows resources and progress. Tap a selected unit’s name for its status and experience. The log stack pauses and holds help, finds, sound and credits.', 'B shop. Esc backs out one step, then pauses.') +

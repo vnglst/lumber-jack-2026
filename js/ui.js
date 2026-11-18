@@ -14,13 +14,13 @@
   ui.PING = PING;
   ui.pings = [];     // { x, y, c, t }: where the last orders landed, drawn by render.js
 
+  // Never shrinks the art: nearest-neighbour downscaling drops whole pixel columns (it once cost Mr. Grant an eye).
   function iconCanvas(src, size) {
     const c = document.createElement('canvas');
-    c.width = c.height = size || (src.width > 16 ? 24 : 12);
-    const x = c.getContext('2d'), k = Math.min(c.width / src.width, c.height / src.height, 1);
-    const w = Math.round(src.width * k), h = Math.round(src.height * k);
+    c.width = c.height = Math.max(size || (src.width > 16 ? 24 : 12), src.width, src.height);
+    const x = c.getContext('2d');
     x.imageSmoothingEnabled = false;
-    x.drawImage(src, (c.width - w) >> 1, (c.height - h) >> 1, w, h);
+    x.drawImage(src, (c.width - src.width) >> 1, (c.height - src.height) >> 1);
     return c;
   }
   // Replaces every <i data-ic> placeholder under root with the icon it names from the sprite sheet.
@@ -168,7 +168,7 @@
     let best = null, bd = 1e9;
     for (const u of G.units) {
       const v = u.kind !== 'jack', rx = (v ? 16 : 8) + slack, ry = (v ? 10 : 12) + slack, lift = v ? 7 : 9;
-      const dx = wx - u.x, dy = wy - (u.y - lift);
+      const dx = wx - u.x - (u.ox || 0), dy = wy - (u.y + (u.oy || 0) - lift);
       if (Math.abs(dx) <= rx && Math.abs(dy) <= ry) {
         const d = dx * dx + dy * dy;
         if (d < bd) { bd = d; best = u; }
@@ -294,7 +294,7 @@
 
   function boxSelect(d, add) {
     const x0 = Math.min(d.x0, d.x1), x1 = Math.max(d.x0, d.x1), y0 = Math.min(d.y0, d.y1), y1 = Math.max(d.y0, d.y1);
-    G.sel = new Set([...(add ? G.sel : []), ...G.units.filter(u => u.x >= x0 && u.x <= x1 && u.y - 6 >= y0 && u.y - 6 <= y1)]);
+    G.sel = new Set([...(add ? G.sel : []), ...G.units.filter(u => { const x = u.x + (u.ox || 0), y = u.y + (u.oy || 0) - 6; return x >= x0 && x <= x1 && y >= y0 && y <= y1; })]);
   }
 
   // Tiles on a straight line between two tiles (for dragging out a palisade). Diagonal steps get an
@@ -328,7 +328,8 @@
       let mode;
       if (!touch) mode = e.button === 1 ? 'pan' : e.button === 2 ? 'cmd' : G.wallMode ? 'wall' : G.place || G.cine ? 'pan' : 'box';
       else mode = G.wallMode ? 'wall' : 'pan';
-      if (mode === 'wall') G.wallDrag = tileLine(tileAt(wx, wy), tileAt(wx, wy));
+      // A drag that starts on a palisade takes sections down instead of building them, as does Remove mode.
+      if (mode === 'wall') { const t = tileAt(wx, wy); G.wallCut = !!G.wallErase || (t >= 0 && G.world.wall[t] > 0); G.wallDrag = tileLine(t, t); }
       ptrs.set(e.pointerId, { sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, wx, wy, mode, moved: false, touch, shift: e.shiftKey });
       if (ptrs.size === 2) {
         for (const p of ptrs.values()) { p.mode = 'pinch'; p.moved = true; }
@@ -365,7 +366,7 @@
       const p = ptrs.get(e.pointerId);
       ptrs.delete(e.pointerId);
       if (!p || p.mode === 'pinch') return;
-      if (p.mode === 'wall') { if (G.wallDrag && !G.paused) LJ.buildWalls(G.wallDrag); G.wallDrag = null; return; }
+      if (p.mode === 'wall') { if (G.wallDrag && !G.paused) (G.wallCut ? LJ.removeWalls : LJ.buildWalls)(G.wallDrag); G.wallDrag = null; return; }
       if (p.mode === 'cmd' && G.wallMode && !p.moved) { G.wallMode = false; return; }
       if (!p.moved) click(p.wx, p.wy, p.mode === 'cmd', p.touch, p.shift);
       else if (G.drag) {
@@ -442,12 +443,13 @@
       else if (k === 'b') setShop(!shopOpen());
       else if (k === 'm') toggleMap();
       else if (k === 'x') LJ.cmd.stop([...G.sel]);
+      else if (k === 'r' && G.wallMode) { G.wallErase = !G.wallErase; G.wallDrag = null; }
       else if (k === 'p') ui.showMenu();
       else if (k === '+' || k === '=') setZoom(zi + 1);
       else if (k === '-' || k === '_') setZoom(zi - 1);
       else if (k === 'escape') {
         // Back out one step at a time; with nothing left to back out of, Escape opens the menu.
-        if (G.place || G.wallMode) { G.place = null; G.wallMode = false; G.wallDrag = null; }
+        if (G.place || G.wallMode) { G.place = null; G.wallMode = false; G.wallErase = false; G.wallDrag = null; }
         else if (shopOpen()) setShop(false);
         else if ($('game').classList.contains('resources-open') || $('game').classList.contains('order-open')) setMobilePanel('');
         else if ($('game').classList.contains('unit-details-open')) { $('game').classList.remove('unit-details-open'); panelSig = ''; }
@@ -510,7 +512,8 @@
       else if (a === 'desel') G.sel.clear();
       else if (a === 'details') { $('game').classList.toggle('unit-details-open'); panelSig = ''; }
       else if (a === 'cancel') G.place = null;
-      else if (a === 'walldone') { G.wallMode = false; G.wallDrag = null; }
+      else if (a === 'walldone') { G.wallMode = false; G.wallErase = false; G.wallDrag = null; }
+      else if (a === 'wallerase') { G.wallErase = !G.wallErase; panelSig = ''; }
     });
     $('order').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
@@ -618,7 +621,7 @@
     const [name, face] = SPEAKER[line.who]();
     el.className = 'open by-' + line.who;
     el.innerHTML = '<div class="who"></div><div><div class="nm"></div><div class="tx"></div><div class="more">tap to continue ▸</div></div>';
-    el.querySelector('.who').appendChild(iconCanvas(face, 22));
+    el.querySelector('.who').appendChild(iconCanvas(face, 24));
     el.querySelector('.nm').textContent = name;
     el.querySelector('.tx').textContent = line.text;
     LJ.voice.say(line.text, line.who);
@@ -656,7 +659,8 @@
   function hint() {
     if (G.arrival) return '';
     if (G.levelDone || G.cine) return '';
-    if (G.wallMode) return 'Drag to build solid palisades. They block every unit: leave openings for your crew and trucks. Enemies can use openings or break through.';
+    if (G.wallMode && G.wallErase) return 'Drag over palisades to take them down. Finished sections give their wood back; unfinished ones are refunded in full.';
+    if (G.wallMode) return 'Drag to build solid palisades. They block every unit: leave openings for your crew and trucks. Start a drag on a palisade to take it down.';
     if (G.place) return 'Pick a clear, explored spot the road can reach.';
     const nw = LJ.combat.nextWaveIn();
     if (G.wave.active && !G.wave.active.retreating) return 'A war party is marching on the village! Guard towers out-range its bows; jacks near the village or a tower fight too.';
@@ -702,11 +706,15 @@
 
   function refreshPanel() {
     const sel = [...G.sel];
-    const sig = G.wallMode ? 'wall' : G.place ? 'place' : sel.map(u => u.id + ':' + LJ.statusOf(u) + ':' + LJ.cargoOf(u) + ':' + (u.hp | 0) + ':' + (u.xp | 0)).join('|') + (G.village ? 'v' : '') + (G.up.dispatch ? 'd' : '');
+    const sig = G.wallMode ? 'wall' + (G.wallErase ? 'x' : '') : G.place ? 'place' : sel.map(u => u.id + ':' + LJ.statusOf(u) + ':' + LJ.cargoOf(u) + ':' + (u.hp | 0) + ':' + (u.xp | 0)).join('|') + (G.village ? 'v' : '') + (G.up.dispatch ? 'd' : '');
     if (sig === panelSig) return;
     panelSig = sig;
     const p = $('panel');
-    if (G.wallMode) { p.innerHTML = '<div>Palisade<div class="st">Drag to build · €' + LJ.WALL_COST.m + ' + ' + LJ.WALL_COST.w + ' wood per section</div></div><button data-act="walldone">Done</button>'; return; }
+    if (G.wallMode) {
+      p.innerHTML = '<div>Palisade<div class="st">' + (G.wallErase ? 'Drag to take down · wood comes back' : 'Drag to build · €' + LJ.WALL_COST.m + ' + ' + LJ.WALL_COST.w + ' wood per section') + '</div></div>' +
+        '<button data-act="wallerase" aria-pressed="' + !!G.wallErase + '" title="' + (G.wallErase ? 'Go back to building palisades (R)' : 'Take palisades down (R)') + '">' + (G.wallErase ? 'Build' : 'Remove') + '</button><button data-act="walldone">Done</button>';
+      return;
+    }
     if (G.place) { p.innerHTML = '<div>Place the ' + LJ.BLD[G.place.kind].name.toLowerCase() + '</div><button data-act="cancel">Cancel</button>'; return; }
     if (!sel.length) { p.innerHTML = ''; return; }
     const u = sel[0], cargo = sel.reduce((a, b) => a + LJ.cargoOf(b), 0), has = k => sel.some(s => s.kind === k);
@@ -891,7 +899,7 @@
     for (const b of G.bubbles) {
       if (!b.el) { b.el = document.createElement('div'); b.el.className = 'bubble'; b.el.textContent = b.text; ov.appendChild(b.el); }
       const lift = b.u.kind === 'jack' ? 25 : 24;
-      b.el.style.transform = 'translate(' + ((b.u.x - cx) * zoom) + 'px,' + ((b.u.y - cy - lift) * zoom) + 'px) translate(-50%,-100%)';
+      b.el.style.transform = 'translate(' + ((b.u.x + (b.u.ox || 0) - cx) * zoom) + 'px,' + ((b.u.y + (b.u.oy || 0) - cy - lift) * zoom) + 'px) translate(-50%,-100%)';
     }
   };
 })();

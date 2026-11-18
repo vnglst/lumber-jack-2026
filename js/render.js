@@ -49,7 +49,8 @@
     if (!ghost && u.hp < LJ.maxHpOf(u)) bar(ctx, x + (img.width >> 1) - 7, y - 4, 12, u.hp / LJ.maxHpOf(u), u.hp > LJ.maxHpOf(u) * 0.4 ? '#5fdc3c' : '#ff4a3a');
     else if (!ghost && u.state === 'chop' && u.target >= 0 && !u.path.length) bar(ctx, x + (img.width >> 1) - 7, y - 4, 12, 1 - G.world.hp[u.target], '#ffd84a');
   }
-  const drawAny = (ctx, u, cx, cy, G, ghost) => (u.kind === 'jack' ? drawUnit : drawVehicle)(ctx, u, cx, cy, G, ghost);
+  // Drawn shifted by the unit's spacing offset (see LJ.spaceUnits), so neighbours do not stand on top of each other.
+  const drawAny = (ctx, u, cx, cy, G, ghost) => (u.kind === 'jack' ? drawUnit : drawVehicle)(ctx, u, cx - Math.round(u.ox || 0), cy - Math.round(u.oy || 0), G, ghost);
 
   // Draws a left/right creature centred on (x, y = its feet); returns the top-left corner.
   function drawCreature(ctx, frames, frame, dir, x, y, foot, cx, cy) {
@@ -89,7 +90,8 @@
     // Palisade preview while dragging
     if (G.wallDrag) {
       for (const i of G.wallDrag) {
-        ctx.fillStyle = LJ.canWall(i) ? 'rgba(120,255,110,0.4)' : 'rgba(255,70,60,0.35)';
+        if (G.wallCut && !w.wall[i]) continue; // taking down: mark only the sections that will go
+        ctx.fillStyle = G.wallCut ? 'rgba(255,160,50,0.5)' : LJ.canWall(i) ? 'rgba(120,255,110,0.4)' : 'rgba(255,70,60,0.35)';
         ctx.fillRect((i % W) * TS - cx, ((i / W) | 0) * TS - cy, TS, TS);
       }
     }
@@ -122,7 +124,7 @@
     for (const c of G.critters) if (!underPx(c.x, c.y) && !LJ.combat.insideHut(c)) list.push({ k: 13, c, y: c.y });
     for (const b of G.buildings) if (!b.dead && !b.pending && !under((b.ty + (b.h >> 1)) * W + b.tx + (b.w >> 1))) list.push({ k: 2, b, y: (b.ty + b.h) * TS });
     if (!under(w.roadY * W)) list.push({ k: 5, y: w.roadY * TS + 1 });
-    for (const u of G.units) list.push({ k: 3, u, y: u.y });
+    for (const u of G.units) list.push({ k: 3, u, y: u.y + (u.oy || 0) });
     for (const f of G.falls) list.push({ k: 4, f, y: f.y });
     for (const a of G.animals) if (!LJ.combat.insideHut(a)) list.push({ k: 6, a, y: a.y });
     for (const g of G.graves) if (!underPx(g.x, g.y)) list.push({ k: 7, g, y: g.y });

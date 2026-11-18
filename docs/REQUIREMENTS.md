@@ -116,6 +116,7 @@ How to read it:
 | 103 | 17 Nov | Review and package the audio release | Done |
 | 104 | 17 Nov | Wildlife settles without flickering or crowding stalls | Active |
 | 105 | 17 Nov | Ordered Jack poke responses, then singing | Active |
+| 106 | 18 Nov | Removable palisades, unlimited bulldozers and towers, Mr. Grant's eyes, units keep apart | Active |
 
 ---
 
@@ -1388,3 +1389,20 @@ How to read it:
 - Review: pokes during playback do not consume dialogue lines, and the solo plays only once per poke streak. A new streak can start after four quiet seconds. Update the README and rebuild the production package with offline shell v38.
 - Release verification: the playback regression fails before the review fix and passes after it. The integrated source passes browser checks for real pointer input, audio output and offline save restoration. Scripted campaigns on seeds 1–3 finish in 28–33 simulated minutes without stalls.
 - Final release checks: all 322 JavaScript tests and seven Python checks pass. The rebuilt 124-file package contains the verified game scripts and v38 shell.
+
+## 106. Removable palisades, unlimited bulldozers and towers, Mr. Grant's eyes, units keep apart (18 Nov 2026)
+
+> - It should be possible to undo/remove pallisades easily.
+> - Should be possible to buy bulldozers unlimited and cheap.
+> - Should be possible to buy more guard towers, unlimited
+> - Mr Grant does not have two eyes in the dialog screen.
+> - Jacks and other units should not walk on top of each other.
+
+- Palisades can be taken down again in palisade mode. A drag that starts on a palisade removes the sections along it. The panel's Remove button (or R) makes every drag remove until Build is pressed. Removal is instant.
+- *Decision: a section still under construction is refunded in full (€4 + 2 wood); a finished or damaged one gives its 2 wood back. Removing only opens ground, so it needs no road-access check (§73). Removal is disabled during the ending, like building (§61).*
+- Bulldozers have no purchase limit and are cheap. *Decision: €200 each, the same price however many you own (was €600 plus €300 per bulldozer owned, max 2). Upkeep stays €15 per payday. Vehicles take a `step` field for this price growth; the others keep +50% per vehicle owned.*
+- Guard towers have no purchase limit (was 6). Price unchanged at €250 + 30 wood.
+- Mr. Grant's dialog portrait lost a pixel column, and with it an eye. His 22×23 sprite was shrunk into a 22-pixel canvas with nearest-neighbour scaling. *Decision: interface sprite canvases never shrink the art. The conversation portraits are 24 pixels, shown at 72 px (exactly 3×).*
+- Units keep apart. *Decision: jacks and machines get a drawing offset (`u.ox`, `u.oy`, at most 6 px for a jack and 9 for a machine), pushed apart by body size (a `room` field in `VEH`), and drawn, picked and labelled with it. Real positions, tiles, routes and weapon reach are unchanged, so spacing cannot cause the endpoint and range stalls of §104. It draws nothing from the random stream and is not saved.*
+- Validation: six new checks in `tests/shop-walls-spacing.test.cjs` fail before the change and pass after; all 328 JavaScript checks pass. Scripted campaigns on seeds 1–6 all finish without stalls: 28–38 minutes and 35 deaths in total, compared with 28–33 minutes and 29 deaths before. The cheaper bulldozer changes the scripted player's spending order; seeds move both ways. Headless browser checks at 1280×800 and 390×844: real mouse and touch drags that start on a palisade take three sections down and return their wood; the Remove toggle updates the panel; both eyes show in the conversation portrait; jacks sent to one tile are drawn at least 5 px apart. No page errors. Offline shell bumped to v39.
+- Not judged: whether unlimited cheap bulldozers make the late game too easy. Nobody has played this by hand.

@@ -65,7 +65,7 @@
   E.start = function () {
     const w = G.world, W = w.W;
     G.animals = []; LJ.combat.clearShots(); G.animalCd = 1e9; G.order = null; G.orderCd = 1e9;
-    G.sel.clear(); G.place = null; G.drag = null; G.wallMode = false; G.wallDrag = null;
+    G.sel.clear(); G.place = null; G.drag = null; G.wallMode = false; G.wallErase = false; G.wallDrag = null;
     LJ.cmd.stop(G.units);
     LJ.revealAll();
     const site = findSite();
